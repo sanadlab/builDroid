@@ -1,0 +1,50 @@
+# General Guidelines:
+        Here is a list of general guidelines that could help you when dealing with Java projects:
+    1. Read the README: Start by reading the project's README file on GitHub. It often contains important instructions for installation, usage, and any project-specific details.
+    2. Check Dependencies: Look for any dependencies listed in the README or in a pom.xml file if the project is using Maven, or a build.gradle file if it's using Gradle. Ensure you have the required JDK version installed.
+    3. Build Tool: Identify which build tool the project is using: Maven or Gradle. This information should be available in the README or through project configuration files (pom.xml for Maven, build.gradle for Gradle).
+    4. Build the Project: Depending on the build tool, you'll use different commands to build the project:
+
+        For Maven:
+        mvn clean install
+
+        For Gradle:
+        gradle build
+    5. Configuration: Check if the project requires any configuration files (e.g., property files, YAML files) and set them up accordingly.
+    6. Run Tests (if available): If the project provides tests, it's a good idea to run them to ensure everything is working correctly.
+    7. Run the Project: Follow the instructions in the README to run the project. This could involve running a specific class, starting a server, or executing a specific command.
+    8. Troubleshooting: If you encounter any issues during installation or running the project, refer to the project's issue tracker on GitHub or search for similar issues that others may have encountered.
+    9. When running a test suite, it is normal that some test cases fail. If the percentage of failing test cases is less than 20 percent of the total number, it is considered normal (no need to further investigate)
+    10. Use one of the popular tools to measure code coverage of the test suite, some examples are below:
+    
+        # JaCoCo (Java Code Coverage):
+            Usage:
+                Maven: Add the JaCoCo Maven plugin to your pom.xml.
+                Ant: Use the JaCoCo Ant tasks for integration.
+            Reports: Generates detailed HTML, XML, and CSV reports.
+
+            Maven Example:
+
+            <build>
+            <plugins>
+                <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.8</version>
+                <executions>
+                    <execution>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                    </execution>
+                    <execution>
+                    <id>report</id>
+                    <phase>test</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                    </execution>
+                </executions>
+                </plugin>
+            </plugins>
+            </build>

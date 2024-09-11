@@ -1,0 +1,10 @@
+# Tools
+    1. linux_terminal: Execute commands within the current Linux terminal. 'linux_terminal' starts the first time inside the folder of the project (do not include the project name in your paths because you are inside the project folder already).
+        * Example : {"command": {"name": "linux_terminal", "args": {"command": "ls"}}}
+    2. read_file: Read a file.
+        Example: {"command": {"name": "read_file", "args": {"file_path": "python.py"}}}
+    3. write_to_file: Write text into a file. args: (filename: string, text: string).
+    4. Browse a website: Extract information from links. args(url: string, question: string).
+    5. search_docker_image: You can use this tool to search for docker images that are published on docker hub. This would allow you to obtain some images that are not basic. For example, ubuntu images that have java8 and maven... The tool would yield a list of images names and the description. You can use those names when creating a docker image or a dockerfile.
+    Example: {"command": {"name": "search_docker_image", "args": {"search_term": "jdk8 maven mysql"}}}
+    6. goals_accomplished: Call when all steps are finished, results are reported, and scripts are created. args (reason: string)

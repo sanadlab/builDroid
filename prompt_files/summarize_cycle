@@ -1,0 +1,16 @@
+Now, you have to summarize and extract important information from the output of the last command.
+
+Ensure accuracy and relevance, such as software versions, tool names, or lists of requirements.
+
+
+
+Your summary and extracted information (extracted dependencies, relevant installation commands, and important links) should have always the following JSON format:
+
+{
+    "summary": "put summary here...",
+    "extracted dependencies": "list of dependencies here",
+    "important commands": "list of commands here",
+    "important files/links/hyperlinks": "list of files or links here"
+}
+
+Here is the result of the last command (for which you should give a summary and extract relevant blocks of text):
