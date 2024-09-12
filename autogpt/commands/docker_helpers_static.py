@@ -51,24 +51,10 @@ def convert_xml_to_yaml(xml_content):
     
     return yaml_str
 
-def start_persistent_shell(container):
-    try:
-        print(f"Starting a persistent shell in container {container.short_id}...")
-        
-        # Start a bash shell session
-        exec_result = container.exec_run("/bin/bash", tty=True, stdin=True, socket=True, detach=True)
-        print(f"Shell started with exec ID: {exec_result}")
-
-        # Attach to the shell session (you can later send commands to it)
-        return exec_result
-    
-    except Exception as e:
-        return f"An error occurred while starting the shell: {e}"
-
-def send_command_to_shell(container, exec_id, command):
+def send_command_to_shell(container, command):
     try:
         # Send a command to the shell session
-        exec_result = container.exec_run(f"echo '{command}'", exec_id=exec_id)
+        exec_result = container.exec_run(f"bash -c '{command}'")
         
         output = exec_result.output.decode('utf-8')
         print(f"Command output:\n{output}")
@@ -76,6 +62,12 @@ def send_command_to_shell(container, exec_id, command):
     
     except Exception as e:
         return f"An error occurred while sending the command: {e}"
+
+def create_screen_session(contianer):
+    command = "apt update and apt install -y screen"
+    execute_command_in_container(container, command)
+    command = "screen -dmS my_screen_session"
+    execute_command_in_container(container, command)
 
 def remove_progress_bars(text):
         system_prompt= "You will be given the output of execution a command on a linux terminal. Some of the executed commands such as installation commands have a progress bar which can be long and not very usefull. Your task is to remove the text of progress bars and only keep the important part such as the last progress value for each progress bar (e.g, percentange or something like that). Any text in the output that is not part of the progress bar should remain the same such as success message at the end or error that interrupted the process or the information about what is being installed."
@@ -173,6 +165,8 @@ def start_container(image_tag):
         print(f"Running container from image {image_tag}...")
         container = client.containers.run(image_tag, detach=True, tty=True)
         print(f"Container {container.short_id} is running.")
+        print("CREATING SCREEN SESSION")
+
         return container
     except Exception as e:
         print(f"ERRRRRRRRRRRR: An error occurred while running the container: {e}")
@@ -193,7 +187,7 @@ def execute_command_in_container_old(container, command):
 def execute_command_in_container(container, command):
     try:
         # Wrap the command in a shell execution context
-        shell_command = f"/bin/sh -c '{command}'"
+        shell_command = "/bin/sh -c \"{}\"".format(command)
         print(f"Executing command '{command}' in container {container.short_id}...")
 
         # Execute the command without a TTY, but with streaming output
