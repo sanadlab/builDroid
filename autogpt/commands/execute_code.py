@@ -260,7 +260,7 @@ def execute_shell(command: str, agent: Agent) -> str:
     else:
         new_command = "screen -S my_screen_session -X stuff '{}>/tmp/cmd_result\n'".format(command)
         ret_val = execute_command_in_container(agent.container, new_command)
-        cmd_result = read_file_from_container(container, "/tmp/cmd_result")
+        cmd_result = read_file_from_container(agent.container, "/tmp/cmd_result")
         cmd_result = textify_output(cmd_result)
         cmd_result = remove_progress_bars(cmd_result)
         ret_val = [cmd_result, None]

@@ -63,7 +63,7 @@ def send_command_to_shell(container, command):
     except Exception as e:
         return f"An error occurred while sending the command: {e}"
 
-def create_screen_session(contianer):
+def create_screen_session(container):
     command = "apt update && apt install -y screen"
     execute_command_in_container(container, command)
     command = "screen -dmS my_screen_session"
