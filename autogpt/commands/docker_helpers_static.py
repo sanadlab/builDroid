@@ -64,7 +64,7 @@ def send_command_to_shell(container, command):
         return f"An error occurred while sending the command: {e}"
 
 def create_screen_session(contianer):
-    command = "apt update and apt install -y screen"
+    command = "apt update && apt install -y screen"
     execute_command_in_container(container, command)
     command = "screen -dmS my_screen_session"
     execute_command_in_container(container, command)
@@ -166,7 +166,7 @@ def start_container(image_tag):
         container = client.containers.run(image_tag, detach=True, tty=True)
         print(f"Container {container.short_id} is running.")
         print("CREATING SCREEN SESSION")
-
+        create_screen_session(container)
         return container
     except Exception as e:
         print(f"ERRRRRRRRRRRR: An error occurred while running the container: {e}")
