@@ -10,7 +10,7 @@ from pathlib import Path
 import docker
 from docker.errors import DockerException, ImageNotFound
 from docker.models.containers import Container as DockerContainer
-from autogpt.commands.docker_helpers_static import execute_command_in_container, read_file_from_container, remove_progress_bars, textify_output
+from autogpt.commands.docker_helpers_static import execute_command_in_container, read_file_from_container, remove_progress_bars, textify_output, extract_test_sections
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
 from autogpt.config import Config
@@ -258,11 +258,14 @@ def execute_shell(command: str, agent: Agent) -> str:
     if not agent.container:
         ret_val = agent.interact_with_shell(command)
     else:
-        new_command = "screen -S my_screen_session -X stuff '{}>/tmp/cmd_result\n'".format(command)
+        new_command = "screen -S my_screen_session -X stuff '{}>/tmp/cmd_result 2>&1\n'".format(command)
         ret_val = execute_command_in_container(agent.container, new_command)
+        print("----- OUTPUT ON DOCKER LEVEL: {}".format(ret_val))
         cmd_result = read_file_from_container(agent.container, "/tmp/cmd_result")
+        print("----- OUTPUT ON SCREEN LEVEL: {}".format(cmd_result))
         cmd_result = textify_output(cmd_result)
         cmd_result = remove_progress_bars(cmd_result)
+        cmd_result = extract_test_sections(cmd_result)
         ret_val = [cmd_result, None]
     return "The text that appears on the terminal after executing your command is:\n" + str(ret_val[0])
 

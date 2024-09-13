@@ -350,9 +350,14 @@ def run_interaction_loop(
             if command_name == "write_to_file":
                 simple_name = command_args["filename"].split("/")[-1] if "/" in command_args["filename"] else command_args["filename"]
                 # todo save written files here
-                files_list = os.listdir("experimental_setups/{}/files".format(agent.exp_number))
-                with open("experimental_setups/{}/files/{}".format(agent.exp_number, simple_name+"_{}".format(len(files_list))), "w") as wrf:
+                if not os.path.exists("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path)):
+                    os.system("mkdir experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
+
+                files_list = os.listdir("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
+
+                with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
                     wrf.write(command_args["text"])
+
             result = agent.execute(command_name, command_args, user_input)
 
             with open(parsable_log_file) as plf:
@@ -391,6 +396,10 @@ def run_interaction_loop(
                     agent.tests_executed = True
             else:
                 logger.typewriter_log("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
+
+            if not os.path.exists("experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path)):
+                os.system("mkdir experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path))
+            agent.save_to_file("experimental_setups/{}/saved_contexts/{}/cycle_{}".format(agent.exp_number, agent.project_path, cycle_budget - cycles_remaining))
 
 import re
 

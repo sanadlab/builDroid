@@ -182,6 +182,47 @@ class BaseAgent(metaclass=ABCMeta):
         self.search_results = self.search_documentation()
         self.dockerfiles = self.find_dockerfiles()
 
+    def to_dict(self):
+        return {
+            "experiment_file": self.experiment_file,
+            "ai_config": str(self.ai_config),  # Assuming this is a complex object
+            "command_registry": str(self.command_registry),  # Assuming this is a complex object
+            "config": str(self.config),  # Assuming this is a complex object
+            "big_brain": self.big_brain,
+            "default_cycle_instruction": self.default_cycle_instruction,
+            "cycle_budget": self.cycle_budget,
+            "cycles_remaining": self.cycles_remaining,
+            "cycle_count": self.cycle_count,
+            "hyperparams": self.hyperparams,
+            "prompt_dictionary": self.prompt_dictionary,
+            "llm": str(self.llm),  # Assuming this is a complex object
+            "send_token_limit": self.send_token_limit,
+            "project_path": self.project_path,
+            "project_url": self.project_url,
+            "language": self.language,
+            "workspace_path": self.workspace_path,
+            "current_step": self.current_step,
+            "steps_list": self.steps_list,
+            "steps_object": self.steps_object,
+            "cycle_type": self.cycle_type,
+            "tests_executed": self.tests_executed,
+            "cmd_cycle_instruction": self.cmd_cycle_instruction,
+            "summary_cycle_instruction": self.summary_cycle_instruction,
+            "exp_number": self.exp_number,
+            "track_budget": self.track_budget,
+            "left_commands": self.left_commands,
+            "max_budget": self.max_budget,
+            "container": str(self.container),  # Assuming this is a complex object
+            "found_workflows": self.found_workflows,
+            "search_results": self.search_results,
+            "dockerfiles": self.dockerfiles,
+        }
+
+    def save_to_file(self, filename):
+        # Save object attributes as JSON to a file
+        with open(filename, 'w') as file:
+            json.dump(self.to_dict(), file, indent=4)
+
     def workflow_to_script(self, workflow_path):
         system_prompt = "This is the content of a workflow file used to run a test workflow for a repository. I want you to turn the file into a '.sh' script that I can use on my machine to prepare and run tests of that specific repository (the file might contain multiple configurations, I want a simple configuration for linux ubuntu). The workflow might be irrelevant or contain no steps for building and testing. In such case, just mention that the script is not about setting up the project for running tests."
 
@@ -258,7 +299,8 @@ class BaseAgent(metaclass=ABCMeta):
 
 
     def remove_progress_bars(self, text):
-        system_prompt= "You will be given the output of execution a command on a linux terminal. Some of the executed commands such as installation commands have a progress bar which can be long and not very usefull. Your task is to remove the text of progress bars and only keep the important part such as the last progress value for each progress bar (e.g, percentange or something like that). IMPORTANT: You should keep information such as success message at the end or error that interrupted the process or the information about what is being installed or why it failed to be installed."
+        with open("prompt_files/remove_progress_bars") as rpb:
+            system_prompt= rpb.read()
         
         query= "Here is the output of a command that you should clean:\n"+ text
 

@@ -3,10 +3,18 @@ from docker.errors import ImageNotFound
 import os
 import subprocess
 import re
-
+import time
 
 from langchain.chat_models import ChatOpenAI
 from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
+
+ACTIVE_SCREEN = {
+    "name": "my_screen_session",
+    "id": None,
+    "default_process_list": None,
+    "prep_end": False
+}
+
 def ask_chatgpt(query, system_message, model="gpt-3.5-turbo-0125"):
     with open("openai_token.txt") as opt:
         token = opt.read()
@@ -63,18 +71,58 @@ def send_command_to_shell(container, command):
     except Exception as e:
         return f"An error occurred while sending the command: {e}"
 
+def get_screen_process_list(container, screen_id):
+    command = "pstree -p {}".format(screen_id)
+    output = execute_command_in_container_screen(container, command)
+    return output
+
 def create_screen_session(container):
     command = "apt update && apt install -y screen"
-    execute_command_in_container(container, command)
+    execute_command_in_container_screen(container, command)
+
+    command = "apt install psmisc"
+    execute_command_in_container_screen(container, command)
+
     command = "screen -dmS my_screen_session"
-    execute_command_in_container(container, command)
+    execute_command_in_container_screen(container, command)
+
+    command = "screen -ls"
+    output = execute_command_in_container_screen(container, command)
+    
+    session_id = parse_screen_sesssion_id(output)
+     
+    ACTIVE_SCREEN["id"] = session_id
+    ACTIVE_SCREEN["default_process_list"] = get_screen_process_list(container, session_id)
+    ACTIVE_SCREEN["prep_end"] = True
+
+def parse_screen_sesssion_id(screen_ls):
+    lines = screen_ls.splitlines()
+    
+    for line in lines:
+        if ".my_screen_session" in line:
+            wanted_line = line
+            break
+    else:
+        raise ValueError("ERROR: This is not possible, my_screen_session should be there")
+
+    line_parts = wanted_line.split()
+    for part in line_parts:
+        if ".my_screen_session" in part:
+            wanted_part = part
+            break
+    else:
+        raise ValueError("ERROR 2: This is not possible, my_screen_session should be there")
+
+    return wanted_part.split(".")[0]
+
 
 def remove_progress_bars(text):
-        system_prompt= "You will be given the output of execution a command on a linux terminal. Some of the executed commands such as installation commands have a progress bar which can be long and not very usefull. Your task is to remove the text of progress bars and only keep the important part such as the last progress value for each progress bar (e.g, percentange or something like that). Any text in the output that is not part of the progress bar should remain the same such as success message at the end or error that interrupted the process or the information about what is being installed."
-        
-        query= "Here is the output of a command that you should clean:\n"+ text
+    with open("prompt_files/remove_progress_bars") as rpb:
+        system_prompt= rpb.read()
 
-        return ask_chatgpt(query, system_prompt)
+    query= "Here is the output of a command that you should clean:\n"+ text
+
+    return ask_chatgpt(query, system_prompt)
 
 def remove_ansi_escape_sequences(text):
     """
@@ -188,20 +236,39 @@ def execute_command_in_container(container, command):
     try:
         # Wrap the command in a shell execution context
         shell_command = "/bin/sh -c \"{}\"".format(command)
-        print(f"Executing command '{command}' in container {container.short_id}...")
+        #print(f"Executing command '{command}' in container {container.short_id}...")
 
         # Execute the command without a TTY, but with streaming output
         exec_result = container.exec_run(shell_command, tty=False)
 
         # Decode and process the output
         output = exec_result.output.decode('utf-8')
-        print(f"Command output:\n{output}")
+        #print(f"Command output:\n{output}")
         
-        # Further processing of the output, if needed
-        clean_output = remove_progress_bars(textify_output(output))
-        test_sections = extract_test_sections(clean_output)
+        while get_screen_process_list(container, ACTIVE_SCREEN["id"]) != ACTIVE_SCREEN["default_process_list"]:
+            print("WAITING FOR PROCESS TO FINISH...")
+            print(ACTIVE_SCREEN["default_process_list"])
+            print(get_screen_process_list(container, ACTIVE_SCREEN["id"]))
+            time.sleep(1)
         
-        return test_sections
+        return output
+
+    except Exception as e:
+        return f"An error occurred while executing the command: {e}"
+
+def execute_command_in_container_screen(container, command):
+    try:
+        # Wrap the command in a shell execution context
+        shell_command = "/bin/sh -c \"{}\"".format(command)
+        #print(f"Executing command '{command}' in container {container.short_id}...")
+
+        # Execute the command without a TTY, but with streaming output
+        exec_result = container.exec_run(shell_command, tty=False)
+
+        # Decode and process the output
+        output = exec_result.output.decode('utf-8')
+        #print(f"Command output:\n{output}")
+        return output
 
     except Exception as e:
         return f"An error occurred while executing the command: {e}"
@@ -297,9 +364,8 @@ def read_file_from_container(container, file_path):
         return f'Failed to read {file_path} in the container. Output: {output.decode("utf-8")}'
 
 if __name__ == "__main__":
-    dockerfile_dir = "."  # Directory containing your Dockerfile
-    image_tag = "commons-math_image:rundex"
+    screen_text = """There is a screen on:
+        37.my_screen_session    (09/13/24 10:12:26)     (Detached)
+1 Socket in /run/screen/S-root."""
 
-    container = start_container(image_tag)
-    write_string_to_file(container, "test string 1234", "/app/commons-maths/FILE_SHOULD_EXSIST.1234")
-    print(read_file_from_container(container, "/app/commons-maths/FILE_SHOULD_EXSIST.1234"))
+    print(parse_screen_sesssion_id(screen_text))
