@@ -89,11 +89,15 @@ def create_screen_session(container):
     command = "screen -ls"
     output = execute_command_in_container_screen(container, command)
     
+    
     session_id = parse_screen_sesssion_id(output)
      
     ACTIVE_SCREEN["id"] = session_id
     ACTIVE_SCREEN["default_process_list"] = get_screen_process_list(container, session_id)
     ACTIVE_SCREEN["prep_end"] = True
+
+    command = "TZ=Europe/Berlin && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone"
+    output = execute_command_in_container_screen(container, command)
 
 def parse_screen_sesssion_id(screen_ls):
     lines = screen_ls.splitlines()

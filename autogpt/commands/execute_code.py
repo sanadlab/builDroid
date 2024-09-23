@@ -264,9 +264,14 @@ def execute_shell(command: str, agent: Agent) -> str:
         cmd_result = read_file_from_container(agent.container, "/tmp/cmd_result")
         print("----- OUTPUT ON SCREEN LEVEL: {}".format(cmd_result))
         cmd_result = textify_output(cmd_result)
-        cmd_result = remove_progress_bars(cmd_result)
-        cmd_result = extract_test_sections(cmd_result)
-        ret_val = [cmd_result, None]
+        print("----- OUTPUT AFTER TEXTIFYING:", cmd_result)
+        cmd_result_temp = remove_progress_bars(cmd_result)
+        print("------ OUTPUT AFTER REMOVING PROGRESS BARS:", cmd_result)
+        #cmd_result = extract_test_sections(cmd_result)
+        if "The command had no output":
+            ret_val = [cmd_result, None]
+        else:
+            ret_val = [cmd_result_temp, None]
     return "The text that appears on the terminal after executing your command is:\n" + str(ret_val[0])
 
 @command(

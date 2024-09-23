@@ -232,6 +232,10 @@ class BaseAgent(metaclass=ABCMeta):
         return ask_chatgpt(system_prompt, query)
 
     def search_documentation(self,):
+        if os.path.exists("search_logs/{}".format(self.project_path)):
+            with open(os.path.join(search_logs, self.project_path, "{}_build_install_from_source.json".format(self.project_path))) as bifs:
+                results = json.load(bifs)
+            return json.dumps(results)
         results = search_install_doc(self.project_path)
         return json.dumps(results)
 
