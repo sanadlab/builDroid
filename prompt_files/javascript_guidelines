@@ -53,38 +53,3 @@
    yarn lint
    yarn format
    ```
-
-10. **Code Coverage**: Use popular tools to measure code coverage of the test suite. Some examples are below:
-
-    - **Jest**:
-      Jest is a popular testing framework for JavaScript with built-in code coverage support.
-      ```sh
-      npm test -- --coverage
-      ```
-      or
-      ```sh
-      yarn test --coverage
-      ```
-
-    - **Istanbul (nyc)**:
-      Istanbul is another widely-used tool for code coverage.
-      ```sh
-      npm install --save-dev nyc
-      nyc npm test
-      ```
-      or
-      ```sh
-      yarn add --dev nyc
-      nyc yarn test
-      ```
-
-    - **Coverage Reports**:
-      Both Jest and Istanbul (nyc) can generate detailed reports in various formats (HTML, JSON, etc.). Check the documentation for configuring report generation.
-
-    - **Example `package.json` script for coverage**:
-      ```json
-      "scripts": {
-        "test": "jest --coverage",
-        "coverage": "nyc npm test"
-      }
-      ```

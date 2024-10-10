@@ -18,25 +18,4 @@
 . 
  7. Run the Project Follow instructions in README to run project.could involve running specific executable, starting server, or executing specific command. 
  8. Troubleshooting encounter issues during installation or running project, refer to project s issue tracker on GitHub or search for similar issues. 
- 9. Code Coverage Use popular tools to measure code coverage of test suite. examples 
- * * gcov * 
- Overview gcov test coverage program with GNU Compiler Collection ( GCC ) to analyze create coverage reports. 
- Compile code with - fprofile - arcs - ftest - coverage flags run tests, use gcov to generate coverage reports. 
- Commands 
- g + + - fprofile - arcs - ftest - coverage your _ code. program 
-. 
- gcov code. 
- * lcov 
- graphical front - end for gcov provides HTML coverage reports. 
- Combine lcov with gcov for detailed HTML reports. 
- lcov - capture - - directory. output - file coverage. info 
- genhtml coverage. output directory 
- LLVM ' s llvm - cov 
- code coverage tool with Clang compiler. 
- Compile code with coverage instrumentation, run tests, use llvm - cov to generate reports. 
- Commands 
- clang + + - fprofile - instr - generate - fcoverage - mapping your code. cpp your program 
- LLVM _ PROFILE _ FILE = " your _ program. profraw ". program 
- llvm - profdata merge - sparse your _ program. profraw - o your _ program. profdata 
-llvm - cov show. your program - instr - profile = your program. profdata 
- 10. * Documentation Review additional documentation, Doxygen files, API documentation, inline comments code. Understanding documentation better insights into project ' structure usage. 
+ 9. * Documentation Review additional documentation, Doxygen files, API documentation, inline comments code. Understanding documentation better insights into project ' structure usage. 

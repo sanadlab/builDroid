@@ -118,6 +118,8 @@ class BaseAgent(metaclass=ABCMeta):
         elif self.hyperparams["language"].lower() in ["c", "c++"]:
             self.prompt_dictionary["general_guidelines"]= self.c_guidelines
                     
+    
+        self.prompt_dictionary["general_guidelines"]  += "\nWhen debugging a problem, if an approach does not work for multiple consecutibe iterations, think of changing your approach of addressing the problem.\n"
         """
         The system prompt sets up the AI's personality and explains its goals,
         available resources, and restrictions."""
@@ -143,7 +145,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.workspace_path = "/workspaces/docker-in-docker/AutoGPT/auto_gpt_workspace"
 
         self.current_step = "1"
-        self.steps_list = ["1", "2", "3", "4", "5", "6", "7", "8"]
+        self.steps_list = ["1", "2", "3", "4", "5", "6", "7"]
         
         with open(os.path.join(prompt_files, "steps_list.json")) as slj:
             self.steps_object = json.load(slj)
@@ -181,7 +183,9 @@ class BaseAgent(metaclass=ABCMeta):
         self.found_workflows = self.find_workflows(self.project_path)
         self.search_results = self.search_documentation()
         self.dockerfiles = self.find_dockerfiles()
+        self.command_stuck = False
 
+        
     def to_dict(self):
         return {
             "experiment_file": self.experiment_file,
@@ -233,7 +237,7 @@ class BaseAgent(metaclass=ABCMeta):
 
     def search_documentation(self,):
         if os.path.exists("search_logs/{}".format(self.project_path)):
-            with open(os.path.join(search_logs, self.project_path, "{}_build_install_from_source.json".format(self.project_path))) as bifs:
+            with open(os.path.join("search_logs", self.project_path, "{}_build_install_from_source.json".format(self.project_path))) as bifs:
                 results = json.load(bifs)
             return json.dumps(results)
         results = search_install_doc(self.project_path)
@@ -263,6 +267,7 @@ class BaseAgent(metaclass=ABCMeta):
         except Exception as e:
             print(f"An error occurred: {e}")
             return []
+            
     def find_workflows(self, project_name):
         found_files = []
         WORKFLOW_DIR = "auto_gpt_workspace/{}/.github/workflows".format(project_name)

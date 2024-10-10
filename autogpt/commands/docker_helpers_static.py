@@ -207,7 +207,7 @@ def build_image(dockerfile_path, tag):
                 log_text += log['stream'].strip()
         return "Docker image built successfully.\n"
     except Exception as e:
-        print(f"An error occurred while building the Docker image: {e}")
+        return f"An error occurred while building the Docker image: {e}"
         return None
 import docker
 
@@ -249,12 +249,27 @@ def execute_command_in_container(container, command):
         output = exec_result.output.decode('utf-8')
         #print(f"Command output:\n{output}")
         
+        THRESH = 180
+        WAIT = 1
+        command_threshold = THRESH
+        old_command_output = read_file_from_container(container, "/tmp/cmd_result")
+
         while get_screen_process_list(container, ACTIVE_SCREEN["id"]) != ACTIVE_SCREEN["default_process_list"]:
             print("WAITING FOR PROCESS TO FINISH...")
             print(ACTIVE_SCREEN["default_process_list"])
             print(get_screen_process_list(container, ACTIVE_SCREEN["id"]))
-            time.sleep(1)
-        
+            time.sleep(WAIT)
+            new_command_output =  read_file_from_container(container, "/tmp/cmd_result")
+
+            if new_command_output == old_command_output:
+                command_threshold -= WAIT
+            else:
+                command_threshold = THRESH
+            
+            if command_threshold <= 0:
+                with open("prompt_files/command_stuck") as cst:
+                    stuck_m = cst.read()
+                return "The command you executed seems to be stuck somewhere. Here is the output that the command has so far (it did not change for the last {} seconds):\n".format(THRESH) + old_command_output + "\n\n" + stuck_m
         return output
 
     except Exception as e:

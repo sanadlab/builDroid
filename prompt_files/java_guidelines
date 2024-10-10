@@ -15,36 +15,3 @@
     7. Run the Project: Follow the instructions in the README to run the project. This could involve running a specific class, starting a server, or executing a specific command.
     8. Troubleshooting: If you encounter any issues during installation or running the project, refer to the project's issue tracker on GitHub or search for similar issues that others may have encountered.
     9. When running a test suite, it is normal that some test cases fail. If the percentage of failing test cases is less than 20 percent of the total number, it is considered normal (no need to further investigate)
-    10. Use one of the popular tools to measure code coverage of the test suite, some examples are below:
-    
-        # JaCoCo (Java Code Coverage):
-            Usage:
-                Maven: Add the JaCoCo Maven plugin to your pom.xml.
-                Ant: Use the JaCoCo Ant tasks for integration.
-            Reports: Generates detailed HTML, XML, and CSV reports.
-
-            Maven Example:
-
-            <build>
-            <plugins>
-                <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.8</version>
-                <executions>
-                    <execution>
-                    <goals>
-                        <goal>prepare-agent</goal>
-                    </goals>
-                    </execution>
-                    <execution>
-                    <id>report</id>
-                    <phase>test</phase>
-                    <goals>
-                        <goal>report</goal>
-                    </goals>
-                    </execution>
-                </executions>
-                </plugin>
-            </plugins>
-            </build>

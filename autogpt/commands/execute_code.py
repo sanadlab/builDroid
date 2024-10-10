@@ -258,6 +258,36 @@ def execute_shell(command: str, agent: Agent) -> str:
     if not agent.container:
         ret_val = agent.interact_with_shell(command)
     else:
+        if agent.command_stuck:
+            if not (command.startswith("TERMINATE") or command.startswith("WAIT") or command.startswith("WRITE:")):
+                return """The terminal is stuck at command before this one. You cannot request executing a new command before terminating the previous one. To do that, you can make the following as your next output action: {"command": {"name": "linux_terminal", "args": {"command": "TERMINATE"}}}"""
+            elif command == "WAIT":
+                old_output = read_file_from_container(agent.container, "/tmp/cmd_result")
+                time.sleep(60)
+                new_output = read_file_from_container(agent.container, "/tmp/cmd_result")
+                if old_output == new_output:
+                    with open("prompt_files/command_stuck") as cst:
+                        stuck_m = cst.read()
+                    return "The command is still stuck somewhere, here is the output that the command has so far (it did not change for the last {} seconds):\n".format(60) + old_output + "\n\n" + stuck_m
+                else:
+                    agent.command_stuck = False
+                    return "The command is no longer stuck, here is the final output:\n" + new_output + "\n"
+            elif command == "TERMINATE":
+                execute_command_in_container_screen(agent.container, "screen -X -S my_screen_session quit")
+                create_screen_session(agent.container)
+                agent.command_stuck = False
+                return "The previous command was terminated, a fresh terminal has been instantiated."
+            elif command.startswith("WRITE:"):
+                write_input = command.replace("WRITE:", "")
+                interact_command = "screen -S my_screen_session -X stuff '{}\n'".format(write_input)
+                interact_ret_val = execute_command_in_container(agent.container, interact_command)
+                if ret_val[0].startswith("The command you executed seems to be stuck somewhere."):
+                    agent.command_stuck = True
+                    return ret_val[0]
+                else:
+                    agent.command_stuck = False
+                    return "The text that appears on the terminal after executing your command is:\n" + str(ret_val[0])
+                    
         new_command = "screen -S my_screen_session -X stuff '{}>/tmp/cmd_result 2>&1\n'".format(command)
         ret_val = execute_command_in_container(agent.container, new_command)
         print("----- OUTPUT ON DOCKER LEVEL: {}".format(ret_val))
@@ -272,6 +302,12 @@ def execute_shell(command: str, agent: Agent) -> str:
             ret_val = [cmd_result, None]
         else:
             ret_val = [cmd_result_temp, None]
+
+        if ret_val[0].startswith("The command you executed seems to be stuck somewhere."):
+            agent.command_stuck = True
+            return ret_val[0]
+        else:
+            agent.command_stuck = False
     return "The text that appears on the terminal after executing your command is:\n" + str(ret_val[0])
 
 @command(

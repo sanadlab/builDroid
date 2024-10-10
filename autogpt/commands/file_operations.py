@@ -298,8 +298,8 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
             else:
                 full_path = os.path.join(workspace, agent.project_path, filename)
 
-            if "dockerfile" in filename.lower():
-                text = update_dockerfile_content(text)
+            #if "dockerfile" in filename.lower():
+            #    text = update_dockerfile_content(text)
 
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(text)
@@ -309,6 +309,8 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
                 image_log = "IMAGE ALREADY EXISTS"
                 if not check_image_exists(agent.project_path+"_image:rundex"):
                     image_log = build_image(workspace, agent.project_path+"_image:rundex")
+                    if image_log.startswith("An error occurred while building the Docker image"):
+                        return "The following error occured while trying to build a docker image from the docker script you provide, please fix it:\n" + image_log
                 container = start_container(agent.project_path+"_image:rundex")
                 if container is not None:
                     agent.container = container
