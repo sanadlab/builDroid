@@ -5,6 +5,15 @@ ExecutionAgent is a robust tool leveraging a large language model (LLM) to auton
 
 ---
 
+## 📦 Dev Container Setup  
+To get started in a VSCode Dev Container:  
+1. Install the [Remote - Containers](https://code.visualstudio.com/docs/remote/containers) extension.  
+2. Clone this repository.  
+3. Open the repository in VSCode, and it will prompt you to reopen in the dev container. Alternatively, use a command to open the current folder in a dev container.
+  
+
+---
+
 ## ✨ Key Features  
 - **Autonomous Workflow**: Clone, build, and test GitHub projects with minimal human intervention.  
 - **Language Support**: Detect and manage projects in Python, C, C++, Java, JavaScript, and more.  
@@ -41,15 +50,6 @@ For each project, ExecutionAgent will:
 - Build the project  
 - Run its test cases  
 Results are logged under experimental_setups/experiment_XX (XX is an integer incremented with each new invocation of the tool, i.e, new call to ./rundex.sh ...)  
-
----
-
-## 📦 Dev Container Setup  
-To get started in a VSCode Dev Container:  
-1. Install the [Remote - Containers](https://code.visualstudio.com/docs/remote/containers) extension.  
-2. Clone this repository.  
-3. Open the repository in VSCode, and it will prompt you to reopen in the dev container. Alternatively, use a command to open the current folder in a dev container.
-  
 
 ---
 
