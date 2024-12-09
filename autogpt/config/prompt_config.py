@@ -32,6 +32,8 @@ class PromptConfig:
         Returns:
             None
         """
+        self.general_guidelines = []
+        return None
         # Validate file
         (validated, message) = utils.validate_yaml_file(prompt_settings_file)
         if not validated:

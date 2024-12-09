@@ -117,9 +117,11 @@ class BaseAgent(metaclass=ABCMeta):
             self.prompt_dictionary["general_guidelines"]= self.javascript_guidelines
         elif self.hyperparams["language"].lower() in ["c", "c++"]:
             self.prompt_dictionary["general_guidelines"]= self.c_guidelines
-                    
-    
+        
         self.prompt_dictionary["general_guidelines"]  += "\nWhen debugging a problem, if an approach does not work for multiple consecutibe iterations, think of changing your approach of addressing the problem.\n"
+        
+        #self.prompt_dictionary["general_guidelines"] = ""
+        
         """
         The system prompt sets up the AI's personality and explains its goals,
         available resources, and restrictions."""
@@ -142,7 +144,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.project_path = self.hyperparams["project_path"]
         self.project_url = self.hyperparams["project_url"]
         self.language = self.hyperparams["language"]
-        self.workspace_path = "/workspaces/docker-in-docker/AutoGPT/auto_gpt_workspace"
+        self.workspace_path = "auto_gpt_workspace"
 
         self.current_step = "1"
         self.steps_list = ["1", "2", "3", "4", "5", "6", "7"]
@@ -308,12 +310,19 @@ class BaseAgent(metaclass=ABCMeta):
 
 
     def remove_progress_bars(self, text):
-        with open("prompt_files/remove_progress_bars") as rpb:
-            system_prompt= rpb.read()
-        
-        query= "Here is the output of a command that you should clean:\n"+ text
+        try:
+            with open("prompt_files/remove_progress_bars") as rpb:
+                system_prompt= rpb.read()
+            summary = ""
+            for i in range(int(len(text)/100000)+1):
+                query= "Here is the output of a command that you should clean:\n"+ text[i*100000: (i+1)*100000]
+                summary += "\n" + ask_chatgpt(query, system_prompt)
+                print("CLEANED 100K CHARACTERS.........")
+                print("LEN CLEANED:", len(summary))
+        except Exception as e:
+            print("ERRRRRROOOOOOOOOOOR IN PROGRESSSSSSSSSS:", e)
+        return summary
 
-        return ask_chatgpt(query, system_prompt)
 
     def interact_with_shell(self, command):
         try:
@@ -323,7 +332,7 @@ class BaseAgent(metaclass=ABCMeta):
             self.shell.expect("\$ ", timeout=1500)
         except Exception as e:
             return ("Error happened: {}".format(e), None)
-        return self.remove_progress_bars(remove_ansi_escape_sequences(self.shell.before)), self.remove_progress_bars(remove_ansi_escape_sequences(self.shell.after))
+        return remove_ansi_escape_sequences(self.shell.before), remove_ansi_escape_sequences(self.shell.after)
 
     def validate_command_parsing(self, command_dict):
         with open("commands_interface.json") as cif:
@@ -392,7 +401,7 @@ class BaseAgent(metaclass=ABCMeta):
         
         ## This is a line added by me to save prompts at each step
         self.prompt_text = prompt.dump()
-        logger.info("CURRENT DIRECTORY {}".format(os.getcwd()))
+        #logger.info("CURRENT DIRECTORY {}".format(os.getcwd()))
         
 
         with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "a+") as patf:
@@ -504,7 +513,7 @@ class BaseAgent(metaclass=ABCMeta):
         ## added this part to change the prompt structure
 
         steps_text = self.construct_executed_steps_text()
-            
+         
         prompt = ChatSequence.for_model(
             self.llm.name,
             [Message("system", self.prompt_dictionary["role"])])
@@ -522,6 +531,10 @@ class BaseAgent(metaclass=ABCMeta):
         definitions_prompt += "\nProject path: the project under scope has the following path/name within the file system, which you should use when calling the tools: {}".format(self.project_path) + "\n"
         definitions_prompt += "\nProject github url (needed for dockerfile script): {}\n".format(self.project_url)
         
+        if os.path.exists("problems_memory/{}".format(self.project_path)):
+            with open("problems_memory/{}".format(self.project_path)) as pm:
+                previous_memory = pm.read()
+            definitions_prompt += "\nFrom previous attempts we learned that: {}\n".format(previous_memory)
         
         if self.found_workflows:
             definitions_prompt += "\nThe following workflow files might contain information on how to setup the project and run test cases. We extracted the most important installation steps found in those workflows and turned them into a bash script. This might be useful later on when building/installing and testing the project:\n"
@@ -536,7 +549,7 @@ class BaseAgent(metaclass=ABCMeta):
             definitions_prompt += "Here is the summary of the top 5 results:\n" + self.search_results + "\n"
         
         
-        if self.hyperparams["image"]!="NIL" and 1 == 0:
+        if self.hyperparams["image"]!="NIL":
             definitions_prompt += "For this particular project, the docker image have been already created and the container have been launched, you can skip steps 1 and 2; You can start directly from step 3 (see the steps list below).\n"
         #definitions_prompt += steps_text + "\n"
         

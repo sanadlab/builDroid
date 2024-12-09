@@ -167,7 +167,7 @@ def log_operation(
         }
     },
 )"""
-@sanitize_path_arg("file_path")
+#@sanitize_path_arg("file_path")
 def read_file(file_path: str, agent: Agent) -> str:
     """Read a file and return the contents
 
@@ -178,6 +178,7 @@ def read_file(file_path: str, agent: Agent) -> str:
         str: The contents of the file
     """
     if not agent.container:
+        print("READING FILE FROM OUTSIDE CONTAINER CRAZZZZZZZZZZZZZZZZZZZZZY")
         try:
             workspace = agent.workspace_path
             project_path = agent.project_path
@@ -271,7 +272,7 @@ def update_dockerfile_content(dockerfile_content: str) -> str:
     },
     aliases=["write_file", "create_file"],
 )
-@sanitize_path_arg("filename")
+#@sanitize_path_arg("filename")
 def write_to_file(filename: str, text: str, agent: Agent) -> str:
     """Write text to a file
 
@@ -293,25 +294,34 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
             #directory = os.path.dirname(filename)
             #os.makedirs(directory, exist_ok=True)
             workspace = agent.workspace_path
-            if agent.project_path + "/" in filename:
+            print("AGENT RPOJECT PATH:::::::", agent.project_path)
+            if (agent.project_path + "/") in filename:
+                print("PATH TAKEN FROM HERE 1111")
                 full_path = os.path.join(workspace, filename)
             else:
                 full_path = os.path.join(workspace, agent.project_path, filename)
-
+                #print("PATH TAKEN FROM HERE 2222")
+                #print("FULL PATH++++++", full_path)
+                #print(workspace)
+                #print(agent.project_path)
+                #print(filename)
             #if "dockerfile" in filename.lower():
             #    text = update_dockerfile_content(text)
 
             with open(full_path, "w", encoding="utf-8") as f:
                 f.write(text)
+            
             log_operation("write", filename, agent, "STATIC CHECK SUM WAS WRITTEN FROM file_operations:write_to_file")
-
+            
+            print("DOCKER FILE WAS WRITTEN TO ------ ", full_path)
+            
             if "dockerfile" in filename.lower():
                 image_log = "IMAGE ALREADY EXISTS"
-                if not check_image_exists(agent.project_path+"_image:rundex"):
-                    image_log = build_image(workspace, agent.project_path+"_image:rundex")
+                if not check_image_exists(agent.project_path.lower()+"_image:rundex"):
+                    image_log = build_image(os.path.join(workspace, agent.project_path), agent.project_path.lower()+"_image:rundex")
                     if image_log.startswith("An error occurred while building the Docker image"):
-                        return "The following error occured while trying to build a docker image from the docker script you provide, please fix it:\n" + image_log
-                container = start_container(agent.project_path+"_image:rundex")
+                        return "The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log
+                container = start_container(agent.project_path.lower()+"_image:rundex")
                 if container is not None:
                     agent.container = container
                     cwd = execute_command_in_container(container, "pwd")
@@ -325,8 +335,16 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         print("I am HERE TRYING TO WRITE FILE IN CONTAINER 191919191919191919919191919119999911111111111111119")
         print("PROJECT_PATH:", agent.project_path)
         print("FILENAME:", filename)
-        return str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
-        
+        if "dockerfile" in filename.lower():
+            return "You cannot create another docker image, you already have access to a running container. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
+        write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
+        if write_result=="None":
+            if "setup" in filename.lower() or "install" in filename.lower() or ".sh" in filename.lower():
+                return "installation script was written successfully, you should not run this script. If test cases were not yet run, you should do that with the help of linux_terminal. If you arleady run test cases successfully, you are done with the task."
+            else:
+                return "File written successfully."
+        else:
+            return write_result
 @sanitize_path_arg("filename")
 def append_to_file(
     filename: str, text: str, agent: Agent, should_log: bool = True

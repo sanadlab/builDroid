@@ -35,7 +35,7 @@ def extract_instructions_from_readme(project_path) -> str:
 
 from langchain.chat_models import ChatOpenAI
 from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
-def ask_chatgpt(query, system_message, model="gpt-3.5-turbo-0125"):
+def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     with open("openai_token.txt") as opt:
         token = opt.read()
     chat = ChatOpenAI(openai_api_key=token, model=model)

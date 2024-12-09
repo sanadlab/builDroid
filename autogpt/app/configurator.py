@@ -130,7 +130,7 @@ def create_config(
         config.ai_settings_file = file
         config.skip_reprompt = True
 
-    if prompt_settings_file:
+    if prompt_settings_file and False:
         file = prompt_settings_file
 
         # Validate file

@@ -1,0 +1,22 @@
+{
+    "name": "Docker in Docker",
+    "image": "mcr.microsoft.com/devcontainers/base:bullseye",
+
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "version": "latest",
+            "enableNonRootDocker": "true",
+            "moby": "false"
+        }
+    },
+
+    "postCreateCommand": "chmod +x .devcontainer/install_python.sh && sudo .devcontainer/install_python.sh",
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "python.pythonPath": "/usr/local/bin/python3.10"
+            }
+        }
+    }
+}

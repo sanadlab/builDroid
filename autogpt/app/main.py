@@ -36,6 +36,8 @@ from autogpt.prompts.prompt import DEFAULT_TRIGGERING_PROMPT
 from autogpt.speech import say_text
 from autogpt.workspace import Workspace
 from scripts.install_plugin_deps import install_plugin_dependencies
+from autogpt.commands.docker_helpers_static import stop_and_remove
+
 
 def run_auto_gpt(
     continuous: bool,
@@ -92,7 +94,8 @@ def run_auto_gpt(
 
     if config.continuous_mode:
         for line in get_legal_warning().split("\n"):
-            logger.warn(markdown_to_ansi_style(line), "LEGAL:", Fore.RED)
+            pass
+            #logger.warn(markdown_to_ansi_style(line), "LEGAL:", Fore.RED)
 
     if not config.skip_news:
         motd, is_new_motd = get_latest_bulletin()
@@ -266,13 +269,11 @@ def run_interaction_loop(
 
     while cycles_remaining > 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
-        logger.info("XXXXXXXXXXXXXXXXXXX {} XXXXXXXXXXXXXXXXXXXX".format(agent.cycle_type))
-        with open("CYCLES_HISTORY.txt", "a") as cht:
-            cht.write(agent.cycle_type+"\n")
+        #logger.info("XXXXXXXXXXXXXXXXXXX {} XXXXXXXXXXXXXXXXXXXX".format(agent.cycle_type))
         if agent.cycle_type != "CMD":
             #agent.think()
             agent.cycle_type = "CMD"
-            logger.info(" YYYYYYYYYYYYYYYYY SUMMARY CYCLE EXECUTED YYYYYYYYYYYYYYYYYYYY")
+            #logger.info(" YYYYYYYYYYYYYYYYY SUMMARY CYCLE EXECUTED YYYYYYYYYYYYYYYYYYYY")
             logger.info(str(agent.summary_result))
             continue
         ########
@@ -292,6 +293,8 @@ def run_interaction_loop(
         # Get user input #
         ##################
         if cycles_remaining == 1:  # Last cycle
+            stop_and_remove(agent.container)
+            os.system("docker system prune -f")
             user_feedback, user_input, new_cycles_remaining = get_user_feedback(
                 config,
                 ai_config,
@@ -423,6 +426,11 @@ def parse_test_results(log_content):
         result_match = result_pattern.match(line)
         error_match = error_pattern.match(line)
         exception_match = exception_pattern.match(line)
+
+        if test_case_match:
+            test_case = test_case_match.group(1)
+        else:
+            test_case = None
 
         if test_case_match:
             test_case = test_case_match.group(1)

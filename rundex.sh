@@ -8,15 +8,25 @@ for LANG in en_AU.UTF-8 en_GB.UTF-8 C.UTF-8 C; do
 done
 export LC_COLLATE=C
 
-
-python3 experimental_setups/increment_experiment.py
-python3 construct_commands_descriptions.py
-python3 prepare_ai_settings.py
+python3.10 setup_api_key.py
+python3.10 experimental_setups/increment_experiment.py
+python3.10 prepare_ai_settings.py
 
 #!/bin/bash
 
 # Define the path to your text file
-file_path="nightly_runs/runs_list.txt"
+if [ -z "$1" ]; then
+  echo "Error: file_path argument not provided."
+  echo "Usage: ./script_name.sh /path/to/file"
+  exit 1
+fi
+
+# Assign the first argument to file_path
+file_path="$1"
+
+# Continue with the rest of the script
+echo "Using file path: $file_path"
+
 
 # Read the file line by line
 while IFS= read -r line; do
@@ -30,8 +40,7 @@ while IFS= read -r line; do
     echo $language
     echo "{}" > ~/.docker/config.json
     # Call your Python script with project name and GitHub URL as parameters
-    python clone_and_set_metadata.py "$project_name" "$github_url" "$language"
+    python3.10 clone_and_set_metadata.py "$project_name" "$github_url" "$language"
     ./run.sh --ai-settings ai_settings.yaml -c -l 40 -m json_file --experiment-file "project_meta_data.json"
-    rm -rf auto_gpt_workspace/*
 done < "$file_path"
 

@@ -2,7 +2,7 @@ Determine exactly one command to use based on the given goals and the progress y
 Respond strictly with JSON. The JSON should be compatible with the TypeScript type `Response` from the following:
 ```ts
 interface Response {
-// Express your thoughts based on the information that you have collected so far, the possible steps that you could do next and also your reasoning about fixing the bug in question"
+// Express your thoughts based on the information that you have collected so far, the possible steps that you could do next and also your reasoning. Always express your thoughts in english."
 thoughts: string;
 command: {
 name: string;
@@ -13,7 +13,7 @@ args: Record<string, any>;
 Here is an example of command call that you can output:
 
 {
-"thoughts": "I have information about the bug, but I need to run the test cases to understand the bug better.",
+"thoughts": "I need to check for the available folders and files within the project's root folder.",
 "command": {
 "name": "linux_terminal",
 "args": {
@@ -22,4 +22,4 @@ Here is an example of command call that you can output:
 }
 }
 
-**IMPORTANT NOTE TO THE ASSISTANT:** DO NOT OUTPUT ANY ENGLISH TEXT WITH YOUR JSON RESPONSE.
+**IMPORTANT NOTE TO THE ASSISTANT:** DO NOT OUTPUT ANY OTHER TEXT AROUND YOUR JSON RESPONSE.

@@ -15,7 +15,7 @@ ACTIVE_SCREEN = {
     "prep_end": False
 }
 
-def ask_chatgpt(query, system_message, model="gpt-3.5-turbo-0125"):
+def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     with open("openai_token.txt") as opt:
         token = opt.read()
     chat = ChatOpenAI(openai_api_key=token, model=model)
@@ -83,6 +83,9 @@ def create_screen_session(container):
     command = "apt install psmisc"
     execute_command_in_container_screen(container, command)
 
+    command = "touch /tmp/cmd_result"
+    execute_command_in_container_screen(container, command)
+
     command = "screen -dmS my_screen_session"
     execute_command_in_container_screen(container, command)
 
@@ -120,13 +123,32 @@ def parse_screen_sesssion_id(screen_ls):
     return wanted_part.split(".")[0]
 
 
+def remove_duplicate_consecutive_lines(text):
+    lines = text.split('\n')  # Split the text into individual lines
+    result_lines = []         # List to store the unique lines
+    previous_line = None       # Keep track of the last processed line
+
+    for line in lines:
+        if line != previous_line:  # Only append the line if it's different from the last one
+            result_lines.append(line)
+        previous_line = line       # Update the last processed line
+    
+    return '\n'.join(result_lines)  # Join the unique lines back into a single text block
+
 def remove_progress_bars(text):
-    with open("prompt_files/remove_progress_bars") as rpb:
-        system_prompt= rpb.read()
+    try:
+        with open("prompt_files/remove_progress_bars") as rpb:
+            system_prompt= rpb.read()
+        summary = ""
+        for i in range(int(len(text)/100000)+1):
+            query= "Here is the output of a command that you should clean:\n"+ text[i*100000: (i+1)*100000]
+            summary += "\n" + ask_chatgpt(query, system_prompt)
+            print("CLEANED 100K CHARACTERS.........")
+            print("LEN CLEANED:", len(summary))
+    except Exception as e:
+        print("ERRRRRROOOOOOOOOOOR IN PROGRESSSSSSSSSS:", e)
 
-    query= "Here is the output of a command that you should clean:\n"+ text
-
-    return ask_chatgpt(query, system_prompt)
+    return summary
 
 def remove_ansi_escape_sequences(text):
     """
@@ -249,7 +271,7 @@ def execute_command_in_container(container, command):
         output = exec_result.output.decode('utf-8')
         #print(f"Command output:\n{output}")
         
-        THRESH = 180
+        THRESH = 600
         WAIT = 1
         command_threshold = THRESH
         old_command_output = read_file_from_container(container, "/tmp/cmd_result")
@@ -269,7 +291,7 @@ def execute_command_in_container(container, command):
             if command_threshold <= 0:
                 with open("prompt_files/command_stuck") as cst:
                     stuck_m = cst.read()
-                return "The command you executed seems to be stuck somewhere. Here is the output that the command has so far (it did not change for the last {} seconds):\n".format(THRESH) + old_command_output + "\n\n" + stuck_m
+                return "The command you executed seems to take some time to finish.. Here is the output that the command has so far (it did not change for the last {} seconds):\n".format(THRESH) + old_command_output + "\n\n" + stuck_m
         return output
 
     except Exception as e:
@@ -296,7 +318,7 @@ def execute_command_in_container_screen(container, command):
 # Start a container
 #container = start_container('your_image_tag')
 def stop_and_remove(container):
-    ontainer.stop()
+    container.stop()
     container.remove()
     return "Container stopped and removed successfully"
     

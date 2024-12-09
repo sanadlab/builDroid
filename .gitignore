@@ -1,0 +1,65 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cython debug symbols
+cython_debug/
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# pytest
+.cache/
+
+# mypy
+.mypy_cache/
+
+# VS Code
+.vscode/
+
+# JetBrains IDEs
+.idea/
+
+# Python virtual environment
+*.env/
+*.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# PyCharm
+.idea/
+
+# macOS Finder
+.DS_Store
+
+# Windows Installer files
+Thumbs.db
+ehthumbs.db
+
+# VS Code settings (user-specific)
+.vscode/
+
+# pyenv
+.python-version
+
+# Poetry
+poetry.lock
+
+
+# tokens
+openai_token.txt

@@ -103,7 +103,7 @@ def extract_installation_documentation(project_path: str, agent: Agent) -> str:
     pass
 
 
-def ask_chatgpt(query, system_message, model="gpt-3.5-turbo-0125"):
+def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     with open("openai_token.txt") as opt:
         token = opt.read()
     chat = ChatOpenAI(openai_api_key=token, model=model)

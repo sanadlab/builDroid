@@ -39,8 +39,8 @@ class OpenAIModelName(str, enum.Enum):
     ADA = "text-embedding-ada-002"
     GPT3 = "gpt-3.5-turbo-0125"
     GPT3_16K = "gpt-3.5-turbo-0125"
-    GPT4 = "gpt-4o"
-    GPT4_32K = "gpt-4o"
+    GPT4 = "gpt-4o-mini"
+    GPT4_32K = "gpt-4o-mini"
 
 
 OPEN_AI_EMBEDDING_MODELS = {

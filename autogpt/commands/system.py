@@ -6,12 +6,11 @@ COMMAND_CATEGORY = "system"
 COMMAND_CATEGORY_TITLE = "System"
 
 from typing import NoReturn
-
+import os
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
-from autogpt.commands.docker_helpers_static import execute_command_in_container
+from autogpt.commands.docker_helpers_static import execute_command_in_container, stop_and_remove
 from autogpt.logs import logger
-
 
 @command(
     "goals_accomplished",
@@ -62,4 +61,6 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
 #Average coverage: [PUT CONCRETE VALUE HERE]
 #                    """
     logger.info(title="Shutting down...\n", message=reason)
+    stop_and_remove(agent.container)
+    os.system("docker system prune -f")
     quit()

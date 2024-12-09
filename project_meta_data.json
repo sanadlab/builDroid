@@ -1,0 +1,10 @@
+{
+    "repetition_handling": "RESTRICT",
+    "project_path": "scipy",
+    "project_url": "https://github.com/scipy/scipy",
+    "budget_control": {
+        "name": "NO-TRACK"
+    },
+    "language": "Python",
+    "image": "scipy_image:rundex"
+}

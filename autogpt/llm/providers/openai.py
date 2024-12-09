@@ -33,26 +33,26 @@ OPEN_AI_CHAT_MODELS = {
             supports_functions=True,
         ),
         ChatModelInfo(
-            name="gpt-4o",
+            name="gpt-4o-mini",
             prompt_token_cost=0.03,
             completion_token_cost=0.06,
             max_tokens=16000,
         ),
         ChatModelInfo(
-            name="gpt-4o",
+            name="gpt-4o-mini",
             prompt_token_cost=0.03,
             completion_token_cost=0.06,
             max_tokens=16000,
             supports_functions=True,
         ),
         ChatModelInfo(
-            name="gpt-4o",
+            name="gpt-4o-mini",
             prompt_token_cost=0.06,
             completion_token_cost=0.12,
             max_tokens=32768,
         ),
         ChatModelInfo(
-            name="gpt-4o",
+            name="gpt-4o-mini",
             prompt_token_cost=0.06,
             completion_token_cost=0.12,
             max_tokens=32768,
@@ -72,8 +72,8 @@ OPEN_AI_CHAT_MODELS = {
 chat_model_mapping = {
     "gpt-3.5-turbo": "gpt-3.5-turbo-0125",
     "gpt-3.5-turbo-16k": "gpt-3.5-turbo-0125",
-    "gpt-4": "gpt-4o",
-    "gpt-4-32k": "gpt-4o",
+    "gpt-4": "gpt-4o-mini",
+    "gpt-4-32k": "gpt-4o-mini",
 }
 for alias, target in chat_model_mapping.items():
     alias_info = ChatModelInfo(**OPEN_AI_CHAT_MODELS[target].__dict__)
@@ -129,7 +129,8 @@ def meter_api(func: Callable):
                 response.model,
             )
         except Exception as err:
-            logger.warn(f"Failed to update API costs: {err.__class__.__name__}: {err}")
+            pass
+            #logger.warn(f"Failed to update API costs: {err.__class__.__name__}: {err}")
 
     def metering_wrapper(*args, **kwargs):
         openai_obj = openai_obj_processor(*args, **kwargs)
