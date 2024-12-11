@@ -41,7 +41,7 @@ Use the following command to process the batch file (assuming the batch file is 
 ```bash
 ./rundex.sh nightly_runs/batch_2.txt
 ```  
-When run for the first time, the command will install the dependencies needed for ExecutionAgent and prompt the user for a OpenAI token.
+When run for the first time, the command will install the dependencies needed for ExecutionAgent and prompt the user for an OpenAI token.
 
 ### 3️⃣ Output  
 For each project, ExecutionAgent will:  
@@ -54,7 +54,7 @@ Results are logged under experimental_setups/experiment_XX (XX is an integer inc
 ---
 
 ## 🔧 Configuration  
-- Comming soon
+- Coming soon
 
 ---
 
