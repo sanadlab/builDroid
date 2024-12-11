@@ -2,15 +2,15 @@ import os
 
 
 def collect_requirements(project_path):
-    os.system("cd auto_gpt_workspace/{} && detect-requirements . > special_file_1.txt".format(project_path))
+    os.system("cd execution_agent_workspace/{} && detect-requirements . > special_file_1.txt".format(project_path))
 
 def infer_requirements(project_path):
-    os.system("cd auto_gpt_workspace/{} && pipreqs . --savepath special_file_2.txt".format(project_path))
+    os.system("cd execution_agent_workspace/{} && pipreqs . --savepath special_file_2.txt".format(project_path))
 
 def extract_instructions_from_readme(project_path) -> str:
     """
     """
-    workspace = "auto_gpt_workspace/"
+    workspace = "execution_agent_workspace/"
     files_at_root = os.listdir(os.path.join(workspace, project_path))
 
     readme_files = []

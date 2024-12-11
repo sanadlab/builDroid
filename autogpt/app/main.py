@@ -264,7 +264,7 @@ def run_interaction_loop(
         json.dump({
             "project": project_path,
             "language": agent.hyperparams["language"],
-            "rundex_attempt": []
+            "ExecutionAgent_attempt": []
         }, plf)
 
     while cycles_remaining > 0:
@@ -366,7 +366,7 @@ def run_interaction_loop(
             with open(parsable_log_file) as plf:
                 parsable_content = json.load(plf)
 
-            parsable_content["rundex_attempt"].append(
+            parsable_content["ExecutionAgent_attempt"].append(
                 {
                     "command_name": command_name,
                     "command_args": command_args,
@@ -388,7 +388,7 @@ def run_interaction_loop(
                 with open(parsable_log_file) as plf:
                     parsable_content = json.load(plf)
 
-                parsable_content["rundex_attempt"][-1]["result_summary"] = agent.summary_result
+                parsable_content["ExecutionAgent_attempt"][-1]["result_summary"] = agent.summary_result
 
                 with open(parsable_log_file, "w") as plf:
                     json.dump(parsable_content, plf)

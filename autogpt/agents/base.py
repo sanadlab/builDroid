@@ -144,7 +144,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.project_path = self.hyperparams["project_path"]
         self.project_url = self.hyperparams["project_url"]
         self.language = self.hyperparams["language"]
-        self.workspace_path = "auto_gpt_workspace"
+        self.workspace_path = "execution_agent_workspace"
 
         self.current_step = "1"
         self.steps_list = ["1", "2", "3", "4", "5", "6", "7"]
@@ -247,7 +247,7 @@ class BaseAgent(metaclass=ABCMeta):
 
     def find_dockerfiles(self,):
         DOCKERFILE_NAME = "Dockerfile"
-        PROJ_DIR = "auto_gpt_workspace/{}".format(self.project_path)
+        PROJ_DIR = "execution_agent_workspace/{}".format(self.project_path)
         try:
             # Run the find command to locate Dockerfile scripts
             result = subprocess.run(
@@ -272,7 +272,7 @@ class BaseAgent(metaclass=ABCMeta):
             
     def find_workflows(self, project_name):
         found_files = []
-        WORKFLOW_DIR = "auto_gpt_workspace/{}/.github/workflows".format(project_name)
+        WORKFLOW_DIR = "execution_agent_workspace/{}/.github/workflows".format(project_name)
         KEYWORDS = ["test", "build", "linux", "unittest", "integration", "deploy"]
         if not os.path.isdir(WORKFLOW_DIR):
             print(f"The directory {WORKFLOW_DIR} does not exist.")

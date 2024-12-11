@@ -22,7 +22,6 @@ def main():
     files_and_placeholders = [
         ("autogpt/.env", "GLOBAL-API-KEY-PLACEHOLDER"),
         ("run.sh", "GLOBAL-API-KEY-PLACEHOLDER"),
-        (".env", "GLOBAL-API-KEY-PLACEHOLDER"),
     ]
 
     # Read the replacement value from token.txt

@@ -22,7 +22,7 @@ from create_files_index import list_java_files
 
 ALLOWLIST_CONTROL = "allowlist"
 DENYLIST_CONTROL = "denylist"
-workspace_folder = "auto_gpt_workspace"
+workspace_folder = "execution_agent_workspace"
 
 """
     Step 1:

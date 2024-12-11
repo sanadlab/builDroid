@@ -1,10 +1,10 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "scipy",
-    "project_url": "https://github.com/scipy/scipy",
+    "project_path": "marshmallow",
+    "project_url": "https://github.com/marshmallow-code/marshmallow",
     "budget_control": {
         "name": "NO-TRACK"
     },
     "language": "Python",
-    "image": "scipy_image:rundex"
+    "image": "marshmallow_image:ExecutionAgent"
 }

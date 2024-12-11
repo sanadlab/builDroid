@@ -8,7 +8,7 @@ def clone_repository(github_url, project_name):
     cwd = os.getcwd()
     # Clone the repository
 
-    os.chdir("auto_gpt_workspace/")
+    os.chdir("execution_agent_workspace/")
     subprocess.run(["git", "clone", github_url])
     #print("project cloned 999999999999999")
     # Define project directory
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     project_name = sys.argv[1]
     github_url = sys.argv[2]
     language = sys.argv[3]
-    image = project_name+"_image:rundex"
+    image = project_name+"_image:ExecutionAgent"
 
     # Clone repository
     project_directory = clone_repository(github_url, project_name)

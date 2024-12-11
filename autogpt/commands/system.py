@@ -34,7 +34,7 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
             improve the code.
     """
     project_path = agent.project_path
-    workspace = "auto_gpt_workspace/"
+    workspace = "execution_agent_workspace/"
     files_list = [x[0].lower() for x in agent.written_files]
     #if "coverage_results.txt" not in files_list:
     #    return "You cannot claim goal accomplished without running test cases, measuring coverage and saving them to the file 'coverage_results.txt'"

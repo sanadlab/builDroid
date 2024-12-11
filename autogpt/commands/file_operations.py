@@ -317,11 +317,11 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
             
             if "dockerfile" in filename.lower():
                 image_log = "IMAGE ALREADY EXISTS"
-                if not check_image_exists(agent.project_path.lower()+"_image:rundex"):
-                    image_log = build_image(os.path.join(workspace, agent.project_path), agent.project_path.lower()+"_image:rundex")
+                if not check_image_exists(agent.project_path.lower()+"_image:ExecutionAgent"):
+                    image_log = build_image(os.path.join(workspace, agent.project_path), agent.project_path.lower()+"_image:ExecutionAgent")
                     if image_log.startswith("An error occurred while building the Docker image"):
                         return "The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log
-                container = start_container(agent.project_path.lower()+"_image:rundex")
+                container = start_container(agent.project_path.lower()+"_image:ExecutionAgent")
                 if container is not None:
                     agent.container = container
                     cwd = execute_command_in_container(container, "pwd")

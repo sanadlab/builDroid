@@ -42,7 +42,7 @@ def write_to_file(file_path: str, content_to_write: str, mode: str, agent: Agent
     """
     ai_name = agent.ai_config.ai_name
     project_path = agent.project_path
-    workspace = "auto_gpt_workspace/"
+    workspace = "execution_agent_workspace/"
     try:
         with open(os.path.join(workspace, project_path, file_path), mode) as t_file:
             t_file.write(content_to_write)

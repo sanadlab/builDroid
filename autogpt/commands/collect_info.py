@@ -40,7 +40,7 @@ def extract_instructions_from_readme(agent: Agent) -> str:
     """
     """
     ai_name = agent.ai_config.ai_name
-    workspace = "auto_gpt_workspace/"
+    workspace = "execution_agent_workspace/"
     files_at_root = os.listdir(os.path.join(workspace, project_path))
     project_path = agent.project_path
 

@@ -40,7 +40,7 @@ def write_tests_execution_summary(summary: str, agent: Agent) -> str:
     """
    
     project_path = agent.project_path
-    workspace = "auto_gpt_workspace/"
+    workspace = "execution_agent_workspace/"
     with open(os.path.join(workspace, project_path, "tests_execution_summary.txt"), "w") as tes:
         tes.write(summary)
 

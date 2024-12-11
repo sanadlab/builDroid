@@ -22,9 +22,11 @@ def main():
     files_and_placeholders = [
         ("autogpt/.env", "GLOBAL-API-KEY-PLACEHOLDER"),
         ("run.sh", "GLOBAL-API-KEY-PLACEHOLDER"),
-        (".env", "GLOBAL-API-KEY-PLACEHOLDER"),
     ]
-
+    if os.path.exists("openai_token.txt"):
+        with open("openai_token.txt") as ott:
+            if ott.read().startswith("sk-"):
+                exit()
     print("Please provide your OpenAI API-KEY.")
     replacement_value = input("OpenAI API-KEY: ").strip()
 
