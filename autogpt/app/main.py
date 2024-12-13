@@ -295,6 +295,7 @@ def run_interaction_loop(
         if cycles_remaining == 1:  # Last cycle
             stop_and_remove(agent.container)
             os.system("docker system prune -f")
+            exit()
             user_feedback, user_input, new_cycles_remaining = get_user_feedback(
                 config,
                 ai_config,

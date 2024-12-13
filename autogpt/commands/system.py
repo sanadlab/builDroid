@@ -63,4 +63,6 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
     logger.info(title="Shutting down...\n", message=reason)
     stop_and_remove(agent.container)
     os.system("docker system prune -f")
+    with open(os.path.join("experimental_setups", agent.exp_number, "saved_contexts", "SUCCESS"), "w") as ssf:
+        ssf.write("SUCCESS")
     quit()
