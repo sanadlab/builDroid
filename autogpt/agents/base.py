@@ -145,7 +145,8 @@ class BaseAgent(metaclass=ABCMeta):
         self.project_url = self.hyperparams["project_url"]
         self.language = self.hyperparams["language"]
         self.workspace_path = "execution_agent_workspace"
-
+        self.keep_container = True if self.hyperparams["keep_container"] == "TRUE" else False
+        
         self.current_step = "1"
         self.steps_list = ["1", "2", "3", "4", "5", "6", "7"]
         

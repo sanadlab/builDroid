@@ -19,6 +19,8 @@ def clone_repository(github_url, project_name):
 
 def create_metadata_file(project_name, github_url, language, image):
     # Define metadata dictionary
+    with open("customize.json") as ctz:
+        customize = json.load(ctz)
     metadata = {
         "repetition_handling": "RESTRICT",
         "project_path": project_name,
@@ -27,7 +29,8 @@ def create_metadata_file(project_name, github_url, language, image):
             "name": "NO-TRACK"
         },
         "language": language,
-        "image": image
+        "image": image,
+        "keep_container": customize["KEEP_CONTAINER"]
     }
 
     # Define metadata file path

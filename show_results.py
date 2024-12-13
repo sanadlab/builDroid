@@ -39,7 +39,9 @@ def main():
     dockerfile = get_highest_numbered_file(files_dir, "Dockerfile_")
     if dockerfile:
         dockerfile_path = os.path.join(files_dir, dockerfile)
-        print(f"Highest-numbered Dockerfile: {dockerfile_path}")
+        print("="*70)
+        print(f"Latest docker file Dockerfile: {dockerfile_path}")
+        print("="*70)
         with open(dockerfile_path, 'r') as f:
             print(f.read())
     else:
@@ -49,7 +51,9 @@ def main():
     setup_file = get_highest_numbered_file(files_dir, "SETUP_AND_INSTALL.sh_")
     if setup_file:
         setup_file_path = os.path.join(files_dir, setup_file)
-        print(f"Highest-numbered SETUP_AND_INSTALL.sh: {setup_file_path}")
+        print("="*70)
+        print(f"Latest installation script SETUP_AND_INSTALL.sh: {setup_file_path}")
+        print("="*70)
         with open(setup_file_path, 'r') as f:
             print(f.read())
     else:
@@ -58,9 +62,11 @@ def main():
     # Check for SUCCESS file in saved_contexts directory
     success_file = f"experimental_setups/{last_line}/saved_contexts/{project_name}/SUCCESS"
     if os.path.exists(success_file):
-        print("SUCCESS file found.")
+        print("="*70)
+        print("SUCCESS")
     else:
-        print("SUCCESS file not found.")
+        print("="*70)
+        print("FAILED")
 
 if __name__ == "__main__":
     main()

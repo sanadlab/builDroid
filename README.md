@@ -61,11 +61,34 @@ Run ExecutionAgent with the batch file:
 ```  
 ExecutionAgent will process each project listed in the file, performing the same steps as the single repository mode. The `-l` option can also be applied here by adding it to the command when running the script.
 
+To show the results of the last experiment for a specific project, you can call:
+```sh
+#
+python3.10 show_results.py <project_name>
+# example python3.10 show_results.py pytest
+```
+
+To clean all the logs and unset the api token, you can use the following command (WARNING: ALL THE LOGS AND EXECUTION RESULTS WOULD BE DELETED)
+```sh
+./clean.sh
+```
+
 ---
 
 ## 🔧 Configuration 
 
 **More options on configuring the agent would be coming soon**
+
+### Control the Number of Iterations:
+By default, the number of attempts `ExecutionAgent` will make is 3. After each attempt, `ExecutionAgent` learns from the previous one and adjust its strategy.
+In each attempt, the agent executes a number of commands (or cycles) defined by the parameter `l` mentioned above (default = 40).
+
+To set the number of attempts, you need to change line 17 (local max_retries=2) to any number you want (the total number of attempts would be max_retries +1).
+
+### Keep or Delete a docker container
+You can set this option in the file `customize.json`. Default value is `"FALSE"` (containers would be deleted). The other option is `"True"` which keeps the containers.
+
+This options useful for the ones who want to reuse the container already built by the agent.
 
 ---
 
