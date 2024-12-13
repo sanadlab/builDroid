@@ -3,6 +3,8 @@ Automate Building, Testing, and Validation of GitHub Projects in Isolated Contai
 
 ExecutionAgent is a robust tool leveraging a large language model (LLM) to autonomously **clone, build, install**, and **run test cases** for projects hosted on GitHub—all inside an isolated container. With support for multiple languages and configurations, ExecutionAgent aims to streamline development and quality assurance workflows.  
 
+<img src="execution_agent.png" alt="Alt text" width="300" height="300">
+
 ---
 
 ## 📦 Dev Container Setup  

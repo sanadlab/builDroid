@@ -6,5 +6,6 @@
         "name": "NO-TRACK"
     },
     "language": "Python",
-    "image": "marshmallow_image:ExecutionAgent"
+    "image": "marshmallow_image:ExecutionAgent",
+    "keep_container": "FALSE"
 }
