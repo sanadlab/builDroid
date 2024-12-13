@@ -94,7 +94,7 @@ The folder structure under `experimental_setups/experiment_XX` is organized to k
 - **saved_contexts**: Contains the saved states of the agent object at each iteration of the execution process. These snapshots are useful for debugging, tracking changes, and extracting subcomponents of the prompt across different cycles.  
   - Example: `cycle_1`, `cycle_10`, etc.  
 
-This structure helps in managing the various data generated throughout the experimentation, ensuring easy access to logs, model responses, and agent states.
+
 ---
 
 ## 📜 Research Paper  
