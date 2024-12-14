@@ -124,7 +124,7 @@ The folder structure under `experimental_setups/experiment_XX` is organized to k
 ---
 
 ## 📜 Research Paper  
-Dive into the technical details and evaluation in our [paper](link to paper).  
+Dive into the technical details and evaluation in our [paper](https://software-lab.org/publications/ExecutionAgent_2024-12-14.pdf).  
 
 ---
 
