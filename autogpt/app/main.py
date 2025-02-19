@@ -363,6 +363,7 @@ def run_interaction_loop(
                 with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
                     wrf.write(command_args["text"])
 
+            agent.project_path = agent.project_path.replace(".git","")
             result = agent.execute(command_name, command_args, user_input)
 
             with open(parsable_log_file) as plf:

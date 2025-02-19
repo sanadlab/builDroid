@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 import os
 import re
+
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
@@ -56,6 +57,7 @@ class Config(SystemSettings, arbitrary_types_allowed=True):
     # Model configuration
     fast_llm: str = "gpt-3.5-turbo-0125"
     smart_llm: str = "gpt-4o-mini"
+    free_llm: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
     temperature: float = 0
     openai_functions: bool = False
     embedding_model: str = "text-embedding-ada-002"
@@ -216,6 +218,7 @@ class Config(SystemSettings, arbitrary_types_allowed=True):
             kwargs["engine"] = deployment_id
         else:
             kwargs["deployment_id"] = deployment_id
+        
         return kwargs
 
 

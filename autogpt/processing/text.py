@@ -90,7 +90,11 @@ def summarize_text(
     if instruction and question:
         raise ValueError("Parameters 'question' and 'instructions' cannot both be set")
 
-    model = config.fast_llm
+    if config.openai_api_base is None:
+        model = config.fast_llm
+    else:
+        model = config.free_llm
+    
 
     if question:
         instruction = (

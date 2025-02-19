@@ -10,7 +10,7 @@
         }
     },
 
-    "postCreateCommand": "chmod +x .devcontainer/install_python.sh && sudo .devcontainer/install_python.sh",
+    "postCreateCommand": "sudo chmod +x .devcontainer/install_python.sh && sudo .devcontainer/install_python.sh",
 
     "customizations": {
         "vscode": {

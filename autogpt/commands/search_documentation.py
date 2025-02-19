@@ -10,8 +10,11 @@ openai.api_key = 'your_openai_api_key'
 def google_search(query, num_results=5):
     """Perform Google search and return top results."""
     results = []
-    for url in search(query, num_results=num_results):
-        results.append(url)
+    try:
+        for url in search(query, num_results=num_results):
+            results.append(url)
+    except:
+        return results
     return results
 
 from bs4 import BeautifulSoup

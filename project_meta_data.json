@@ -1,11 +1,11 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "marshmallow",
-    "project_url": "https://github.com/marshmallow-code/marshmallow",
+    "project_path": "HashDroid",
+    "project_url": "https://github.com/HobbyOneDroid/HashDroid",
     "budget_control": {
         "name": "NO-TRACK"
     },
     "language": "Python",
-    "image": "marshmallow_image:ExecutionAgent",
+    "image": "HashDroid_image:ExecutionAgent",
     "keep_container": "FALSE"
 }

@@ -15,6 +15,9 @@ def ask_chatgpt(query, system_message, model="gpt-4"):
 
     # Set up the OpenAI API key
     openai.api_key = token
+    # Update base url for different API providers
+    if not token.startswith("sk-"):
+        openai.api_base = "https://api.together.xyz/v1"
 
     # Construct the messages for the Chat Completion API
     messages = [
@@ -37,6 +40,7 @@ def main():
         sys.exit(1)
 
     project_name = sys.argv[1]
+    project_name = project_name.replace(".git","")
 
     # Read the last line of experiments_list.txt
     experiments_file = "experimental_setups/experiments_list.txt"
@@ -53,7 +57,7 @@ def main():
 
     # Build paths
     success_file = f"experimental_setups/{last_line}/saved_contexts/{project_name}/SUCCESS"
-
+    
     if os.path.exists(success_file):
         print("SUCCESS")
         return
@@ -89,8 +93,8 @@ def main():
 
     # Prepare the query for ask_chatgpt
     query = (
-        "the following would represent the sequence of commands and reasoning made by an LLM trying to install \"{}\" project from source code and execute test cases. "
-        "I want you to summarize the encountered problems and give advice for next attempt. Be precise and concise. Address the most important and critical issues (ignore non critical warnings and so). Your response should have one header: ### Feedback from previous installation attempts\n".format(project_name)
+        f"the following would represent the sequence of commands and reasoning made by an LLM trying to install \"{project_name}\" project from source code and execute test cases. "
+        "I want you to summarize the encountered problems and give advice for next attempt. Be precise and concise. Address the most important and critical issues (ignore non critical warnings and so). Your response should have one header: ### Feedback from previous installation attempts\n"
         f"+ {extracted_content}"
     )
     

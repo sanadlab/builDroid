@@ -126,7 +126,10 @@ class BaseAgent(metaclass=ABCMeta):
         The system prompt sets up the AI's personality and explains its goals,
         available resources, and restrictions."""
 
-        llm_name = self.config.smart_llm if self.big_brain else self.config.fast_llm
+        if self.config.openai_api_base is None:
+            llm_name = self.config.smart_llm if self.big_brain else self.config.fast_llm
+        else:
+            llm_name = self.config.free_llm 
         self.llm = OPEN_AI_CHAT_MODELS[llm_name]
         """The LLM that the agent uses to think."""
 
@@ -413,7 +416,6 @@ class BaseAgent(metaclass=ABCMeta):
         # handle querying strategy
         # For now, we do not evaluate the external query
         # we just want to observe how good is it
-    
         raw_response = create_chat_completion(
             prompt,
             self.config,
@@ -747,7 +749,10 @@ class BaseAgent(metaclass=ABCMeta):
         )  # FIXME: support function calls
 
         if self.cycle_type != "CMD":
-            self.summary_result = json.loads(llm_response.content)
+            try:
+                self.summary_result = json.loads(llm_response.content)
+            except:
+                self.summary_result = {"text": llm_response.content}
             self.steps_object[self.current_step]["result_of_step"].append(self.summary_result)
             return
         

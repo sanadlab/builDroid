@@ -208,16 +208,28 @@ def generate_aiconfig_automatic(user_prompt: str, config: Config) -> AIConfig:
         DEFAULT_TASK_PROMPT_AICONFIG_AUTOMATIC
     ).render(user_prompt=user_prompt)
     # Call LLM with the string as user input
-    output = create_chat_completion(
-        ChatSequence.for_model(
-            config.fast_llm,
-            [
-                Message("system", system_prompt),
-                Message("user", prompt_ai_config_automatic),
-            ],
-        ),
-        config,
-    ).content
+    if config.openai_api_base is None:
+        output = create_chat_completion(
+            ChatSequence.for_model(
+                config.fast_llm,
+                [
+                    Message("system", system_prompt),
+                    Message("user", prompt_ai_config_automatic),
+                ],
+            ),
+            config,
+        ).content
+    else:
+        output = create_chat_completion(
+            ChatSequence.for_model(
+                config.free_llm,
+                [
+                    Message("system", system_prompt),
+                    Message("user", prompt_ai_config_automatic),
+                ],
+            ),
+            config,
+        ).content
 
     # Debug LLM Output
     logger.debug(f"AI Config Generator Raw Output: {output}")

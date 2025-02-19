@@ -96,6 +96,7 @@ def create_config(
         config.fast_llm = GPT_4_MODEL
         config.smart_llm = GPT_4_MODEL
     else:
+        config.free_llm = check_model(config.free_llm, "free_llm", config=config)
         config.fast_llm = check_model(config.fast_llm, "fast_llm", config=config)
         config.smart_llm = check_model(config.smart_llm, "smart_llm", config=config)
 
@@ -167,7 +168,7 @@ def create_config(
 
 def check_model(
     model_name: str,
-    model_type: Literal["smart_llm", "fast_llm"],
+    model_type: Literal["free_llm", "smart_llm", "fast_llm"],
     config: Config,
 ) -> str:
     """Check if model is available for use. If not, return gpt-3.5-turbo."""

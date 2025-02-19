@@ -26,6 +26,20 @@ OPEN_AI_CHAT_MODELS = {
     info.name: info
     for info in [
         ChatModelInfo(
+            name="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            prompt_token_cost=0.000,
+            completion_token_cost=0.000,
+            max_tokens=8192,
+            supports_functions=False,
+        ),
+        ChatModelInfo(
+            name="gpt-3.5-turbo-16k-0301 ",
+            prompt_token_cost=0.003,
+            completion_token_cost=0.004,
+            max_tokens=16384,
+            supports_functions=True,
+        ),
+        ChatModelInfo(
             name="gpt-3.5-turbo-16k-0301 ",
             prompt_token_cost=0.003,
             completion_token_cost=0.004,
@@ -151,7 +165,7 @@ def meter_api(func: Callable):
 
 def retry_api(
     max_retries: int = 10,
-    backoff_base: float = 2.0,
+    backoff_base: float = 1.0,
     warn_user: bool = True,
 ):
     """Retry an OpenAI API call.

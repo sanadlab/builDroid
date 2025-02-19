@@ -247,22 +247,22 @@ def execute_shell(command: str, agent: Agent) -> str:
     
     if command == "ls -R":
         return "This command usually returns too much output, hence, it is not allowed."
-    #current_dir = Path.cwd()
+    current_dir = Path.cwd()
     # Change dir into workspace if necessary
-    #if not current_dir.is_relative_to(agent.config.workspace_path):
-    #    os.chdir(os.path.join(agent.config.workspace_path, agent.project_path))
+    if not current_dir.is_relative_to(agent.config.workspace_path):
+        os.chdir(os.path.join(agent.config.workspace_path, agent.project_path))
 
-    #logger.info(
-    #    f"Executing command '{command}' in working directory '{os.getcwd()}'"
-    #)
+    logger.info(
+        f"Executing command '{command}' in working directory '{os.getcwd()}'"
+    )
 
-    #result = subprocess.run(command, capture_output=True, shell=True)
-    #output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    result = subprocess.run(command, capture_output=True, shell=True)
+    output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
 
     # Change back to whatever the prior working dir was
 
-    #os.chdir(current_dir)
-    #return output
+    os.chdir(current_dir)
+    return output
 
     WAIT_TIME = 300
 

@@ -46,7 +46,10 @@ def call_ai_function(
         str: The response from the function
     """
     if model is None:
-        model = config.smart_llm
+        if config.openai_api_base is None:
+            model = config.smart_llm
+        else:
+            model = config.free_llm
     # For each arg, if any are None, convert to "None":
     args = [str(arg) if arg is not None else "None" for arg in args]
     # parse args to comma separated string
@@ -74,7 +77,10 @@ def create_text_completion(
     max_output_tokens: Optional[int],
 ) -> str:
     if model is None:
-        model = config.fast_llm
+        if config.openai_api_base is None:
+            model = config.smart_llm
+        else:
+            model = config.free_llm
     if temperature is None:
         temperature = config.temperature
 
@@ -120,16 +126,16 @@ def create_chat_completion(
     if max_tokens is None:
         prompt_tlength = prompt.token_length
         max_tokens = (
-            min(OPEN_AI_CHAT_MODELS[model].max_tokens - prompt_tlength - 1, 4000)
-        )  # the -1 is just here because we have a bug and we don't know how to fix it. When using gpt-4-0314 we get a token error.
+            min(OPEN_AI_CHAT_MODELS[model].max_tokens - prompt_tlength - 200, 4000)
+        )  # Default : 4000 for max output token. Reduced if prompt size is large.
         logger.debug(f"Prompt length: {prompt_tlength} tokens")
         if functions:
             functions_tlength = count_openai_functions_tokens(functions, model)
             max_tokens -= functions_tlength
             logger.debug(f"Functions take up {functions_tlength} tokens in API call")
 
-    logger.debug(
-        f"{Fore.GREEN}Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}{Fore.RESET}"
+    logger.info(
+        f"{Fore.GREEN}Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}, prompt_length {prompt_tlength}{Fore.RESET}"
     )
     with open("model_logging_temp.txt", "w") as mlt:
         mlt.write(f"Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}")
@@ -138,7 +144,8 @@ def create_chat_completion(
         "model": model,
         "temperature": temperature,
         "max_tokens": max_tokens,
-        "response_format": { "type": "json_object" }
+        #"response_format": { "type": "json_object" }
+        # JSON response format causes errors for other APIs
     }
 
     for plugin in config.plugins:
@@ -155,7 +162,7 @@ def create_chat_completion(
 
     chat_completion_kwargs.update(config.get_openai_credentials(model))
 
-    if functions:
+    if functions and config.openai_api_base is None:
         chat_completion_kwargs["functions"] = [
             function.schema for function in functions
         ]
