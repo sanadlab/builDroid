@@ -1,6 +1,0 @@
-Feedback from previous attempts
-- This project requires poetry to be available (do not install it from website)
-- Install Poetry with Detailed Output: Add -v or -vv flags to the Poetry installation command to provide verbose output (curl -sSL https://install.python-poetry.org | python3 - -v). This can clarify where the installation files are placed or if there are any underlying issues.
-- Manually Verify Installation Path: After installation, manually confirm where Poetry is installed (typically $HOME/.local/bin/poetry). - If present, verify this directory is in PATH.
-- Use Shell Reloading in Docker: Ensure that export PATH="$HOME/.local/bin:$PATH" persists by adding it to ~/.bashrc and reloading the shell with source ~/.bashrc within the Dockerfile. Alternatively, confirm PATH configuration within a single Dockerfile RUN command.
-- Consider Poetry’s Installer Options: Poetry’s documentation suggests using poetry install to avoid common Docker-related PATH issues. 

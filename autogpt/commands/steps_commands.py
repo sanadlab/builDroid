@@ -304,7 +304,7 @@ def execute_shell(command_line: str) -> str:
     if not current_dir.is_relative_to(workspace_folder):
         os.chdir(workspace_folder)
 
-    logger.info(
+    logger.debug(
         f"Executing command '{command_line}' in working directory '{os.getcwd()}'"
     )
 

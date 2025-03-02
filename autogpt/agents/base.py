@@ -87,6 +87,10 @@ class BaseAgent(metaclass=ABCMeta):
         with open(experiment_file) as hper:
             self.hyperparams = json.load(hper)
 
+        ## Newly added experimental
+        with open("customize.json") as cfile:
+            self.customize = json.load(cfile)
+
         self.prompt_dictionary = ai_config.construct_full_prompt(config)
         
 
@@ -108,18 +112,22 @@ class BaseAgent(metaclass=ABCMeta):
         with open(os.path.join(prompt_files, "tools_list")) as tls:
             self.prompt_dictionary["commands"] = tls.read()
 
+        if self.customize["LANGUAGE_GUIDELINES"]:
+            if self.hyperparams["language"].lower() == "python":
+                self.prompt_dictionary["general_guidelines"]= self.python_guidelines
+            elif self.hyperparams["language"].lower() == "java":
+                self.prompt_dictionary["general_guidelines"]= self.java_guidelines
+            elif self.hyperparams["language"].lower() == "javascript":
+                self.prompt_dictionary["general_guidelines"]= self.javascript_guidelines
+            elif self.hyperparams["language"].lower() in ["c", "c++"]:
+                self.prompt_dictionary["general_guidelines"]= self.c_guidelines
+        else:
+            self.prompt_dictionary["general_guidelines"]= ""
         
-        if self.hyperparams["language"].lower() == "python":
-            self.prompt_dictionary["general_guidelines"]= self.python_guidelines
-        elif self.hyperparams["language"].lower() == "java":
-            self.prompt_dictionary["general_guidelines"]= self.java_guidelines
-        elif self.hyperparams["language"].lower() == "javascript":
-            self.prompt_dictionary["general_guidelines"]= self.javascript_guidelines
-        elif self.hyperparams["language"].lower() in ["c", "c++"]:
-            self.prompt_dictionary["general_guidelines"]= self.c_guidelines
-        
-        self.prompt_dictionary["general_guidelines"]  += "\nWhen debugging a problem, if an approach does not work for multiple consecutibe iterations, think of changing your approach of addressing the problem.\n"
-        
+        #if self.customize["GENERAL_GUIDELINES"]:
+        if False:
+            self.prompt_dictionary["general_guidelines"] += "When debugging a problem, if an approach does not work for multiple consecutibe iterations, think of changing your approach of addressing the problem. For example, if ./gradlew is not found, try finding the gradlew file and run the command with proper file path."
+            
         #self.prompt_dictionary["general_guidelines"] = ""
         
         """
@@ -191,7 +199,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.dockerfiles = self.find_dockerfiles()
         self.command_stuck = False
 
-        
+
     def to_dict(self):
         return {
             "experiment_file": self.experiment_file,
@@ -364,7 +372,7 @@ class BaseAgent(metaclass=ABCMeta):
             json.dump(assistant_outputs+[str(ref_cmd["command"])], aocr)
         try:
             if str(ref_cmd["command"]) in assistant_outputs:
-                logger.info("REPETITION DETECTED!!!!!!!!!!!!!!!!!!!!222222222222222222222")
+                logger.info("REPETITION DETECTED !!! CODE 2")
                 return True
             else:
                 return False
@@ -416,6 +424,7 @@ class BaseAgent(metaclass=ABCMeta):
         # handle querying strategy
         # For now, we do not evaluate the external query
         # we just want to observe how good is it
+    
         raw_response = create_chat_completion(
             prompt,
             self.config,
@@ -515,14 +524,18 @@ class BaseAgent(metaclass=ABCMeta):
 
         ## added this part to change the prompt structure
 
-        steps_text = self.construct_executed_steps_text()
-         
+        if self.customize["GENERAL_GUIDELINES"]:
+            steps_text = self.construct_executed_steps_text()
+        else:
+            steps_text = "\n"
+
         prompt = ChatSequence.for_model(
             self.llm.name,
             [Message("system", self.prompt_dictionary["role"])])
         
         definitions_prompt = ""
         static_sections_names = ["goals", "commands", "general_guidelines"]
+
         for key in static_sections_names:
             if isinstance(self.prompt_dictionary[key], list):
                 definitions_prompt += "\n".join(self.prompt_dictionary[key]) + "\n"
@@ -539,21 +552,21 @@ class BaseAgent(metaclass=ABCMeta):
                 previous_memory = pm.read()
             definitions_prompt += "\nFrom previous attempts we learned that: {}\n".format(previous_memory)
         
-        if self.found_workflows:
+        if self.found_workflows and self.customize["WORKFLOWS_SEARCH"]:
             definitions_prompt += "\nThe following workflow files might contain information on how to setup the project and run test cases. We extracted the most important installation steps found in those workflows and turned them into a bash script. This might be useful later on when building/installing and testing the project:\n"
             for w in self.found_workflows:
                 definitions_prompt += "\nWorkflow file: {}\nExtracted installation steps:\n{}\n".format(w, self.workflow_to_script(w))
         
-        if self.dockerfiles:
+        if self.dockerfiles and self.customize["WORKFLOWS_SEARCH"]:
             definitions_prompt += "\nWe found the following dockerfile scripts within the repo. The dockerfile scripts might help you build a suitable docker image for this repository: "+ " ,".join(self.dockerfiles) + "\n"
         
-        if self.search_results:
+        if self.search_results and self.customize["WEB_SEARCH"]:
             definitions_prompt += "\nWe searched on google for installing / building {} from source code on Ubuntu/Debian.".format(self.project_path)
             definitions_prompt += "Here is the summary of the top 5 results:\n" + self.search_results + "\n"
         
         
-        if self.hyperparams["image"]!="NIL":
-            definitions_prompt += "For this particular project, the docker image have been already created and the container have been launched, you can skip steps 1 and 2; You can start directly from step 3 (see the steps list below).\n"
+        #if self.hyperparams["image"]!="NIL":
+        #    definitions_prompt += "For this particular project, the docker image have been already created and the container have been launched, you can #skip steps 1 and 2; You can start directly from step 3 (see the steps list below).\n"
         #definitions_prompt += steps_text + "\n"
         
         if len(self.history) > 2:

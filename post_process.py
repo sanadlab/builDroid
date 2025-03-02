@@ -8,7 +8,7 @@ warnings.filterwarnings("ignore")
 
 import openai
 
-def ask_chatgpt(query, system_message, model="gpt-4"):
+def ask_chatgpt(query, system_message, model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"):
     # Read the OpenAI API token from a file
     with open("openai_token.txt") as opt:
         token = opt.read().strip()

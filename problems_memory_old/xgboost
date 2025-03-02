@@ -1,3 +1,0 @@
-Feedback from previous attempts:
-    Explicitly install wget and other essential dependencies within the Dockerfile.
-    Manually install CMake 3.18+ in the Docker image from the start to avoid needing upgrades later.

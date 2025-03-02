@@ -241,6 +241,7 @@ def start_container(image_tag):
         print(f"Container {container.short_id} is running.")
         print("CREATING SCREEN SESSION")
         create_screen_session(container)
+        execute_command_in_container(container, "screen -S my_screen_session -X stuff 'apt install coreutils'")
         return container
     except Exception as e:
         print(f"ERRRRRRRRRRRR: An error occurred while running the container: {e}")

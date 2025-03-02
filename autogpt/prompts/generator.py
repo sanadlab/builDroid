@@ -36,13 +36,13 @@ class PromptGenerator:
         self.commands = []
         self.command_registry = None
         #self.simple_patterns = []
-        self.general_guidelines: list[str] = []
+        self.general_guidelines = ""
 
     def add_simple_pattern(self, pattern: str) -> None:
         self.simple_patterns.append(pattern)
 
     def add_general_guidelines(self, line:str) -> None:
-        self.general_guidelines.append(line)
+        self.general_guidelines += line
 
     def add_command(
         self,
@@ -86,13 +86,13 @@ class PromptGenerator:
         Returns:
             str: The formatted numbered list.
         """
-        return "\n".join(f"{i}. {item}" for i, item in enumerate(items, start_at))
+        return "".join(f"{i}. {item}" for i, item in enumerate(items, start_at))
 
     def generate_prompt_string(
         self,
         *,
         additional_simple_patterns: list[str] = [],
-        additional_guidelines: list[str] = []
+        additional_guidelines = ""
     ) -> str:
         """
         Generate a prompt string based on the constraints, commands, resources,
@@ -107,10 +107,10 @@ class PromptGenerator:
                 "You have access to the following commands (EXCLUSIVELY):",
                 f"{self._generate_commands()}",
             ],
-            "general guidelines":[
+            "general_guidelines":[
                 "## General guidelines:",
                 "Try to adhere to the following guidlines to the best of your ability:",
-                f"{self._generate_numbered_list(self.general_guidelines + additional_guidelines)}",
+                f"{self.general_guidelines + additional_guidelines}",
             ]
         }
 

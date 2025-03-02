@@ -1,9 +1,9 @@
 {
-    "LANGUAGE_GUIDELINES": "TRUE",
-    "GENERAL_GUIDELINES": "TRUE",
-    "WEB-SEARCH": "TRUE",
-    "WORKFLOWS-SEARCH": "TRUE",
+    "LANGUAGE_GUIDELINES": true,
+    "GENERAL_GUIDELINES": true,
+    "WEB_SEARCH": true,
+    "WORKFLOWS_SEARCH": true,
     "BUDGET": 40,
     "REQUIRED_FILES": ["test_results.txt", "SETUP_AND_INSTALL.sh", "Dockerfile"],
-    "KEEP_CONTAINER": "FALSE"
+    "KEEP_CONTAINER": false
 }

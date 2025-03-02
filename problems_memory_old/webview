@@ -1,2 +1,0 @@
-Feedback from previous attempts
-- Dependency Mismatch: The README.md specified libwebkit2gtk-4.1-dev, which wasn't found in the Ubuntu 20.04 repositories. 

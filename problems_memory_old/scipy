@@ -1,6 +1,0 @@
-Feedback from previous attempts:
-- This project requires all dependencies to be installed
-- The dependencies are specified in different files under the folder requirements
-- Advice: Use conda env create -f environment.yml consistently to avoid piecemeal installations. This should pre-install most dependencies if the environment.yml file is well-configured.
-- Problem: Missing packages (pythran, pybind11, OpenBLAS, boost) and compilers (gcc, gfortran) were identified during setup.
-- Advice: Install build-essential, gfortran, and required libraries (libopenblas-dev, pkg-config) at the start. Also, initialize git submodules immediately after cloning.

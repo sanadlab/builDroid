@@ -121,7 +121,7 @@ class Config(SystemSettings, arbitrary_types_allowed=True):
     # OpenAI
     openai_api_key: Optional[str] = None
     openai_api_type: Optional[str] = None
-    openai_api_base: Optional[str] = None
+    openai_api_base: Optional[str] = "https://api.together.xyz/v1"
     openai_api_version: Optional[str] = None
     openai_organization: Optional[str] = None
     use_azure: bool = False

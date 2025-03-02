@@ -92,7 +92,7 @@ def execute_python_file(filename: str, agent: Agent) -> str:
     Returns:
         str: The output of the file
     """
-    logger.info(
+    logger.debug(
         f"Executing python file '{filename}' in working directory '{agent.config.workspace_path}'"
     )
 
@@ -252,7 +252,7 @@ def execute_shell(command: str, agent: Agent) -> str:
     if not current_dir.is_relative_to(agent.config.workspace_path):
         os.chdir(os.path.join(agent.config.workspace_path, agent.project_path))
 
-    logger.info(
+    logger.debug(
         f"Executing command '{command}' in working directory '{os.getcwd()}'"
     )
 
@@ -299,14 +299,14 @@ def execute_shell(command: str, agent: Agent) -> str:
                     agent.command_stuck = False
                     return "The text that appears on the terminal after executing your command is:\n" + str(ret_val[0])
                     
-        new_command = "screen -S my_screen_session -X stuff '{} > /tmp/cmd_result 2>&1\n'".format(command)
+        new_command = "screen -S my_screen_session -X stuff '{} 2>&1 | tee /tmp/cmd_result\n'".format(command)
         ret_val = execute_command_in_container(agent.container, new_command)
         #print("----- OUTPUT ON DOCKER LEVEL: {}".format(ret_val))
         try:
             cmd_result = read_file_from_container(agent.container, "/tmp/cmd_result")
         except Exception as e:
             print("ERROR HAPPENED WHILE TRYING TO READ RESULT FILE FROM CONTAINER--------", e)
-            cmd_result = ""
+            cmd_result = str(e)
         #print("----- OUTPUT ON SCREEN LEVEL: {}".format(cmd_result))
         cmd_result = textify_output(cmd_result)
         print("----- OUTPUT AFTER TEXTIFYING:", cmd_result)
@@ -359,7 +359,7 @@ def execute_shell_popen(command_line, agent: Agent) -> str:
     if agent.config.workspace_path not in current_dir:
         os.chdir(agent.config.workspace_path)
 
-    logger.info(
+    logger.debug(
         f"Executing command '{command_line}' in working directory '{os.getcwd()}'"
     )
 

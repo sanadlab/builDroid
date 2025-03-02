@@ -1,17 +1,5 @@
 #!/bin/bash
 
-# Define the directory where the repo is expected to be
-REPO_DIR="../ExecutionAgent"
-
-# Check if the repository exists
-if [ -d "$REPO_DIR" ]; then
-    echo "Repository already cloned at $REPO_DIR. Skipping git clone."
-else
-    # If the repository is not cloned, clone it (uncomment if needed)
-    echo "Repository not found. Cloning..."
-    git clone <repository_url> $REPO_DIR
-fi
-
 # Install dependencies required for building Python
 apt-get update && apt-get install -y \
     build-essential \

@@ -1,6 +1,0 @@
-Feedback from previous attempts:
-- Use Python 3.11: Begin with a Docker image that supports Python 3.11 (e.g., python:3.11-slim) to avoid compatibility issues.
-
-- Ensure Complete Setup of Ansible: Confirm that Ansible is installed in the container by adding pip install . in the Dockerfile after installing dependencies.
-
-- Explicitly Install Testing Frameworks: Include pytest and any other necessary testing tools in requirements.txt or explicitly install them in the Dockerfile.

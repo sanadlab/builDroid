@@ -14,7 +14,7 @@ extract_project_name() {
 run_with_retries() {
   local command="$1"
   local project_name="$2"
-  local max_retries=2
+  local max_retries=1
   local attempt=1
 
   while [[ $attempt -le $max_retries ]]; do
@@ -35,7 +35,7 @@ run_with_retries() {
     ((attempt++))
   done
 
-  while true; do
+  while false; do
     echo "======================================================================"
     echo "PROMPTING USER FOR ADDITIONAL RETRY:"
     echo "PROJECT: $project_name"
@@ -67,6 +67,10 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     *)
+      if [[ -z "$repo_url" && -f "$1" ]]; then
+        echo "Processing file: $1"
+        repo_url="$1"
+      fi
       shift
       ;;
   esac
@@ -82,49 +86,22 @@ python3.10 prepare_ai_settings.py  # Prepares the AI settings configuration
 
 # Check for the --repo argument or file path
 if [[ -n "$repo_url" ]]; then
-  # Ensure the user provided a GitHub URL with the --repo argument
-  if [[ -z "$repo_url" ]]; then
-    echo "Error: --repo argument requires a GitHub URL."
-    echo "Usage: ./script_name.sh --repo <github_repo_url>"
-    exit 1
-  fi
+  if [[ -f "$repo_url" ]]; then
+    # Handle the case where the input is a file containing multiple repositories
+    file_path="$repo_url"
+    echo "Using file path: $file_path"  # Print the file path being processed
+    mapfile -t repo_lines < "$file_path" # Read all lines into an array
 
-  # Extract the project name from the provided GitHub URL
-  project_name=$(extract_project_name "$repo_url")
-
-  # Call get_main_language.py to determine the main language of the repository
-  # The Python script is expected to return a string like "Primary language: <language>"
-  primary_language=$(python3.10 get_main_language.py "$repo_url")
-  echo "$primary_language"
-
-  # Continue processing for a single repository
-  echo "$project_name"  # Print the project name
-  echo "$repo_url"      # Print the GitHub URL
-
-  # Initialize an empty Docker configuration file
-  echo "{}" > ~/.docker/config.json
-
-  # Call the Python script to clone the repo and set metadata
-  python3.10 clone_and_set_metadata.py "$project_name" "$repo_url" "$primary_language"
-
-  # Run the main script with specific AI settings and experiment parameters
-  run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
-
-elif [[ -f "$repo_url" ]]; then
-  # Handle the case where the input is a file containing multiple repositories
-  file_path="$repo_url"
-  echo "Using file path: $file_path"  # Print the file path being processed
-
-  # Read the file line by line
-  while IFS= read -r line; do
+    # Process each repository
+    for line in "${repo_lines[@]}"; do
       # Parse each line to extract project name, GitHub URL, and language
       project_name=$(echo "$line" | awk '{print $1}')
       github_url=$(echo "$line" | awk '{print $2}')
       language=$(echo "$line" | awk '{print $3}')
 
-      echo "$project_name"  # Print the project name
-      echo "$github_url"    # Print the GitHub URL
-      echo "$language"      # Print the specified language
+      echo "Project: $project_name"  # Print the project name
+      echo "Github URL: $github_url"    # Print the GitHub URL
+      echo "Main Language: $language"      # Print the specified language
 
       # Initialize an empty Docker configuration file
       echo "{}" > ~/.docker/config.json
@@ -134,8 +111,32 @@ elif [[ -f "$repo_url" ]]; then
 
       # Run the main script with specific AI settings and experiment parameters
       run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
-  done < "$file_path"
+    done < "$file_path"
+  
+  else
+    # Handle the case where the input is a single GitHub URL
 
+    # Extract the project name from the provided GitHub URL
+    project_name=$(extract_project_name "$repo_url")
+
+    # Call get_main_language.py to determine the main language of the repository
+    # The Python script is expected to return a string like "Primary language: <language>"
+    primary_language=$(python3.10 get_main_language.py "$repo_url")
+    echo "$primary_language"
+
+    # Continue processing for a single repository
+    echo "$project_name"  # Print the project name
+    echo "$repo_url"      # Print the GitHub URL
+
+    # Initialize an empty Docker configuration file
+    echo "{}" > ~/.docker/config.json
+
+    # Call the Python script to clone the repo and set metadata
+    python3.10 clone_and_set_metadata.py "$project_name" "$repo_url" "$primary_language"
+
+    # Run the main script with specific AI settings and experiment parameters
+    run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
+  fi
 else
   # Handle invalid input cases
   echo "Error: Invalid input. Provide a file path or use --repo <github_repo_url>."

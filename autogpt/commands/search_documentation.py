@@ -53,47 +53,31 @@ def fetch_webpage(url):
 
 
 import subprocess
-def analyze_content_with_gpt3(content, prompt):
-    """Analyze the webpage content using GPT-3.5 via a curl request to the /chat/completions endpoint."""
+def analyze_content(content, prompt):
+    """Analyze the webpage content using Llama via a curl request to the /chat/completions endpoint."""
     with open("openai_token.txt") as opt:
-        token = opt.read()
+        token = opt.read().strip()
     try:
+        # Set up the OpenAI API key
+        openai.api_key = token
+        # Update base url for different API providers
+        if not token.startswith("sk-"):
+            openai.api_base = "https://api.together.xyz/v1"
+            
         # Prepare the messages data in JSON format
         messages = [
-            {"role": "user", "content": prompt + "\n\nWebpage Content:\n" + content[:12000]}  # Limiting content length
+            {"role": "user", "content": prompt + "\n\nWebpage Content:\n" + content[:6000]}  # Limiting content length
         ]
 
-        # Prepare the request data for the /chat/completions endpoint
-        data = {
-            "model": "gpt-3.5-turbo",
-            "messages": messages
-        }
-
-        # Convert the data to a JSON string
-        data_json = json.dumps(data)
-
-        # Prepare the curl command
-        curl_command = [
-            "curl", "https://api.openai.com/v1/chat/completions",
-            "-H", "Content-Type: application/json",
-            "-H", "Authorization: Bearer {}".format(token),  # Replace with your API key
-            "-d", data_json
-        ]
-
-        # Execute the curl command and capture the response
-        result = subprocess.run(curl_command, capture_output=True, text=True)
-
-        # Check if the request was successful
-        if result.returncode == 0:
-            # Parse the JSON response
-            response_data = json.loads(result.stdout)
-            return response_data['choices'][0]['message']['content'].strip()
-        else:
-            print(f"Error with curl request: {result.stderr}")
-            return None
+        # Call the OpenAI API for chat completion
+        response = openai.ChatCompletion.create(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            messages=messages
+        )
+        return response["choices"][0]["message"]["content"]
 
     except Exception as e:
-        print(f"Error analyzing content with GPT-3.5 (via curl): {e}")
+        print(f"Error analyzing content with Llama: {e}")
         return None
 
 def save_search_results(project_id, search_query, results):
@@ -120,7 +104,7 @@ def search_install_doc(project_id):
         content = fetch_webpage(url)
         if content:
             print(f"Analyzing content from: {url}")
-            analysis = analyze_content_with_gpt3(content, prompt)
+            analysis = analyze_content(content, prompt)
             results.append({
                     'url': url,
                     'analysis': analysis
