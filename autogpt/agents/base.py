@@ -96,6 +96,7 @@ class BaseAgent(metaclass=ABCMeta):
 
         ### Read static prompt files
         prompt_files = "./prompt_files"
+        '''
         with open(os.path.join(prompt_files, "python_guidelines")) as pgl:
             self.python_guidelines = pgl.read()
         with open(os.path.join(prompt_files, "java_guidelines")) as pgl:
@@ -108,7 +109,7 @@ class BaseAgent(metaclass=ABCMeta):
             self.cpp_guidelines = pgl.read()
         with open(os.path.join(prompt_files, "rust_guidelines")) as pgl:
             self.rust_guidelines = pgl.read()
-
+        
         with open(os.path.join(prompt_files, "tools_list")) as tls:
             self.prompt_dictionary["commands"] = tls.read()
 
@@ -123,7 +124,10 @@ class BaseAgent(metaclass=ABCMeta):
                 self.prompt_dictionary["general_guidelines"]= self.c_guidelines
         else:
             self.prompt_dictionary["general_guidelines"]= ""
-        
+        '''
+        with open(os.path.join(prompt_files, "gradle_guidelines")) as pgl:
+            self.prompt_dictionary["general_guidelines"]=pgl.read()
+
         #if self.customize["GENERAL_GUIDELINES"]:
         if False:
             self.prompt_dictionary["general_guidelines"] += "When debugging a problem, if an approach does not work for multiple consecutibe iterations, think of changing your approach of addressing the problem. For example, if ./gradlew is not found, try finding the gradlew file and run the command with proper file path."
@@ -159,7 +163,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.keep_container = True if self.hyperparams["keep_container"] == "TRUE" else False
         
         self.current_step = "1"
-        self.steps_list = ["1", "2", "3", "4", "5", "6", "7"]
+        self.steps_list = ["1", "2", "3", "4"]
         
         with open(os.path.join(prompt_files, "steps_list.json")) as slj:
             self.steps_object = json.load(slj)
@@ -489,8 +493,12 @@ class BaseAgent(metaclass=ABCMeta):
             text += self.steps_object[k]["static_header"] + self.steps_object[k]["step_line"] + "\n"
 
         text += "\nBelow is a list of commands that you have executed so far and summary of the result of each command:\n"
+        tmp = ""
         for command, summary in self.commands_and_summary:
-            text += command + "\nThe summary of the output of above command: " + str(summary)+"\n\n" 
+            tmp = command + "\nThe summary of the output of above command: " + str(summary)+"\n\n" + tmp
+            if len(tmp) > 2000:
+                break
+        text += tmp
         return text
 
 
@@ -544,7 +552,7 @@ class BaseAgent(metaclass=ABCMeta):
             else:
                 raise TypeError("For now we only support list and str types.")
         
-        definitions_prompt += "\nProject path: the project under scope has the following path/name within the file system, which you should use when calling the tools: {}".format(self.project_path) + "\n"
+        #definitions_prompt += "\nProject path: the project under scope has the following path/name within the file system, which you should use when calling the tools: {}".format(self.project_path) + "\n"
         definitions_prompt += "\nProject github url (needed for dockerfile script): {}\n".format(self.project_url)
         
         if os.path.exists("problems_memory/{}".format(self.project_path)):

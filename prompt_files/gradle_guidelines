@@ -1,0 +1,204 @@
+# General Guidelines for Resolving Android Build Errors  
+
+When a build error occurs, follow these steps:  
+1. Identify the error from the build logs.  
+2. Match it against known error patterns listed below.  
+3. Apply the appropriate fix using the provided commands.  
+4. Retry the build and check if the issue is resolved.  
+
+## 1. Google Repository Error  
+Error Message: Could not resolve all dependencies for configuration ':app:debugCompileClasspath'.
+Fix: 
+1. Open the project's root `build.gradle` file:  
+   ```
+   nano android/build.gradle
+   ```
+2. Add `google()` to the `repositories` block:  
+   ```
+   allprojects {
+       repositories {
+           google()  // Ensure this line is present
+           mavenCentral()
+       }
+   }
+   ```
+3. Save the file and sync Gradle:  
+   ```
+   ./gradlew --refresh-dependencies
+   ```
+
+## 2. Library Method Signature Error  
+Error Message: No signature of method: java.util.ArrayList.call() is applicable for argument types...
+Fix: 
+1. Open `build.gradle`:  
+   ```
+   nano app/build.gradle
+   ```
+2. Ensure that `dependencies` section does not contain outdated or incompatible libraries.  
+   - Upgrade the Android Gradle Plugin if necessary:  
+     ```
+     ./gradlew dependencies | grep 'com.android.tools.build'
+     ```
+   - If outdated, update the plugin in `build.gradle`:  
+     ```
+     dependencies {
+         classpath 'com.android.tools.build:gradle:7.0.0' // Example version
+     }
+     ```
+   - Run a Gradle sync:  
+     ```
+     ./gradlew clean build
+     ```
+
+## 3. Minimum SDK Version Error  
+Error Message: uses-sdk:minSdkVersion (19) cannot be smaller than version (21) declared in AndroidManifest.xml
+Fix: 
+1. Identify the required `minSdkVersion` from the error message.  
+2. Open `AndroidManifest.xml`:  
+   ```
+   nano app/src/main/AndroidManifest.xml
+   ```
+3. Change:  
+   ```
+   <uses-sdk android:minSdkVersion="21" />
+   ```
+4. Run:  
+   ```
+   ./gradlew assembleDebug
+   ```
+
+## 4. SDK Build Tools Version Error  
+Error Message: The SDK Build Tools revision (29.0.2) is too low for project.
+Fix: 
+1. Install the required SDK version using the SDK Manager:  
+   ```
+   sdkmanager "build-tools;30.0.3"
+   ```
+2. Ensure the correct version is referenced in `build.gradle`:  
+   ```
+   nano app/build.gradle
+   ```
+   ```
+   android {
+       compileSdkVersion 30
+       buildToolsVersion "30.0.3"
+   }
+   ```
+3. Run:  
+   ```
+   ./gradlew build
+   ```
+
+## 5. Gradle Wrapper Mismatch Error  
+Error Message: Failed to notify project evaluation listener: Minimum supported Gradle version is 7.0.0.
+Fix: 
+1. Open `gradle-wrapper.properties`:  
+   ```
+   nano gradle/wrapper/gradle-wrapper.properties
+   ```
+2. Update the `distributionUrl` line:  
+   ```
+   distributionUrl=https\://services.gradle.org/distributions/gradle-7.0.0-all.zip
+   ```
+3. Download the new Gradle version:  
+   ```
+   ./gradlew wrapper --gradle-version 7.0.0
+   ```
+
+## 6. Gradle Wrapper Not Found Error  
+Error Message: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
+Fix: 
+1. Copy missing Gradle wrapper files:  
+   ```
+   cp -r ~/.gradle/wrapper/gradle gradle/
+   ```
+2. Reinstall the Gradle wrapper:  
+   ```
+   ./gradlew wrapper
+   ```
+
+## 7. Target Platform Not Found Error  
+Error Message: failed to find target with hash string 'android-30'
+Fix: 
+1. Install the missing platform using SDK Manager:  
+   ```
+   sdkmanager "platforms;android-30"
+   ```
+2. Rebuild the project:  
+   ```
+   ./gradlew build
+   ```
+
+## 8. Build Tools Revision Not Found  
+Error Message: failed to find Build Tools revision 30.0.2
+Fix: 
+1. Install the missing build tools:  
+   ```
+   sdkmanager "build-tools;30.0.2"
+   ```
+2. Verify installation:  
+   ```
+   ls $ANDROID_HOME/build-tools/
+   ```
+3. Clean and rebuild:  
+   ```
+   ./gradlew clean build
+   ```
+
+## 9. NDK Toolchain Error  
+Error Message: NDK toolchains folder not found.
+Fix: 
+1. Install the required NDK version:  
+   ```
+   sdkmanager "ndk;21.3.6528147"
+   ```
+2. Verify NDK path in `local.properties`:  
+   ```
+   echo "ndk.dir=$ANDROID_HOME/ndk/21.3.6528147" >> local.properties
+   ```
+3. Rebuild:  
+   ```
+   ./gradlew build
+   ```
+
+## 10. User-Restricted Install Error  
+Error Message: INSTALL_FAILED_USER_RESTRICTED
+Fix: 
+1. Enable app installation via ADB:  
+   ```
+   adb shell settings put global package_verifier_enable 1
+   ```
+2. Reinstall the APK:  
+   ```
+   adb install app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+## 11. Invalid NDK Configuration  
+Error Message: NDK not found in local.properties.
+Fix: 
+1. Copy a valid `local.properties` file:  
+   ```
+   cp ~/.android/local.properties ./local.properties
+   ```
+2. If necessary, update the NDK path:  
+   ```
+   echo "ndk.dir=$ANDROID_HOME/ndk/21.3.6528147" >> local.properties
+   ```
+3. Rebuild:  
+   ```
+   ./gradlew build
+   ```
+
+## Final Notes  
+- If you're not sure which error, check logs using:  
+  ```
+  ./gradlew build --stacktrace
+  ```
+- Use `--refresh-dependencies` if dependencies are outdated:  
+  ```
+  ./gradlew --refresh-dependencies
+  ```
+- Check Gradle daemon logs for deeper issues:  
+  ```
+  tail -f ~/.gradle/daemon/7.0/daemon-*.log
+  ```

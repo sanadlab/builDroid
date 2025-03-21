@@ -5,10 +5,9 @@ Ensure accuracy and relevance, such as software versions, tool names, or lists o
 Your summary and extracted information (extracted dependencies, relevant installation commands, and important links) should have always the following JSON format:
 
 {
-    "summary": "put summary here...",
-    "extracted dependencies": "list of dependencies here",
-    "important commands": "list of commands here",
-    "important files/links/hyperlinks": "list of files or links here"
+    "thoughts": "put agent thoughts here..."
+    "commands": "put executed command here..."
+    "result": "put result here..."
 }
 
 Here is the result of the last command, fill in the json dictionary above from the information mentioned below (only extract from the information below, do not include information from above or information that was previously mentioned):

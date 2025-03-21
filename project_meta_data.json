@@ -1,11 +1,11 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "NATO-Alphabet-Memorizer",
-    "project_url": "https://github.com/LeoColman/NATO-Alphabet-Memorizer",
+    "project_path": "reseau-discord-app",
+    "project_url": "https://github.com/GoudronViande24/reseau-discord-app",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "language": "Kotlin",
-    "image": "NATO-Alphabet-Memorizer_image:ExecutionAgent",
+    "language": "Java",
+    "image": "reseau-discord-app_image:ExecutionAgent",
     "keep_container": false
 }

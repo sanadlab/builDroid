@@ -1,3 +1,4 @@
-```json
+__FAILURE__
 {
-  "thoughts": "The build failed again with the same error message. The error message suggests that the Java version '
+    "summary": "The command 'apt update -qq' failed due to permission denied error when trying to open the lock file /var/lib/apt/lists/lock. The error message indicates that the apt command does not have a stable CLI interface and should be used with caution in scripts."
+}

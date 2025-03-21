@@ -243,7 +243,7 @@ def run_interaction_loop(
                 "Interrupt signal received. Stopping continuous command execution.",
                 Fore.RED,
             )
-            cycles_remaining = 1
+            cycles_remaining -= 1
             if restart_spinner:
                 spinner.start()
 
@@ -346,6 +346,8 @@ def run_interaction_loop(
         # Decrement the cycle counter first to reduce the likelihood of a SIGINT
         # happening during command execution, setting the cycles remaining to 1,
         # and then having the decrement set it to 0, exiting the application.
+        signal.signal(signal.SIGALRM, graceful_agent_interrupt)
+        signal.alarm(120)
         agent.left_commands = cycles_remaining
         if agent.max_budget == -1:
             agent.max_budget = cycles_remaining
@@ -365,7 +367,7 @@ def run_interaction_loop(
 
             agent.project_path = agent.project_path.replace(".git","")
             result = agent.execute(command_name, command_args, user_input)
-
+            signal.alarm(0)
             with open(parsable_log_file) as plf:
                 parsable_content = json.load(plf)
 

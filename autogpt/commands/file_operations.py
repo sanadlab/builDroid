@@ -332,11 +332,11 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         except Exception as err:
             return f"Error: {err}"
     else:
-        print("I am HERE TRYING TO WRITE FILE IN CONTAINER 191919191919191919919191919119999911111111111111119")
+        print("Writing file in the container...")
         print("PROJECT_PATH:", agent.project_path)
         print("FILENAME:", filename)
         if "dockerfile" in filename.lower():
-            return "You cannot create another docker image, you already have access to a running container. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
+            return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
         write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
         if write_result=="None":
             if "setup" in filename.lower() or "install" in filename.lower() or ".sh" in filename.lower():
