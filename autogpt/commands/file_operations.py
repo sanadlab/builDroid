@@ -283,8 +283,8 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     Returns:
         str: A message indicating success or failure
     """
-    if "COPY" in text:
-        return "The usage of command 'COPY' is prohibited inside the Dockerfile script. You should just clone the repository inside the docker images and all the files of that repository would be there. No need to copy."
+    #if "COPY" in text:
+        #return "The usage of command 'COPY' is prohibited inside the Dockerfile script. You should just clone the repository inside the docker images and all the files of that repository would be there. No need to copy."
     #checksum = text_checksum(text)
     #if is_duplicate_operation("write", filename, agent, checksum):
     #    return "Error: File has already been updated."
@@ -322,6 +322,7 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
                     if image_log.startswith("An error occurred while building the Docker image"):
                         return "The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log
                 container = start_container(agent.project_path.lower()+"_image:ExecutionAgent")
+                agent.current_step += 1
                 if container is not None:
                     agent.container = container
                     cwd = execute_command_in_container(container, "pwd")
@@ -335,7 +336,13 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         print("Writing file in the container...")
         print("PROJECT_PATH:", agent.project_path)
         print("FILENAME:", filename)
-        if "dockerfile" in filename.lower():
+        if "dockerfile.final" in filename.lower():
+            write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
+            if write_result=="None":
+                return "Final Dockerfile created succesful. You now may use command 'goals_accomplished' to report job finished."
+            else:
+                return write_result
+        elif "dockerfile" in filename.lower():
             return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
         write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
         if write_result=="None":

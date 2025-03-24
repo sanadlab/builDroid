@@ -232,6 +232,7 @@ def execute_shell(command: str, agent: Agent) -> str:
     Returns:
         str: The output of the command
     """
+
     if "nano " in command:
         return "You cannot execute call nano because it's an interactive command."
     elif "docker " in command:
@@ -247,17 +248,24 @@ def execute_shell(command: str, agent: Agent) -> str:
     
     if command == "ls -R":
         return "This command usually returns too much output, hence, it is not allowed."
+    if "./gradlew" in command:
+        command = "yes | {}".format(command)
+    
     current_dir = Path.cwd()
     # Change dir into workspace if necessary
     if not current_dir.is_relative_to(agent.config.workspace_path):
         os.chdir(os.path.join(agent.config.workspace_path, agent.project_path))
 
-    logger.debug(
+    logger.info(
         f"Executing command '{command}' in working directory '{os.getcwd()}'"
     )
 
-    result = subprocess.run(command, capture_output=True, shell=True)
-    output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    try:
+        # Run command with a timeout
+        result = subprocess.run(command, capture_output=True, shell=True, timeout=150, text=True)
+        output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+    except subprocess.TimeoutExpired:
+        output = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
 
     # Change back to whatever the prior working dir was
 
@@ -359,7 +367,7 @@ def execute_shell_popen(command_line, agent: Agent) -> str:
     if agent.config.workspace_path not in current_dir:
         os.chdir(agent.config.workspace_path)
 
-    logger.debug(
+    logger.info(
         f"Executing command '{command_line}' in working directory '{os.getcwd()}'"
     )
 

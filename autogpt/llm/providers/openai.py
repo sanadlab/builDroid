@@ -205,8 +205,8 @@ def retry_api(
                         raise
 
                     error_msg = error_messages[type(e)]
-                    logger.warn(error_msg)
-                    if not user_warned:
+                    #logger.warn(error_msg)
+                    if False:
                         logger.double_check(api_key_error_msg)
                         logger.debug(f"Status: {e.http_status}")
                         logger.debug(f"Response body: {e.json_body}")
@@ -218,7 +218,7 @@ def retry_api(
                         raise
 
                 backoff = backoff_base ** (attempt + 2)
-                logger.warn(backoff_msg.format(backoff=backoff))
+                #logger.warn(backoff_msg.format(backoff=backoff))
                 time.sleep(backoff)
 
         return _wrapped

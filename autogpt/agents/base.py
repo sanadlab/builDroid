@@ -125,8 +125,6 @@ class BaseAgent(metaclass=ABCMeta):
         else:
             self.prompt_dictionary["general_guidelines"]= ""
         '''
-        with open(os.path.join(prompt_files, "gradle_guidelines")) as pgl:
-            self.prompt_dictionary["general_guidelines"]=pgl.read()
 
         #if self.customize["GENERAL_GUIDELINES"]:
         if False:
@@ -162,8 +160,8 @@ class BaseAgent(metaclass=ABCMeta):
         self.workspace_path = "execution_agent_workspace"
         self.keep_container = True if self.hyperparams["keep_container"] == "TRUE" else False
         
-        self.current_step = "1"
-        self.steps_list = ["1", "2", "3", "4"]
+        self.current_step = 1
+        self.steps_list = ["1", "2", "3"]
         
         with open(os.path.join(prompt_files, "steps_list.json")) as slj:
             self.steps_object = json.load(slj)
@@ -446,6 +444,7 @@ class BaseAgent(metaclass=ABCMeta):
                 logger.info("REPETITION DETECTED, WARNING CODE RR1")
                 logger.info(str(self.handle_command_repitition(response_dict, self.hyperparams["repetition_handling"])))
                 prompt.extend([Message("user", self.handle_command_repitition(response_dict, self.hyperparams["repetition_handling"]))])
+                logger.info("2222222222222222222222222")
                 new_response = create_chat_completion(
                         prompt,
                         self.config,
@@ -487,29 +486,21 @@ class BaseAgent(metaclass=ABCMeta):
         ...
 
     def construct_executed_steps_text(self,):
-        text = "# List of Steps to Achieve Your Goals:\n"
-        text = "Here is the overall list of steps that you might need to fulfill inorder to achieve your goals:\n"
-        for k in self.steps_list:
-            text += self.steps_object[k]["static_header"] + self.steps_object[k]["step_line"] + "\n"
+        text = "# Below is the current step you have to take:\n"
+        text += self.steps_object[str(self.current_step)]["static_header"] + self.steps_object[str(self.current_step)]["step_line"] + "\n"
 
+        if self.current_step == 2:
+            with open("./prompt_files/gradle_guidelines") as pgl:
+                text += pgl.read()
+        
         text += "\nBelow is a list of commands that you have executed so far and summary of the result of each command:\n"
         tmp = ""
-        for command, summary in self.commands_and_summary:
+        for command, summary in reversed(self.commands_and_summary):
             tmp = command + "\nThe summary of the output of above command: " + str(summary)+"\n\n" + tmp
-            if len(tmp) > 2000:
+            if len(tmp) > 5000:
                 break
         text += tmp
         return text
-
-
-    def go_to_next_step(self,):
-        step_ind = self.steps_list.index(self.current_step)
-        if step_ind < 0:
-            raise ValueError("DETECTED IMPOSSIBLE STEP NUMBER.")
-        elif step_ind == len(self.steps_list) - 1:
-            raise ValueError("END OF STEPS, THERE IS NO NEXT STEP")
-        
-        self.current_step = self.steps_list[step_ind+1]
 
     def construct_base_prompt(
         self,
@@ -774,7 +765,7 @@ class BaseAgent(metaclass=ABCMeta):
                 self.summary_result = json.loads(llm_response.content)
             except:
                 self.summary_result = {"text": llm_response.content}
-            self.steps_object[self.current_step]["result_of_step"].append(self.summary_result)
+            self.steps_object[str(self.current_step)]["result_of_step"].append(self.summary_result)
             return
         
         try:

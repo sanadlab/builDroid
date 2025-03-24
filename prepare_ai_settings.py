@@ -3,7 +3,7 @@ import argparse
 template=\
 """ai_goals:
 - Create a Persistent Base Image: You should create a base image with the base dockerfile, then apply and test Docker commands inside the running container.
-- Track Successful Commands: You must determine and notify if the previous command was successful, so that every successful command is stored in a log. Upon a successful command, your response must start with __SUCCESS__, and otherwise your response must start with __FAILURE__, including the underlines.
+- Track Successful Commands: You must determine and notify if the previous command was successful, so that every successful command is stored in a log.
 - Rollback on Failure: If a command fails, the container reverts to the last working state.
 - Generate the Final Dockerfile: Once the build succeeds, all logged successful commands should be merged into a clean final Dockerfile. Then you return the file 'Dockerfile.final'.
 ai_name: ExecutionAgent

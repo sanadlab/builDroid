@@ -189,6 +189,31 @@ Fix:
    ./gradlew build
    ```
 
+## 12. Java version mismatch  
+Error Message: Could not determine Java version from '17.0.14'.
+Fix: 
+1. If Gradle is older than 7.3, update Gradle:  
+   Open gradle/wrapper/gradle-wrapper.properties.
+- Find:
+  ```
+  distributionUrl=https\://services.gradle.org/distributions/gradle-*.*-all.zip
+  ```
+- Replace `*.*` with **at least** `7.3` (or higher):
+  ```
+  distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-all.zip
+  ```
+2. Set Java 17 in `gradle.properties`:  
+   Add this line to your project's `gradle.properties` file
+   ```
+   org.gradle.java.home=/Library/Java/JavaVirtualMachines/jdk-17.0.14.jdk/Contents/Home
+   ```
+3. Set Java 17 via Environment Variables (If Needed):  
+  ```
+  export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+  export PATH=$JAVA_HOME/bin:$PATH
+  ```
+
+After following these steps, your Android build should work! Let me know if you need further debugging. 🚀
 ## Final Notes  
 - If you're not sure which error, check logs using:  
   ```
@@ -198,7 +223,9 @@ Fix:
   ```
   ./gradlew --refresh-dependencies
   ```
-- Check Gradle daemon logs for deeper issues:  
+- **After you try the solutions above, always clean & retry the build**:  
   ```
-  tail -f ~/.gradle/daemon/7.0/daemon-*.log
+  ./gradlew --stop
+  ./gradlew clean
+  ./gradlew assembleDebug
   ```

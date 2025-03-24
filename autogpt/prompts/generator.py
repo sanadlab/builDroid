@@ -107,11 +107,7 @@ class PromptGenerator:
                 "You have access to the following commands (EXCLUSIVELY):",
                 f"{self._generate_commands()}",
             ],
-            "general_guidelines":[
-                "## General guidelines:",
-                "Try to adhere to the following guidlines to the best of your ability:",
-                f"{self.general_guidelines + additional_guidelines}",
-            ]
+            "general_guidelines":[]
         }
 
     def _generate_commands(self) -> str:

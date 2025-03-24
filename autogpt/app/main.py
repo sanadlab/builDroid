@@ -292,7 +292,7 @@ def run_interaction_loop(
         ##################
         # Get user input #
         ##################
-        if cycles_remaining == 1:  # Last cycle
+        if cycles_remaining < 1:  # Last cycle
             if not agent.keep_container:
                 stop_and_remove(agent.container)
                 os.system("docker system prune -af")
@@ -389,7 +389,7 @@ def run_interaction_loop(
                 agent.think()
                 agent.history = agent.history[:-2]
                 
-                agent.commands_and_summary.append(("Call to tool {} with arguments {}".format(command_name, command_args), agent.summary_result))
+                agent.commands_and_summary.append(("Call to tool {} with arguments {}".format(command_name, command_args), "{}".format(agent.summary_result)))
                 with open(parsable_log_file) as plf:
                     parsable_content = json.load(plf)
 
