@@ -5,6 +5,7 @@ from __future__ import annotations
 COMMAND_CATEGORY = "system"
 COMMAND_CATEGORY_TITLE = "System"
 
+import docker
 from typing import NoReturn
 import os
 from autogpt.agents.agent import Agent
@@ -33,13 +34,23 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
         A result string from create chat completion. A list of suggestions to
             improve the code.
     """
-    project_path = agent.project_path
-    workspace = "execution_agent_workspace/"
-    files_list = [x[0].lower() for x in agent.written_files]
+
+    client = docker.from_env()
+    try:
+        container = client.containers.get(agent.container.id)
+        apk_path = f"{agent.project_path}/app/build/outputs/apk/debug/app-debug.apk"
+        exit_code, output = container.exec_run(f"/bin/sh -c \"test -f {apk_path} && echo Exists || echo Not Found\"")
+        
+        result = output.decode().strip()
+        if result != "Exists":
+            return "You have not successfully built the project since there is no app-debug.apk file in the container."
+    except Exception as e:
+        return f"Error checking APK file: {e}"
+    
     #if "coverage_results.txt" not in files_list:
     #    return "You cannot claim goal accomplished without running test cases, measuring coverage and saving them to the file 'coverage_results.txt'"
-    if "dockerfile" not in files_list:
-        return "You have not created a docker file that creates a docker images and installs the project within that image, installs the dependencies and run tests"
+    #if "dockerfile" not in files_list:
+    #    return "You have not created a docker file that creates a docker images and installs the project within that image, installs the dependencies and run tests"
     #if not any("coverage" in x for x in files_list):
     #    return "You should write test results into a file called: coverage_results.txt"
     #else:
@@ -61,9 +72,9 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
 #Average coverage: [PUT CONCRETE VALUE HERE]
 #                    """
     logger.info(title="Shutting down...\n", message=reason)
-    if not agent.keep_container and agent.container != None:
-        stop_and_remove(agent.container)
-        os.system("docker system prune -af")
-    with open(os.path.join("experimental_setups", agent.exp_number, "saved_contexts", project_path, "SUCCESS"), "w") as ssf:
+    #if not agent.keep_container and agent.container != None:
+        #stop_and_remove(agent.container)
+        #os.system("docker system prune -af")
+    with open(os.path.join("experimental_setups", agent.exp_number, "saved_contexts", agent.project_path, "SUCCESS"), "w") as ssf:
         ssf.write("SUCCESS")
     quit()

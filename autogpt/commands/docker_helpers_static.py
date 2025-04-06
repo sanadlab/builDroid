@@ -241,13 +241,8 @@ def extract_test_sections(maven_output):
 def build_image(dockerfile_path, tag):
     client = docker.from_env()
     try:
-        log_text = ""
         print(f"Building Docker image from {dockerfile_path} with tag {tag}...")
         image, logs = client.images.build(path=dockerfile_path, tag=tag, rm=True, nocache=True)
-        for log in logs:
-            if 'stream' in log:
-                print(log['stream'].strip())
-                log_text += log['stream'].strip() + "\n"
         return "Docker image built successfully.\n"
     except Exception as e:
         return f"An error occurred while building the Docker image: {e}"
@@ -256,10 +251,25 @@ import docker
 
 def start_container(image_tag):
     client = docker.from_env()
-    try:
-        print(f"Running container from image {image_tag}...")
-        container = client.containers.run(image_tag, detach=True, tty=True)
-        print(f"Container {container.short_id} is running.")
+    try:        
+        # Check if a container with this image is already running
+        running_containers = client.containers.list(filters={"ancestor": image_tag, "status": "running"})
+        if running_containers:
+            print(f"Attaching to existing running container {running_containers[0].short_id}...")
+            container = running_containers[0]
+        else:
+            # Check if a stopped container exists
+            stopped_containers = client.containers.list(filters={"ancestor": image_tag, "status": "exited"})
+            if stopped_containers:
+                container = stopped_containers[0]
+                print(f"Restarting stopped container {container.short_id}...")
+                container.start()
+            else:
+                # If no container exists, create and start a new one
+                print(f"Running new container from image {image_tag}...")
+                container = client.containers.run(image_tag, detach=True, tty=True)
+                print(f"Container {container.short_id} is running.")
+        
         print("CREATING SCREEN SESSION")
         create_screen_session(container)
         execute_command_in_container(container, "screen -S my_screen_session -X stuff 'apt install coreutils'")
@@ -283,10 +293,7 @@ def execute_command_in_container_old(container, command):
 def execute_command_in_container(container, command):
     try:
         # Wrap the command in a shell execution context
-        if "./gradlew" in command:
-            shell_command = "/bin/sh -c \"yes | {}\"".format(command)
-        else:
-            shell_command = "/bin/sh -c \"{}\"".format(command)     
+        shell_command = "/bin/sh -c \"{}\"".format(command)
         print(f"Executing command '{command}' in container {container.short_id}...")
 
         # Execute the command without a TTY, but with streaming output

@@ -313,16 +313,15 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
             
             log_operation("write", filename, agent, "STATIC CHECK SUM WAS WRITTEN FROM file_operations:write_to_file")
             
-            print("DOCKER FILE WAS WRITTEN TO ------ ", full_path)
+            #print("DOCKER FILE WAS WRITTEN TO ------ ", full_path)
             
             if "dockerfile" in filename.lower():
                 image_log = "IMAGE ALREADY EXISTS"
-                if not check_image_exists(agent.project_path.lower()+"_image:ExecutionAgent"):
-                    image_log = build_image(os.path.join(workspace, agent.project_path), agent.project_path.lower()+"_image:ExecutionAgent")
+                if not check_image_exists(f"{workspace}_image:ExecutionAgent"):
+                    image_log = build_image(workspace, f"{workspace}_image:ExecutionAgent")
                     if image_log.startswith("An error occurred while building the Docker image"):
                         return "The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log
-                container = start_container(agent.project_path.lower()+"_image:ExecutionAgent")
-                agent.current_step += 1
+                container = start_container(f"{workspace}_image:ExecutionAgent")
                 if container is not None:
                     agent.container = container
                     cwd = execute_command_in_container(container, "pwd")
@@ -336,13 +335,7 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         print("Writing file in the container...")
         print("PROJECT_PATH:", agent.project_path)
         print("FILENAME:", filename)
-        if "dockerfile.final" in filename.lower():
-            write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
-            if write_result=="None":
-                return "Final Dockerfile created succesful. You now may use command 'goals_accomplished' to report job finished."
-            else:
-                return write_result
-        elif "dockerfile" in filename.lower():
+        if "dockerfile" in filename.lower():
             return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
         write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
         if write_result=="None":

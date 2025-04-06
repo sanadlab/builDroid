@@ -114,7 +114,7 @@ def main():
 
     # Extract agent log
     extracted_content = extract_agent_log(f"experimental_setups/{last_line}/logs/prompt_history_{project_name}", f"extracted_log_{project_name}")
-    
+    '''
     # Find the cycle_XX file with the highest XX
     contexts_dir = f"experimental_setups/{last_line}/saved_contexts/{project_name}"
     if not os.path.exists(contexts_dir):
@@ -143,7 +143,7 @@ def main():
     except KeyError as e:
         print(f"Error: Missing key in JSON structure: {e}")
         sys.exit(1)
-
+    '''
     while True:
         try:
             # Prepare the query for ask_chatgpt

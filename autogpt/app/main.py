@@ -36,7 +36,7 @@ from autogpt.prompts.prompt import DEFAULT_TRIGGERING_PROMPT
 from autogpt.speech import say_text
 from autogpt.workspace import Workspace
 from scripts.install_plugin_deps import install_plugin_dependencies
-from autogpt.commands.docker_helpers_static import stop_and_remove
+from autogpt.commands.docker_helpers_static import build_image, start_container, execute_command_in_container, check_image_exists
 
 
 def run_auto_gpt(
@@ -258,15 +258,33 @@ def run_interaction_loop(
     ## create log file
     project_path = agent.project_path
     current_ts = time.time()
-    parsable_log_file = "parsable_logs/{}".format(project_path+str(current_ts)) + ".json"
+    parsable_log_file = os.path.join(os.getcwd(),"parsable_logs/{}".format(project_path+str(current_ts)) + ".json")
     
+    dft = "FROM ubuntu:22.04\n\nLABEL Description=\"This image provides a base Android development environment.\"\n\nENV DEBIAN_FRONTEND=noninteractive\n\n# set default build arguments\nARG SDK_VERSION=commandlinetools-linux-11076708_latest.zip\nARG ANDROID_BUILD_VERSION=35\nARG ANDROID_TOOLS_VERSION=35.0.0\n\nENV ADB_INSTALL_TIMEOUT=10\nENV ANDROID_HOME=/home/vscode/Android/Sdk\nENV ANDROID_SDK_ROOT=${ANDROID_HOME}\n\nENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64\nENV PATH=${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/emulator:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${PATH}\n\n# Install system dependencies\nRUN apt update -qq && apt install -qq -y --no-install-recommends \\\n        apt-transport-https \\\n        curl \\\n        file \\\n        git \\\n        libc++1-11 \\\n        libgl1 \\\n        make \\\n        openjdk-17-jdk-headless \\\n        patch \\\n        rsync \\\n        unzip \\\n        sudo \\\n        ninja-build \\\n        zip \\\n    && rm -rf /var/lib/apt/lists/*;\n\n# Download and install Android SDK command-line tools\nRUN curl -sS https://dl.google.com/android/repository/${SDK_VERSION} -o /tmp/sdk.zip \\\n    && mkdir -p ${ANDROID_HOME}/cmdline-tools \\\n    && unzip -q -d ${ANDROID_HOME}/cmdline-tools /tmp/sdk.zip \\\n    && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \\\n    && rm /tmp/sdk.zip \\\n    && yes | sdkmanager --licenses \\\n    && yes | sdkmanager \"platform-tools\" \\\n        \"platforms;android-$ANDROID_BUILD_VERSION\" \\\n        \"build-tools;$ANDROID_TOOLS_VERSION\" \\\n    && rm -rf ${ANDROID_HOME}/.android \\\n    && chmod 777 -R ${ANDROID_HOME}\n\n# Copy project files\nCOPY . ."
+    #with open("prompt_files/Template.dockerfile") as df:
+    #    dft = df.read()
+    with open(os.path.join(agent.workspace_path, "Dockerfile"), "w", encoding="utf-8") as f:
+        f.write(dft)
+    image_log = "IMAGE ALREADY EXISTS"
+    if not check_image_exists(f"{agent.workspace_path}_image:ExecutionAgent"):
+        image_log = build_image(agent.workspace_path, f"{agent.workspace_path}_image:ExecutionAgent")
+        if image_log.startswith("An error occurred while building the Docker image"):
+            print("The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log) 
+    container = start_container(f"{agent.workspace_path}_image:ExecutionAgent")
+    if container is not None:
+        agent.container = container
+        cwd = execute_command_in_container(container, "pwd")
+        print(image_log + "\nContainer launched successfuly\n" + "\nThe current working directory within the container is: {}".format(cwd))
+    else:
+        print(str(image_log) + "\n" + str(container))
+
     with open(parsable_log_file, "w") as plf:
         json.dump({
             "project": project_path,
             "language": agent.hyperparams["language"],
             "ExecutionAgent_attempt": []
         }, plf)
-
+    
     while cycles_remaining > 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
         #logger.info("XXXXXXXXXXXXXXXXXXX {} XXXXXXXXXXXXXXXXXXXX".format(agent.cycle_type))
@@ -293,9 +311,9 @@ def run_interaction_loop(
         # Get user input #
         ##################
         if cycles_remaining < 1:  # Last cycle
-            if not agent.keep_container:
-                stop_and_remove(agent.container)
-                os.system("docker system prune -af")
+            #if not agent.keep_container:
+            #    stop_and_remove(agent.container)
+            #    os.system("docker system prune -af")
             exit()
             user_feedback, user_input, new_cycles_remaining = get_user_feedback(
                 config,
@@ -346,8 +364,6 @@ def run_interaction_loop(
         # Decrement the cycle counter first to reduce the likelihood of a SIGINT
         # happening during command execution, setting the cycles remaining to 1,
         # and then having the decrement set it to 0, exiting the application.
-        signal.signal(signal.SIGALRM, graceful_agent_interrupt)
-        signal.alarm(120)
         agent.left_commands = cycles_remaining
         if agent.max_budget == -1:
             agent.max_budget = cycles_remaining
@@ -362,12 +378,13 @@ def run_interaction_loop(
 
                 files_list = os.listdir("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
 
-                with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
-                    wrf.write(command_args["text"])
+                #with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
+                #    wrf.write(command_args["text"])
 
             agent.project_path = agent.project_path.replace(".git","")
             result = agent.execute(command_name, command_args, user_input)
             signal.alarm(0)
+            
             with open(parsable_log_file) as plf:
                 parsable_content = json.load(plf)
 

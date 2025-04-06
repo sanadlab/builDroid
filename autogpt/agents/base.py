@@ -160,12 +160,6 @@ class BaseAgent(metaclass=ABCMeta):
         self.workspace_path = "execution_agent_workspace"
         self.keep_container = True if self.hyperparams["keep_container"] == "TRUE" else False
         
-        self.current_step = 1
-        self.steps_list = ["1", "2", "3"]
-        
-        with open(os.path.join(prompt_files, "steps_list.json")) as slj:
-            self.steps_object = json.load(slj)
-        
         self.cycle_type = "CMD"
         self.tests_executed = False
 
@@ -221,9 +215,6 @@ class BaseAgent(metaclass=ABCMeta):
             "project_url": self.project_url,
             "language": self.language,
             "workspace_path": self.workspace_path,
-            "current_step": self.current_step,
-            "steps_list": self.steps_list,
-            "steps_object": self.steps_object,
             "cycle_type": self.cycle_type,
             "tests_executed": self.tests_executed,
             "cmd_cycle_instruction": self.cmd_cycle_instruction,
@@ -486,12 +477,10 @@ class BaseAgent(metaclass=ABCMeta):
         ...
 
     def construct_executed_steps_text(self,):
-        text = "# Below is the current step you have to take:\n"
-        text += self.steps_object[str(self.current_step)]["static_header"] + self.steps_object[str(self.current_step)]["step_line"] + "\n"
+        text = ""
 
-        if self.current_step == 2:
-            with open("./prompt_files/gradle_guidelines") as pgl:
-                text += pgl.read()
+        with open("prompt_files/gradle_guidelines") as pgl:
+            text += pgl.read()
         
         text += "\nBelow is a list of commands that you have executed so far and summary of the result of each command:\n"
         tmp = ""
@@ -544,7 +533,7 @@ class BaseAgent(metaclass=ABCMeta):
                 raise TypeError("For now we only support list and str types.")
         
         #definitions_prompt += "\nProject path: the project under scope has the following path/name within the file system, which you should use when calling the tools: {}".format(self.project_path) + "\n"
-        definitions_prompt += "\nProject github url (needed for dockerfile script): {}\n".format(self.project_url)
+        definitions_prompt += "\nProject github url (in case if you need to clone repo): {}\n".format(self.project_url)
         
         if os.path.exists("problems_memory/{}".format(self.project_path)):
             with open("problems_memory/{}".format(self.project_path)) as pm:
@@ -765,7 +754,7 @@ class BaseAgent(metaclass=ABCMeta):
                 self.summary_result = json.loads(llm_response.content)
             except:
                 self.summary_result = {"text": llm_response.content}
-            self.steps_object[str(self.current_step)]["result_of_step"].append(self.summary_result)
+            #self.steps_object[str(self.current_step)]["result_of_step"].append(self.summary_result)
             return
         
         try:

@@ -90,20 +90,13 @@ Fix:
    ```
 
 ## 5. Gradle Wrapper Mismatch Error  
-Error Message: Failed to notify project evaluation listener: Minimum supported Gradle version is 7.0.0.
+Error Message: Could not determine java version from '17.0.14'.
 Fix: 
-1. Open `gradle-wrapper.properties`:  
+1. Update gradle/wrapper/gradle-wrapper.properties:
    ```
-   nano gradle/wrapper/gradle-wrapper.properties
+   distributionUrl=https\://services.gradle.org/distributions/gradle-7.3-all.zip
    ```
-2. Update the `distributionUrl` line:  
-   ```
-   distributionUrl=https\://services.gradle.org/distributions/gradle-7.0.0-all.zip
-   ```
-3. Download the new Gradle version:  
-   ```
-   ./gradlew wrapper --gradle-version 7.0.0
-   ```
+2. If error persists, consider upgrading gradle wrapper to the latest compatible version.
 
 ## 6. Gradle Wrapper Not Found Error  
 Error Message: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
