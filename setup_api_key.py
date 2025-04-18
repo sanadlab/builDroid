@@ -37,7 +37,7 @@ def main():
         else:
             while True:
                 cont = input("Provided key is not compatible with openAI. Continue? (yes/no): ").strip()
-                if cont == "yes":
+                if cont.startswith("y") or cont.startswith("Y"):
                     replace_placeholder("autogpt/config/config.py","openai_api_base: Optional[str] = None","openai_api_base: Optional[str] = \"https://api.together.xyz/v1\"")
                     for file_path, placeholder in files_and_placeholders:
                         replace_placeholder(file_path, placeholder, replacement_value)
@@ -61,7 +61,7 @@ def main():
         else:
             while True:
                 cont = input("Provided key is not compatible with openAI. Continue? (yes/no): ").strip()
-                if cont == "yes":
+                if cont.startswith("y") or cont.startswith("Y"):
                     replace_placeholder("autogpt/config/config.py","openai_api_base: Optional[str] = None","openai_api_base: Optional[str] = \"https://api.together.xyz/v1\"")
                     for file_path, placeholder in files_and_placeholders:
                         replace_placeholder(file_path, placeholder, replacement_value)

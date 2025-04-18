@@ -43,6 +43,7 @@ class BaseAgent(metaclass=ABCMeta):
         ai_config: AIConfig,
         command_registry: CommandRegistry,
         config: Config,
+        java_version: str = "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64",
         big_brain: bool = True,
         default_cycle_instruction: str = DEFAULT_TRIGGERING_PROMPT,
         cycle_budget: Optional[int] = 1,
@@ -56,6 +57,8 @@ class BaseAgent(metaclass=ABCMeta):
 
         self.command_registry = command_registry
         """The registry containing all commands available to the agent."""
+
+        self.java_version = java_version
 
         self.config = config
         """The applicable application configuration."""
@@ -548,9 +551,9 @@ class BaseAgent(metaclass=ABCMeta):
         if self.dockerfiles and self.customize["WORKFLOWS_SEARCH"]:
             definitions_prompt += "\nWe found the following dockerfile scripts within the repo. The dockerfile scripts might help you build a suitable docker image for this repository: "+ " ,".join(self.dockerfiles) + "\n"
         
-        if self.search_results and self.customize["WEB_SEARCH"]:
-            definitions_prompt += "\nWe searched on google for installing / building {} from source code on Ubuntu/Debian.".format(self.project_path)
-            definitions_prompt += "Here is the summary of the top 5 results:\n" + self.search_results + "\n"
+        #if self.search_results and self.customize["WEB_SEARCH"]:
+        #    definitions_prompt += "\nWe searched on google for installing / building {} from source code on Ubuntu/Debian.".format(self.project_path)
+        #    definitions_prompt += "Here is the summary of the top 5 results:\n" + self.search_results + "\n"
         
         
         #if self.hyperparams["image"]!="NIL":

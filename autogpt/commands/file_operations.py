@@ -257,7 +257,7 @@ def update_dockerfile_content(dockerfile_content: str) -> str:
 
 @command(
     "write_to_file",
-    "Writes to a file",
+    "Writes to a file (overwrites all content if already exists)",
     {
         "filename": {
             "type": "string",
@@ -337,7 +337,7 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         print("FILENAME:", filename)
         if "dockerfile" in filename.lower():
             return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
-        write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
+        write_result = str(write_string_to_file(agent.container, text, os.path.join("agent.project_path/", filename)))
         if write_result=="None":
             if "setup" in filename.lower() or "install" in filename.lower() or ".sh" in filename.lower():
                 return "installation script was written successfully, you should not run this script. If test cases were not yet run, you should do that with the help of linux_terminal. If you arleady run test cases successfully, you are done with the task."
@@ -374,7 +374,7 @@ def append_to_file(
     except Exception as err:
         return f"Error: {err}"
 
-
+'''
 @command(
     "list_files",
     "Lists Files in a Directory",
@@ -387,7 +387,7 @@ def append_to_file(
     },
 )
 @sanitize_path_arg("directory")
-def list_files(directory: str, agent: Agent) -> list[str]:
+def list_files(directory: str, agent: Agent) -> str:
     """lists files in a directory recursively
 
     Args:
@@ -396,15 +396,9 @@ def list_files(directory: str, agent: Agent) -> list[str]:
     Returns:
         list[str]: A list of files found in the directory
     """
-    found_files = []
-
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.startswith("."):
-                continue
-            relative_path = os.path.relpath(
-                os.path.join(root, file), agent.config.workspace_path
-            )
-            found_files.append(relative_path)
-
-    return found_files
+    print(directory)
+    if directory == ".":
+        return execute_command_in_container(agent.container, f"ls -R {agent.project_path}")
+    else:
+        return execute_command_in_container(agent.container, f"ls -R {agent.project_path}/{directory}")
+'''

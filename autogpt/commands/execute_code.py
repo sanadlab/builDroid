@@ -21,167 +21,17 @@ from .decorators import sanitize_path_arg
 ALLOWLIST_CONTROL = "allowlist"
 DENYLIST_CONTROL = "denylist"
 
-@command(
-    "execute_python_code",
-    "Creates a Python file and executes it",
-    {
-        "code": {
-            "type": "string",
-            "description": "The Python code to run",
-            "required": True,
-        },
-        "name": {
-            "type": "string",
-            "description": "A name to be given to the python file",
-            "required": True,
-        },
-    },
-)
-def execute_python_code(code: str, name: str, agent: Agent) -> str:
-    """Create and execute a Python file in a Docker container and return the STDOUT of the
-    executed code. If there is any data that needs to be captured use a print statement
-
-    Args:
-        code (str): The Python code to run
-        name (str): A name to be given to the Python file
-
-    Returns:
-        str: The STDOUT captured from the code when it ran
+def extract_java_home_export(command: str) -> str:
     """
-    ai_name = agent.ai_config.ai_name
-    code_dir = agent.workspace.get_path(Path(ai_name, "executed_code"))
-    os.makedirs(code_dir, exist_ok=True)
-
-    if not name.endswith(".py"):
-        name = name + ".py"
-
-    # The `name` arg is not covered by @sanitize_path_arg,
-    # so sanitization must be done here to prevent path traversal.
-    file_path = agent.workspace.get_path(code_dir / name)
-    if not file_path.is_relative_to(code_dir):
-        return "Error: 'name' argument resulted in path traversal, operation aborted"
-
-    try:
-        with open(file_path, "w+", encoding="utf-8") as f:
-            f.write(code)
-
-        return execute_python_file(str(file_path), agent)
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-
-@command(
-    "execute_python_file",
-    "Executes an existing Python file",
-    {
-        "filename": {
-            "type": "string",
-            "description": "The name of te file to execute",
-            "required": True,
-        },
-    },
-)
-@sanitize_path_arg("filename")
-def execute_python_file(filename: str, agent: Agent) -> str:
-    """Execute a Python file in a Docker container and return the output
-
-    Args:
-        filename (str): The name of the file to execute
-
-    Returns:
-        str: The output of the file
+    Extracts the 'export JAVA_HOME=...' portion from a shell command line,
+    stopping at '&&' or any Gradle-related call.
     """
-    logger.debug(
-        f"Executing python file '{filename}' in working directory '{agent.config.workspace_path}'"
-    )
-
-    if not filename.endswith(".py"):
-        return "Error: Invalid file type. Only .py files are allowed."
-
-    file_path = Path(filename)
-    if not file_path.is_file():
-        # Mimic the response that you get from the command line so that it's easier to identify
-        return (
-            f"python: can't open file '{filename}': [Errno 2] No such file or directory"
-        )
-
-    if we_are_running_in_a_docker_container():
-        logger.debug(
-            f"Auto-GPT is running in a Docker container; executing {file_path} directly..."
-        )
-        result = subprocess.run(
-            ["python", str(file_path)],
-            capture_output=True,
-            encoding="utf8",
-            cwd=agent.config.workspace_path,
-        )
-        if result.returncode == 0:
-            return result.stdout
-        else:
-            return f"Error: {result.stderr}"
-
-    logger.debug("Auto-GPT is not running in a Docker container")
-    try:
-        client = docker.from_env()
-        # You can replace this with the desired Python image/version
-        # You can find available Python images on Docker Hub:
-        # https://hub.docker.com/_/python
-        image_name = "python:3-alpine"
-        try:
-            client.images.get(image_name)
-            logger.debug(f"Image '{image_name}' found locally")
-        except ImageNotFound:
-            logger.info(
-                f"Image '{image_name}' not found locally, pulling from Docker Hub..."
-            )
-            # Use the low-level API to stream the pull response
-            low_level_client = docker.APIClient()
-            for line in low_level_client.pull(image_name, stream=True, decode=True):
-                # Print the status and progress, if available
-                status = line.get("status")
-                progress = line.get("progress")
-                if status and progress:
-                    logger.info(f"{status}: {progress}")
-                elif status:
-                    logger.info(status)
-
-        logger.debug(f"Running {file_path} in a {image_name} container...")
-        container: DockerContainer = client.containers.run(
-            image_name,
-            [
-                "python",
-                file_path.relative_to(agent.workspace.root).as_posix(),
-            ],
-            volumes={
-                str(agent.config.workspace_path): {
-                    "bind": "/workspace",
-                    "mode": "rw",
-                }
-            },
-            working_dir="/workspace",
-            stderr=True,
-            stdout=True,
-            detach=True,
-        )  # type: ignore
-
-        container.wait()
-        logs = container.logs().decode("utf-8")
-        container.remove()
-
-        # print(f"Execution complete. Output: {output}")
-        # print(f"Logs: {logs}")
-
-        return logs
-
-    except DockerException as e:
-        logger.warn(
-            "Could not run the script in a container. If you haven't already, please install Docker https://docs.docker.com/get-docker/"
-        )
-        return f"Error: {str(e)}"
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-
+    # Split by '&&' to separate env from build
+    parts = command.split('&&')
+    for part in parts:
+        if 'export JAVA_HOME' in part:
+            return part.strip()
+    return ''  # If not found
 
 def validate_command(command: str, config: Config) -> bool:
     """Validate a command to ensure it is allowed
@@ -247,11 +97,13 @@ def execute_shell(command: str, agent: Agent) -> str:
     
     if command == "ls -R":
         return "This command usually returns too much output, hence, it is not allowed."
-    if not "cd" in command:
+    if "export JAVA_HOME" in command:
+        agent.java_version = extract_java_home_export(command)
+    if "./gradlew" in command or command.startswith("gradle"):
+        command = "{} && {}".format(agent.java_version, command)
+    if not "cd" in command and not "git clone" in command and not "rm -rf" in command:
         command = "cd {} && {}".format(agent.project_path, command)
-    if "assembleDebug" in command:
-        command = "{} --console=plain".format(command)
-    
+        
     current_dir = Path.cwd()
     # Change dir into workspace if necessary
     if not current_dir.is_relative_to(agent.config.workspace_path):

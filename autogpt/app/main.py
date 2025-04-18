@@ -8,6 +8,7 @@ import logging
 import math
 import signal
 import sys
+import subprocess
 from pathlib import Path
 from types import FrameType
 from typing import Optional
@@ -273,8 +274,9 @@ def run_interaction_loop(
     container = start_container(f"{agent.workspace_path}_image:ExecutionAgent")
     if container is not None:
         agent.container = container
+        subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
         cwd = execute_command_in_container(container, "pwd")
-        print(image_log + "\nContainer launched successfuly\n" + "\nThe current working directory within the container is: {}".format(cwd))
+        print(image_log + "\nContainer launched successfuly\n" + "The current working directory within the container is: {}".format(cwd))
     else:
         print(str(image_log) + "\n" + str(container))
 

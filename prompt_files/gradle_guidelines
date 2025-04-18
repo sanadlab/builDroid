@@ -9,11 +9,7 @@ When a build error occurs, follow these steps:
 ## 1. Google Repository Error  
 Error Message: Could not resolve all dependencies for configuration ':app:debugCompileClasspath'.
 Fix: 
-1. Open the project's root `build.gradle` file:  
-   ```
-   nano android/build.gradle
-   ```
-2. Add `google()` to the `repositories` block:  
+1. Add `google()` to the `repositories` block:  
    ```
    allprojects {
        repositories {
@@ -22,7 +18,7 @@ Fix:
        }
    }
    ```
-3. Save the file and sync Gradle:  
+2. Save the file and sync Gradle:  
    ```
    ./gradlew --refresh-dependencies
    ```
@@ -30,11 +26,7 @@ Fix:
 ## 2. Library Method Signature Error  
 Error Message: No signature of method: java.util.ArrayList.call() is applicable for argument types...
 Fix: 
-1. Open `build.gradle`:  
-   ```
-   nano app/build.gradle
-   ```
-2. Ensure that `dependencies` section does not contain outdated or incompatible libraries.  
+1. In `build.gradle`, ensure that `dependencies` section does not contain outdated or incompatible libraries.  
    - Upgrade the Android Gradle Plugin if necessary:  
      ```
      ./gradlew dependencies | grep 'com.android.tools.build'
@@ -54,15 +46,11 @@ Fix:
 Error Message: uses-sdk:minSdkVersion (19) cannot be smaller than version (21) declared in AndroidManifest.xml
 Fix: 
 1. Identify the required `minSdkVersion` from the error message.  
-2. Open `AndroidManifest.xml`:  
-   ```
-   nano app/src/main/AndroidManifest.xml
-   ```
-3. Change:  
+2. Rewrite this line in `AndroidManifest.xml`:  
    ```
    <uses-sdk android:minSdkVersion="21" />
    ```
-4. Run:  
+3. Run:  
    ```
    ./gradlew assembleDebug
    ```
@@ -89,14 +77,31 @@ Fix:
    ./gradlew build
    ```
 
-## 5. Gradle Wrapper Mismatch Error  
-Error Message: Could not determine java version from '17.0.14'.
+## 5. Gradle Wrapper / Java Version Mismatch Error  
+Error Message: Could not determine java version from '17.0.14'. (Or Inconsistent JVM-target compatibility)
+You must install compatible Java version for project Gradle version.
 Fix: 
-1. Update gradle/wrapper/gradle-wrapper.properties:
+1. Get gradle version of the project:
    ```
-   distributionUrl=https\://services.gradle.org/distributions/gradle-7.3-all.zip
+   grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed -E 's/.*gradle-([0-9.]+)-.*/\1/'
    ```
-2. If error persists, consider upgrading gradle wrapper to the latest compatible version.
+   You should capture `5.2` (for example)
+2. Check the compatible Java version based on identified Gradle version in below table:
+   || Gradle version || Java version ||
+   || 2.0~ || 8 ||
+   || 5.0~ || 11 ||
+   || 7.3~ || 17 ||
+   || 8.5~ || 21 ||
+   For example, if Gradle version is 5.2, you should install Java 11.
+3. Install Java:
+   ```
+   apt update && apt install -y openjdk-<version>-jdk
+   ```
+   Try older Java versions upon install failure. If already installed, proceed to next step.
+4. **IMPORTANT** Execute this line:
+   ```
+   export JAVA_HOME=<new_java_path>
+   ```
 
 ## 6. Gradle Wrapper Not Found Error  
 Error Message: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
@@ -182,35 +187,21 @@ Fix:
    ./gradlew build
    ```
 
-## 12. Java version mismatch  
-Error Message: Could not determine Java version from '17.0.14'.
-Fix: 
-1. If Gradle is older than 7.3, update Gradle:  
-   Open gradle/wrapper/gradle-wrapper.properties.
-- Find:
-  ```
-  distributionUrl=https\://services.gradle.org/distributions/gradle-*.*-all.zip
-  ```
-- Replace `*.*` with **at least** `7.3` (or higher):
-  ```
-  distributionUrl=https\://services.gradle.org/distributions/gradle-8.5-all.zip
-  ```
-2. Set Java 17 in `gradle.properties`:  
-   Add this line to your project's `gradle.properties` file
+## 12. Gradle Distribution Checksum Mismatch
+Error message: Verification of Gradle distribution failed! Your Gradle distribution may have been tampered with.
+This error happens when you update gradle distribution version in `gradle-wrapper.properties`.
+Fix:
+1. Delete the checksum line in `gradle-wrapper.properties`:
    ```
-   org.gradle.java.home=/Library/Java/JavaVirtualMachines/jdk-17.0.14.jdk/Contents/Home
+   distributionSha256Sum=<checksum_value>
    ```
-3. Set Java 17 via Environment Variables (If Needed):  
-  ```
-  export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-  export PATH=$JAVA_HOME/bin:$PATH
-  ```
+2. Do the same for all `gradle-wrapper.properties` file in the working directory since there can be more than one file.
 
-After following these steps, your Android build should work! Let me know if you need further debugging. 🚀
 ## Final Notes  
+- IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Your working directory must be the folder with the gradlew file.
 - If you're not sure which error, check logs using:  
   ```
-  ./gradlew build --stacktrace
+  ./gradlew assembleDebug --stacktrace
   ```
 - Use `--refresh-dependencies` if dependencies are outdated:  
   ```
@@ -222,3 +213,6 @@ After following these steps, your Android build should work! Let me know if you 
   ./gradlew clean
   ./gradlew assembleDebug
   ```
+- Avoid using git clone to start since the directory is already cloned, unless you meet many errors and need to reset the environment.
+- If BUILD SUCCESS but the output says Gradle used deprecated features, ignore the warning and check if the .apk file is generated. Your primary goal is to generate the .apk file.
+- When using linux commands, never use bash exclusive commands, instead use shell compatible commands.

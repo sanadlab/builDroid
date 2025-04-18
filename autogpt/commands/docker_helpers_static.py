@@ -394,20 +394,16 @@ def create_file_tar(file_path, file_content):
     data.seek(0)
     return data
 
+import tempfile
 def write_string_to_file(container, file_content, file_path):
     try:
-        # Create a tarball with the file
-        tar_data = create_file_tar(file_path, file_content)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+        temp_file.write(file_content)
+        temp_file.close()
 
-        # Copy the tarball into the container
-        container.put_archive('/', tar_data)
-
-        # Verify the file was written
-        exit_code, output = container.exec_run(f"cat {file_path}")
-        if exit_code == 0:
-            print(f"File content in container: {output.decode('utf-8')}", file_path)
-        else:
-            print(f"Failed to verify the file in the container: {output.decode('utf-8')}")
+        subprocess.run(["docker", "cp", temp_file.name, f"{container}:{file_path}"], check=True)
+        os.remove(temp_file.name)
+        print(f"File writen to {file_path}")
     finally:
         # Stop and remove the container
         pass

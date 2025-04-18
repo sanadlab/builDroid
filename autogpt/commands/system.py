@@ -8,6 +8,8 @@ COMMAND_CATEGORY_TITLE = "System"
 import docker
 from typing import NoReturn
 import os
+from pathlib import Path
+import subprocess
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
 from autogpt.commands.docker_helpers_static import execute_command_in_container, stop_and_remove
@@ -36,16 +38,23 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
     """
 
     client = docker.from_env()
-    try:
-        container = client.containers.get(agent.container.id)
-        apk_path = f"{agent.project_path}/app/build/outputs/apk/debug/app-debug.apk"
-        exit_code, output = container.exec_run(f"/bin/sh -c \"test -f {apk_path} && echo Exists || echo Not Found\"")
-        
-        result = output.decode().strip()
-        if result != "Exists":
-            return "You have not successfully built the project since there is no app-debug.apk file in the container."
-    except Exception as e:
-        return f"Error checking APK file: {e}"
+    container = client.containers.get(agent.container.id)
+    
+    exit_code, output = container.exec_run(f"/bin/sh -c \"find {agent.project_path} -type f -name '*.apk'\"")
+    apk_paths = output.decode().strip().split("\n")
+    apk_paths = [path for path in apk_paths if path] 
+    
+    if not apk_paths:
+        return "You have not successfully built the project since there is no .apk file in the container."
+    for apk_path in apk_paths:
+        print(apk_path)
+        try:
+            host_apk_path = f"experimental_setups/{agent.exp_number}/files/{agent.project_path}"
+            os.makedirs(host_apk_path, exist_ok=True)
+            subprocess.run(['docker', 'cp', f'{agent.container.id}:/{apk_path}', host_apk_path], check=True)
+            print(f"Copied: {apk_path} → {host_apk_path}")
+        except Exception as e:
+            print(f"<ERROR> Failed to extract {apk_path}: {e}")
     
     #if "coverage_results.txt" not in files_list:
     #    return "You cannot claim goal accomplished without running test cases, measuring coverage and saving them to the file 'coverage_results.txt'"

@@ -60,22 +60,23 @@ def extract_agent_log(log_file, output):
     thoughts, commands, user_responses = thoughts[:min_length], commands[:min_length], user_responses[:min_length]
         
     extracted_data = ""
-
-    with open(f"problems_memory/{output}.txt", 'w') as txtfile:
+    
+    os.makedirs("problems_memory/extracted_logs/", exist_ok=True)
+    with open(f"problems_memory/extracted_logs/{output}.txt", 'w') as txtfile:
         for i in range(min_length):
-            if len(str(user_responses[i])) > 200:
-                entry = f"Thoughts:{thoughts[i]}\nCommand:\n{commands[i]}\nOutput:\n{str(user_responses[i][:150])+str(user_responses[i][-50:])}\n==========================================\n"
+            if len(str(user_responses[i])) > 300:
+                entry = f"Thoughts:{thoughts[i]}\nCommand:\n{commands[i]}\nOutput:\n{str(user_responses[i][:150])+str(user_responses[i][-150:])}\n==========================================\n"
             else:
                 entry = f"Thoughts:{thoughts[i]}\nCommand:\n{commands[i]}\nOutput:\n{user_responses[i]}\n==========================================\n"
             txtfile.write(entry)
             extracted_data += entry
 
     # Create DataFrame
-    df = pd.DataFrame({
-        "Thoughts": thoughts,
-        "Command": commands,
-        "Output": user_responses
-    })
+    #df = pd.DataFrame({
+    #    "Thoughts": thoughts,
+    #    "Command": commands,
+    #    "Output": user_responses
+    #})
     
     # Save to Excel
     #df.to_excel(f"{output}.xlsx")
@@ -107,13 +108,13 @@ def main():
 
     # Build paths
     success_file = f"experimental_setups/{last_line}/saved_contexts/{project_name}/SUCCESS"
+
+    # Extract agent log
+    extracted_content = extract_agent_log(f"experimental_setups/{last_line}/logs/prompt_history_{project_name}", f"extracted_log_{project_name}")
     
     if os.path.exists(success_file):
         print("SUCCESS")
         return
-
-    # Extract agent log
-    extracted_content = extract_agent_log(f"experimental_setups/{last_line}/logs/prompt_history_{project_name}", f"extracted_log_{project_name}")
     '''
     # Find the cycle_XX file with the highest XX
     contexts_dir = f"experimental_setups/{last_line}/saved_contexts/{project_name}"

@@ -61,6 +61,5 @@ Python-*
 # Poetry
 poetry.lock
 
-
 # tokens
 openai_token.txt

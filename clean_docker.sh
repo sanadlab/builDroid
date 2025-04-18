@@ -1,5 +1,5 @@
 while true; do
-  read -p "WARNING! This will stop and remove all working containers and images. Continue? (y/n): " user_input
+  read -p "WARNING! This will stop and remove all working containers and images. Continue? (yes/no): " user_input
   case "$user_input" in
     [Yy]* )
       yes | docker kill $(docker ps -q);

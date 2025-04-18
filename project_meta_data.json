@@ -1,11 +1,11 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "Icicle",
-    "project_url": "https://github.com/ArneBab/Icicle",
+    "project_path": "Identiconizer",
+    "project_url": "https://github.com/GermainZ/Identiconizer",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "language": "Java",
-    "image": "Icicle_image:ExecutionAgent",
+    "language": "Java\r",
+    "image": "Identiconizer_image:ExecutionAgent",
     "keep_container": true
 }

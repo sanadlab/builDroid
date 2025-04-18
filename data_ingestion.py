@@ -83,7 +83,7 @@ def main() -> None:
             logger.error(f"Error while ingesting file '{args.file}': {str(e)}")
     elif args.dir:
         try:
-            ingest_directory(args.dir, memory, args)
+            #ingest_directory(args.dir, memory, args)
             logger.info(f"Directory '{args.dir}' ingested successfully.")
         except Exception as e:
             logger.error(f"Error while ingesting directory '{args.dir}': {str(e)}")
