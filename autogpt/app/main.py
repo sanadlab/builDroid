@@ -275,8 +275,7 @@ def run_interaction_loop(
     if container is not None:
         agent.container = container
         subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
-        cwd = execute_command_in_container(container, "pwd")
-        print(image_log + "\nContainer launched successfuly\n" + "The current working directory within the container is: {}".format(cwd))
+        print(image_log + "Container launched successfully\n")
     else:
         print(str(image_log) + "\n" + str(container))
 

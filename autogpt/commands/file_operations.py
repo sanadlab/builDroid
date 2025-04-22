@@ -197,7 +197,7 @@ def read_file(file_path: str, agent: Agent) -> str:
         except Exception as e:
             return f"Error: {str(e)}"
     else:
-        return read_file_from_container(agent.container, os.path.join("/app", agent.project_path, file_path.split("/")[-1]))
+        return read_file_from_container(agent.container, f"{agent.project_path}/{file_path}")
 
 
 def ingest_file(
@@ -337,7 +337,7 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         print("FILENAME:", filename)
         if "dockerfile" in filename.lower():
             return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
-        write_result = str(write_string_to_file(agent.container, text, os.path.join("agent.project_path/", filename)))
+        write_result = str(write_string_to_file(agent.container.short_id, text, f"{agent.project_path}/{filename}"))
         if write_result=="None":
             if "setup" in filename.lower() or "install" in filename.lower() or ".sh" in filename.lower():
                 return "installation script was written successfully, you should not run this script. If test cases were not yet run, you should do that with the help of linux_terminal. If you arleady run test cases successfully, you are done with the task."

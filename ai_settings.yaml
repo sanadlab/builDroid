@@ -1,5 +1,4 @@
 ai_goals:
-- Check project path: You should start by checking all important file in working directroy by 'ls' and gather basic information by reading README.md files.
 - Build the Android Project: You should run './gradlew assembleDebug' to build the project.
 - Resolve Issues: If build fails, determine the cause of failure(ex. missing dependencies, outdated versions) and attempt to resolve it. The general guideline provides common gradle build errors and their solutions.
 ai_name: ExecutionAgent

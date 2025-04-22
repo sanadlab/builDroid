@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from autogpt.models.command_registry import CommandRegistry
 
 from autogpt.llm.base import ChatModelResponse, ChatSequence, Message
-from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS, get_openai_command_specs
+from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS, get_openai_command_specs, get_model_info
 from autogpt.llm.utils import count_message_tokens, create_chat_completion
 from autogpt.logs import logger
 from autogpt.memory.message_history import MessageHistory
@@ -142,8 +142,9 @@ class BaseAgent(metaclass=ABCMeta):
         if self.config.openai_api_base is None:
             llm_name = self.config.smart_llm if self.big_brain else self.config.fast_llm
         else:
-            llm_name = self.config.free_llm 
-        self.llm = OPEN_AI_CHAT_MODELS[llm_name]
+            llm_name = self.config.other_llm 
+        self.llm = get_model_info(llm_name)
+
         """The LLM that the agent uses to think."""
 
         self.send_token_limit = send_token_limit or self.llm.max_tokens * 3 // 4
@@ -194,7 +195,7 @@ class BaseAgent(metaclass=ABCMeta):
                 self.hyperparams["image"] = "NIL"
 
         self.found_workflows = self.find_workflows(self.project_path)
-        self.search_results = self.search_documentation()
+        #self.search_results = self.search_documentation()
         self.dockerfiles = self.find_dockerfiles()
         self.command_stuck = False
 
@@ -228,7 +229,7 @@ class BaseAgent(metaclass=ABCMeta):
             "max_budget": self.max_budget,
             "container": str(self.container),  # Assuming this is a complex object
             "found_workflows": self.found_workflows,
-            "search_results": self.search_results,
+            #"search_results": self.search_results,
             "dockerfiles": self.dockerfiles,
         }
 
@@ -420,7 +421,7 @@ class BaseAgent(metaclass=ABCMeta):
         # handle querying strategy
         # For now, we do not evaluate the external query
         # we just want to observe how good is it
-    
+
         raw_response = create_chat_completion(
             prompt,
             self.config,
@@ -489,7 +490,7 @@ class BaseAgent(metaclass=ABCMeta):
         tmp = ""
         for command, summary in reversed(self.commands_and_summary):
             tmp = command + "\nThe summary of the output of above command: " + str(summary)+"\n\n" + tmp
-            if len(tmp) > 5000:
+            if len(tmp) > 10000:
                 break
         text += tmp
         return text
@@ -583,7 +584,7 @@ class BaseAgent(metaclass=ABCMeta):
             cycle_instruction = self.summary_cycle_instruction
             prompt.extend(ChatSequence.for_model(
                 self.llm.name,
-                [Message("user", definitions_prompt + "\n" + steps_text + "\n\n" + cycle_instruction+"\n" + command_result.content)]
+                [Message("user", definitions_prompt + "\n" + steps_text + "\n\n" + cycle_instruction+"\n" + last_command.content + "\n" + command_result.content)]
             ))
         return prompt
 

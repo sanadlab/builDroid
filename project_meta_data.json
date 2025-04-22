@@ -1,11 +1,11 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "Identiconizer",
-    "project_url": "https://github.com/GermainZ/Identiconizer",
+    "project_path": "Let-Me-Downgrade",
+    "project_url": "https://github.com/DavidBerdik/Let-Me-Downgrade",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "language": "Java\r",
-    "image": "Identiconizer_image:ExecutionAgent",
+    "language": "Kotlin",
+    "image": "Let-Me-Downgrade_image:ExecutionAgent",
     "keep_container": true
 }

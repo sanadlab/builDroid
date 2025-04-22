@@ -9,18 +9,32 @@ import warnings
 warnings.filterwarnings("ignore")
 
 import openai
+import google.generativeai as genai
 
-def ask_chatgpt(query, system_message, model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"):
-    # Read the OpenAI API token from a file
-    with open("openai_token.txt") as opt:
-        token = opt.read().strip()
+def ask_chatgpt(query, system_message, model=None):
+    """
+    Asks a question to either OpenAI's ChatGPT or Google's Gemini models.
 
+    Args:
+        query (str): The question to ask the model.
+        system_message (str): The system message to guide the model's response.
+        model (str, optional): The model to use.
+
+    Returns:
+        str: The content of the assistant's response.
+    """
     # Set up the OpenAI API key
-    openai.api_key = token
+    openai.api_key = "GLOBAL-API-KEY-PLACEHOLDER"
     # Update base url for different API providers
-    if not token.startswith("sk-"):
-        openai.api_base = "https://api.together.xyz/v1"
+    openai.api_base = None
 
+    if "google" in openai.api_base: # Gemini version
+        genai.configure(api_key=openai.api_key)
+        gemini_model = genai.GenerativeModel(model)
+        chat = gemini_model.start_chat(history=[]) # Start a chat session
+        response = chat.send_message(system_message + "\n" + query)  # Combine system and user messages
+        return response.text
+    
     # Construct the messages for the Chat Completion API
     messages = [
         {"role": "system", "content": system_message},
@@ -36,6 +50,7 @@ def ask_chatgpt(query, system_message, model="meta-llama/Llama-3.3-70B-Instruct-
     # Extract and return the content of the assistant's response
     return response["choices"][0]["message"]["content"]
 
+        
 def extract_agent_log(log_file, output):
     with open(log_file, 'r', encoding='utf-8') as file:
         log_data = file.read()
@@ -115,36 +130,8 @@ def main():
     if os.path.exists(success_file):
         print("SUCCESS")
         return
-    '''
-    # Find the cycle_XX file with the highest XX
-    contexts_dir = f"experimental_setups/{last_line}/saved_contexts/{project_name}"
-    if not os.path.exists(contexts_dir):
-        print(f"Error: {contexts_dir} does not exist.")
-        sys.exit(1)
-
-    cycle_files = [f for f in os.listdir(contexts_dir) if f.startswith("cycle_") and f[6:].isdigit()]
-    if not cycle_files:
-        print(f"Error: No cycle files found in {contexts_dir}.")
-        sys.exit(1)
-
-    latest_cycle_file = max(cycle_files, key=lambda x: int(x[6:]))
-    latest_cycle_path = os.path.join(contexts_dir, latest_cycle_file)
-
-    # Read the JSON content of the latest cycle file
-    with open(latest_cycle_path, 'r') as f:
-        try:
-            file_content = json.load(f)
-        except json.JSONDecodeError:
-            print(f"Error: Failed to decode JSON from {latest_cycle_path}.")
-            sys.exit(1)
-
-    # Extract the desired content
-    try:
-        extracted_content = file_content["steps_object"]["1"]["result_of_step"]
-    except KeyError as e:
-        print(f"Error: Missing key in JSON structure: {e}")
-        sys.exit(1)
-    '''
+    
+    # Summarize problems encountered
     while True:
         try:
             # Prepare the query for ask_chatgpt
@@ -167,6 +154,7 @@ def main():
                 f.write(response)
             break
         except:
+            print("ask_chatgpt failed. Retrying..")
             extracted_content = str(extracted_content[:-200])
             pass
 

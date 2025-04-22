@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import List, Optional
 
 from colorama import Fore
 
@@ -20,6 +20,7 @@ from ..providers.openai import (
     OpenAIFunctionCall,
     OpenAIFunctionSpec,
     count_openai_functions_tokens,
+    get_model_info
 )
 from .token_counter import *
 
@@ -49,7 +50,7 @@ def call_ai_function(
         if config.openai_api_base is None:
             model = config.smart_llm
         else:
-            model = config.free_llm
+            model = config.other_llm
     # For each arg, if any are None, convert to "None":
     args = [str(arg) if arg is not None else "None" for arg in args]
     # parse args to comma separated string
@@ -68,37 +69,6 @@ def call_ai_function(
     )
     return create_chat_completion(prompt=prompt, temperature=0, config=config).content
 
-
-def create_text_completion(
-    prompt: str,
-    config: Config,
-    model: Optional[str],
-    temperature: Optional[float],
-    max_output_tokens: Optional[int],
-) -> str:
-    if model is None:
-        if config.openai_api_base is None:
-            model = config.smart_llm
-        else:
-            model = config.free_llm
-    if temperature is None:
-        temperature = config.temperature
-
-    kwargs = {"model": model}
-    kwargs.update(config.get_openai_credentials(model))
-
-    response = iopenai.create_text_completion(
-        prompt=prompt,
-        **kwargs,
-        temperature=temperature,
-        max_tokens=max_output_tokens,
-    )
-    logger.debug(f"Response: {response}")
-
-    return response.choices[0].text
-
-
-# Overly simple abstraction until we create something better
 def create_chat_completion(
     prompt: ChatSequence,
     config: Config,
@@ -107,17 +77,7 @@ def create_chat_completion(
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
 ) -> ChatModelResponse:
-    """Create a chat completion using the OpenAI API
-
-    Args:
-        messages (List[Message]): The messages to send to the chat completion
-        model (str, optional): The model to use. Defaults to None.
-        temperature (float, optional): The temperature to use. Defaults to 0.9.
-        max_tokens (int, optional): The max tokens to use. Defaults to None.
-
-    Returns:
-        str: The response from the chat completion
-    """
+    """Create a chat completion using either OpenAI or Gemini, based on config."""
 
     if model is None:
         model = prompt.model.name
@@ -125,28 +85,20 @@ def create_chat_completion(
         temperature = config.temperature
     if max_tokens is None:
         prompt_tlength = prompt.token_length
-        max_tokens = (
-            min(OPEN_AI_CHAT_MODELS[model].max_tokens - prompt_tlength - 200, 4000)
-        )  # Default : 4000 for max output token. Reduced if prompt size is large.
+        max_tokens = OPEN_AI_CHAT_MODELS[model].max_tokens # Default : 4000 for max output token. Reduced if prompt size is large.
         logger.debug(f"Prompt length: {prompt_tlength} tokens")
-        if functions:
-            functions_tlength = count_openai_functions_tokens(functions, model)
-            max_tokens -= functions_tlength
-            logger.debug(f"Functions take up {functions_tlength} tokens in API call")
 
     logger.info(
-        f"{Fore.GREEN}Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}, prompt_length {prompt_tlength}{Fore.RESET}"
+        f"{Fore.GREEN}Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}, prompt_length {prompt.token_length}{Fore.RESET}"
     )
-    with open("model_logging_temp.txt", "w") as mlt:
-        mlt.write(f"Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}")
 
     chat_completion_kwargs = {
         "model": model,
         "temperature": temperature,
         "max_tokens": max_tokens,
-        #"response_format": { "type": "json_object" }
-        # JSON response format causes errors for other APIs
+        # "response_format": { "type": "json_object" } # Remove to avoid issues with Gemini.
     }
+    chat_completion_kwargs.update(config.get_openai_credentials(model))
 
     for plugin in config.plugins:
         if plugin.can_handle_chat_completion(
@@ -160,20 +112,12 @@ def create_chat_completion(
             if message is not None:
                 return message
 
+    # Dispatch to OpenAI or Gemini based on config
+    if "google" in config.openai_api_base.lower():
+        return iopenai._create_gemini_completion(prompt, config.openai_api_key, model, chat_completion_kwargs)
     chat_completion_kwargs.update(config.get_openai_credentials(model))
-
-    if functions and config.openai_api_base is None:
-        chat_completion_kwargs["functions"] = [
-            function.schema for function in functions
-        ]
-
-    # Print full prompt to debug log
-    logger.debug(prompt.dump())
-
-    response = iopenai.create_chat_completion(
-        messages=prompt.raw(),
-        **chat_completion_kwargs,
-    )
+    response = iopenai.create_chat_completion(messages=prompt.raw(), **chat_completion_kwargs)
+    
     logger.debug(f"Response: {response}")
 
     if hasattr(response, "error"):

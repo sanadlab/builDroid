@@ -183,7 +183,7 @@ Latest Development:
         if config.openai_api_base is None:
             summ_model = OPEN_AI_CHAT_MODELS[config.fast_llm]
         else:
-            summ_model = OPEN_AI_CHAT_MODELS[config.free_llm]
+            summ_model = OPEN_AI_CHAT_MODELS[config.other_llm]
 
         # Determine token lengths for use in batching
         prompt_template_length = len(

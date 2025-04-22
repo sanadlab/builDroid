@@ -101,7 +101,7 @@ def execute_shell(command: str, agent: Agent) -> str:
         agent.java_version = extract_java_home_export(command)
     if "./gradlew" in command or command.startswith("gradle"):
         command = "{} && {}".format(agent.java_version, command)
-    if not "cd" in command and not "git clone" in command and not "rm -rf" in command:
+    if not "git clone" in command and not "rm -rf" in command:
         command = "cd {} && {}".format(agent.project_path, command)
         
     current_dir = Path.cwd()

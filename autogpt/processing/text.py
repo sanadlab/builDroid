@@ -93,7 +93,7 @@ def summarize_text(
     if config.openai_api_base is None:
         model = config.fast_llm
     else:
-        model = config.free_llm
+        model = config.other_llm
     
 
     if question:

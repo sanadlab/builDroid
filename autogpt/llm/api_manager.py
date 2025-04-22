@@ -104,10 +104,7 @@ class ApiManager(metaclass=Singleton):
 
         """
         if self.models is None:
-            try:
-                all_models = openai.Model.list(**openai_credentials)["data"]
-                self.models = [model for model in all_models if "gpt" in model["id"]]
-            except:
-                self.models = [{"id" : "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free", "object" : "model"}]
+            all_models = openai.Model.list(**openai_credentials)["data"]
+            self.models = [model for model in all_models if "gpt" in model["id"]]
 
         return self.models

@@ -143,13 +143,13 @@ class ChatSequence:
         messages: list[Message] | ChatSequence = [],
         **kwargs,
     ) -> TChatSequence:
-        from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS
+        from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS, get_model_info
 
-        if not model_name in OPEN_AI_CHAT_MODELS:
-            raise ValueError(f"Unknown chat model '{model_name}'")
+        #if not model_name in OPEN_AI_CHAT_MODELS:
+        #    raise ValueError(f"Unknown chat model '{model_name}'")
 
         return cls(
-            model=OPEN_AI_CHAT_MODELS[model_name], messages=list(messages), **kwargs
+            model=get_model_info(model_name), messages=list(messages), **kwargs
         )
 
     @property

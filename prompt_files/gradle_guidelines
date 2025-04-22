@@ -198,7 +198,7 @@ Fix:
 2. Do the same for all `gradle-wrapper.properties` file in the working directory since there can be more than one file.
 
 ## Final Notes  
-- IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Your working directory must be the folder with the gradlew file.
+- IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
 - If you're not sure which error, check logs using:  
   ```
   ./gradlew assembleDebug --stacktrace
@@ -216,3 +216,5 @@ Fix:
 - Avoid using git clone to start since the directory is already cloned, unless you meet many errors and need to reset the environment.
 - If BUILD SUCCESS but the output says Gradle used deprecated features, ignore the warning and check if the .apk file is generated. Your primary goal is to generate the .apk file.
 - When using linux commands, never use bash exclusive commands, instead use shell compatible commands.
+- Use `find . -name *.apk` to check output .apk file.
+- Empty output does not necessarily mean command failure. For example, `export` or `chmod` commands do not output anything, so you can continue.

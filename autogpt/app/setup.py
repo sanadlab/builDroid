@@ -222,7 +222,7 @@ def generate_aiconfig_automatic(user_prompt: str, config: Config) -> AIConfig:
     else:
         output = create_chat_completion(
             ChatSequence.for_model(
-                config.free_llm,
+                config.other_llm,
                 [
                     Message("system", system_prompt),
                     Message("user", prompt_ai_config_automatic),

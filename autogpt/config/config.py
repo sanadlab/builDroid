@@ -57,7 +57,7 @@ class Config(SystemSettings, arbitrary_types_allowed=True):
     # Model configuration
     fast_llm: str = "gpt-3.5-turbo-0125"
     smart_llm: str = "gpt-4o-mini"
-    free_llm: str = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
+    other_llm: str = None
     temperature: float = 0
     openai_functions: bool = False
     embedding_model: str = "text-embedding-ada-002"
@@ -121,7 +121,7 @@ class Config(SystemSettings, arbitrary_types_allowed=True):
     # OpenAI
     openai_api_key: Optional[str] = None
     openai_api_type: Optional[str] = None
-    openai_api_base: Optional[str] = "https://api.together.xyz/v1"
+    openai_api_base: Optional[str] = None
     openai_api_version: Optional[str] = None
     openai_organization: Optional[str] = None
     use_azure: bool = False
