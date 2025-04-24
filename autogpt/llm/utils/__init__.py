@@ -113,7 +113,7 @@ def create_chat_completion(
                 return message
 
     # Dispatch to OpenAI or Gemini based on config
-    if "google" in config.openai_api_base.lower():
+    if config.openai_api_base is not None and "google" in config.openai_api_base:
         return iopenai._create_gemini_completion(prompt, config.openai_api_key, model, chat_completion_kwargs)
     chat_completion_kwargs.update(config.get_openai_credentials(model))
     response = iopenai.create_chat_completion(messages=prompt.raw(), **chat_completion_kwargs)

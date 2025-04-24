@@ -47,12 +47,10 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
     if not apk_paths:
         return "You have not successfully built the project since there is no .apk file in the container."
     for apk_path in apk_paths:
-        print(apk_path)
         try:
             host_apk_path = f"experimental_setups/{agent.exp_number}/files/{agent.project_path}"
             os.makedirs(host_apk_path, exist_ok=True)
             subprocess.run(['docker', 'cp', f'{agent.container.id}:/{apk_path}', host_apk_path], check=True)
-            print(f"Copied: {apk_path} → {host_apk_path}")
         except Exception as e:
             print(f"<ERROR> Failed to extract {apk_path}: {e}")
     

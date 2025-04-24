@@ -30,6 +30,13 @@ OPEN_AI_CHAT_MODELS = {
     info.name: info
     for info in [
         ChatModelInfo(
+            name="gemini-2.0-flash-lite",
+            prompt_token_cost=0.0,
+            completion_token_cost=0.0,
+            max_tokens=8192,
+            supports_functions=False,
+        ),
+        ChatModelInfo(
             name="gemini-2.0-flash",
             prompt_token_cost=0.0,
             completion_token_cost=0.0,
@@ -61,27 +68,7 @@ OPEN_AI_CHAT_MODELS = {
             name="gpt-4o-mini",
             prompt_token_cost=0.03,
             completion_token_cost=0.06,
-            max_tokens=16000,
-        ),
-        ChatModelInfo(
-            name="gpt-4o-mini",
-            prompt_token_cost=0.03,
-            completion_token_cost=0.06,
-            max_tokens=16000,
-            supports_functions=True,
-        ),
-        ChatModelInfo(
-            name="gpt-4o-mini",
-            prompt_token_cost=0.06,
-            completion_token_cost=0.12,
-            max_tokens=32768,
-        ),
-        ChatModelInfo(
-            name="gpt-4o-mini",
-            prompt_token_cost=0.06,
-            completion_token_cost=0.12,
-            max_tokens=32768,
-            supports_functions=True,
+            max_tokens=16384,
         ),
         ChatModelInfo(
             name="gpt-3.5-turbo-0125",

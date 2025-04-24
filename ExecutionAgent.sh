@@ -27,7 +27,7 @@ run_with_retries() {
     result=$(python3.10 post_process.py "$project_name")
 
     if [[ "$result" == "SUCCESS" ]]; then
-      echo "Post-process succeeded."
+      echo "Post-process succeeded. The extracted .apk file is in the experimental_setups/experiment_#/files/$project_name folder."
       return
     fi
 
@@ -94,20 +94,18 @@ if [[ -n "$repo_url" ]]; then
 
     # Process each repository
     for line in "${repo_lines[@]}"; do
-      # Parse each line to extract project name, GitHub URL, and language
-      project_name=$(echo "$line" | awk '{print $1}')
-      github_url=$(echo "$line" | awk '{print $2}')
-      language=$(echo "$line" | awk '{print $3}')
+      # Parse each line to extract project name, GitHub URL
+      github_url=$(echo "$line" | awk '{print $1}')
+      project_name=$(extract_project_name "$github_url")
 
       echo "Project: $project_name"  # Print the project name
       echo "Github URL: $github_url"    # Print the GitHub URL
-      echo "Main Language: $language"      # Print the specified language
 
       # Initialize an empty Docker configuration file
       echo "{}" > ~/.docker/config.json
 
       # Call the Python script to clone the repo and set metadata
-      python3.10 clone_and_set_metadata.py "$project_name" "$github_url" "$language"
+      python3.10 clone_and_set_metadata.py "$project_name" "$github_url"
 
       # Run the main script with specific AI settings and experiment parameters
       run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
@@ -119,11 +117,6 @@ if [[ -n "$repo_url" ]]; then
     # Extract the project name from the provided GitHub URL
     project_name=$(extract_project_name "$repo_url")
 
-    # Call get_main_language.py to determine the main language of the repository
-    # The Python script is expected to return a string like "Primary language: <language>"
-    primary_language=$(python3.10 get_main_language.py "$repo_url")
-    echo "$primary_language"
-
     # Continue processing for a single repository
     echo "$project_name"  # Print the project name
     echo "$repo_url"      # Print the GitHub URL
@@ -132,7 +125,7 @@ if [[ -n "$repo_url" ]]; then
     echo "{}" > ~/.docker/config.json
 
     # Call the Python script to clone the repo and set metadata
-    python3.10 clone_and_set_metadata.py "$project_name" "$repo_url" "$primary_language"
+    python3.10 clone_and_set_metadata.py "$project_name" "$repo_url"
 
     # Run the main script with specific AI settings and experiment parameters
     run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"

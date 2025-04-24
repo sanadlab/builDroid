@@ -160,7 +160,6 @@ class BaseAgent(metaclass=ABCMeta):
 
         self.project_path = self.hyperparams["project_path"]
         self.project_url = self.hyperparams["project_url"]
-        self.language = self.hyperparams["language"]
         self.workspace_path = "execution_agent_workspace"
         self.keep_container = True if self.hyperparams["keep_container"] == "TRUE" else False
         
@@ -217,7 +216,6 @@ class BaseAgent(metaclass=ABCMeta):
             "send_token_limit": self.send_token_limit,
             "project_path": self.project_path,
             "project_url": self.project_url,
-            "language": self.language,
             "workspace_path": self.workspace_path,
             "cycle_type": self.cycle_type,
             "tests_executed": self.tests_executed,

@@ -1,11 +1,10 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "Let-Me-Downgrade",
-    "project_url": "https://github.com/DavidBerdik/Let-Me-Downgrade",
+    "project_path": "reseau-discord-app",
+    "project_url": "https://github.com/GoudronViande24/reseau-discord-app",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "language": "Kotlin",
-    "image": "Let-Me-Downgrade_image:ExecutionAgent",
+    "image": "reseau-discord-app_image:ExecutionAgent",
     "keep_container": true
 }

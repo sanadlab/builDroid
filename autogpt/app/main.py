@@ -266,7 +266,7 @@ def run_interaction_loop(
     #    dft = df.read()
     with open(os.path.join(agent.workspace_path, "Dockerfile"), "w", encoding="utf-8") as f:
         f.write(dft)
-    image_log = "IMAGE ALREADY EXISTS"
+    image_log = ""
     if not check_image_exists(f"{agent.workspace_path}_image:ExecutionAgent"):
         image_log = build_image(agent.workspace_path, f"{agent.workspace_path}_image:ExecutionAgent")
         if image_log.startswith("An error occurred while building the Docker image"):
@@ -282,7 +282,6 @@ def run_interaction_loop(
     with open(parsable_log_file, "w") as plf:
         json.dump({
             "project": project_path,
-            "language": agent.hyperparams["language"],
             "ExecutionAgent_attempt": []
         }, plf)
     

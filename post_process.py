@@ -28,7 +28,7 @@ def ask_chatgpt(query, system_message, model=None):
     # Update base url for different API providers
     openai.api_base = None
 
-    if "google" in openai.api_base: # Gemini version
+    if openai.api_base is not None and "google" in openai.api_base: # Gemini version
         genai.configure(api_key=openai.api_key)
         gemini_model = genai.GenerativeModel(model)
         chat = gemini_model.start_chat(history=[]) # Start a chat session

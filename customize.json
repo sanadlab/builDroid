@@ -1,5 +1,5 @@
 {
-    "LANGUAGE_GUIDELINES": true,
+    "LANGUAGE_GUIDELINES": false,
     "GENERAL_GUIDELINES": true,
     "WEB_SEARCH": false,
     "WORKFLOWS_SEARCH": false,
