@@ -1,8 +1,21 @@
 import os
 import pandas as pd
 
+# Read the last line of experiments_list.txt
+experiments_file = "experimental_setups/experiments_list.txt"
+if not os.path.exists(experiments_file):
+    print(f"Error: {experiments_file} does not exist.")
+    sys.exit(1)
+
+with open(experiments_file, 'r') as f:
+    lines = f.readlines()
+    if not lines:
+        print(f"Error: {experiments_file} is empty.")
+        sys.exit(1)
+    last_line = lines[-1].strip()
+
 # Path to the "saved_contexts" directory
-saved_contexts_path = "experimental_setups/experiment_2/saved_contexts"
+saved_contexts_path = f"experimental_setups/{last_line}/saved_contexts"
 
 # Result data
 data = []
@@ -30,6 +43,6 @@ for project_folder in os.listdir(saved_contexts_path):
 # Convert to DataFrame and export
 df = pd.DataFrame(data)
 df.sort_values(by="Project Name", inplace=True)
-df.to_excel("cmd_counts_with_status.xlsx", index=False)
+df.to_excel("experiment_results.xlsx", index=False)
 
-print("Spreadsheet 'cmd_counts_with_status.xlsx' created.")
+print("Spreadsheet 'experiment_results.xlsx' created.")

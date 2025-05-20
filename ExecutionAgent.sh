@@ -95,7 +95,7 @@ if [[ -n "$repo_url" ]]; then
     # Process each repository
     for line in "${repo_lines[@]}"; do
       # Parse each line to extract project name, GitHub URL
-      github_url=$(echo "$line" | awk '{print $1}')
+      github_url=$(echo "$line" | tr -d '\r')
       project_name=$(extract_project_name "$github_url")
 
       echo "Project: $project_name"  # Print the project name
@@ -109,7 +109,8 @@ if [[ -n "$repo_url" ]]; then
 
       # Run the main script with specific AI settings and experiment parameters
       run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
-    done < "$file_path"
+    done
+    python3.10 experiment_results_sheet.py
   
   else
     # Handle the case where the input is a single GitHub URL

@@ -6,15 +6,15 @@ When a build error occurs, follow these steps:
 3. Apply the appropriate fix using the provided commands.  
 4. Retry the build and check if the issue is resolved.  
 
-## 1. Google Repository Error  
+## 1. Missing Dependency Errors  
 Error Message: Could not resolve all dependencies for configuration ':app:debugCompileClasspath'.
 Fix: 
-1. Add `google()` to the `repositories` block:  
+1. Ensure these two lines are in the `repositories` block:  
    ```
    allprojects {
        repositories {
-           google()  // Ensure this line is present
-           mavenCentral()
+           google() // NOTE: DO NOT ADD if gradle version is 5.4.1 or below
+           mavenCentral() // Must add
        }
    }
    ```
@@ -22,6 +22,29 @@ Fix:
    ```
    ./gradlew --refresh-dependencies
    ```
+## 1-2. Missing Dependency Errors (JitPack-based Libraries)
+Error Message: Could not find net.opacapp:multiline-collapsingtoolbar:27.1.1
+Fix:
+1. Confirm whether the dependency version exists in public Maven repositories:
+    ```
+    curl -I https://repo.maven.apache.org/maven2/<group_path>/<artifact>/<version>/<artifact>-<version>.pom
+    ```
+If the result is `404`, it doesn't exist there.
+2. If it's a GitHub-based library, switch to the JitPack-compatible Maven coordinates:
+    ```
+    implementation 'com.github.<user>:<repo>:+'
+    ```
+Use `+` as <tag>, which means use the **latest successfully built version** from GitHub.
+3. In `build.gradle` (project-level) ensure JitPack is in the repositories:
+    ```
+    allprojects {
+        repositories {
+            google()
+            mavenCentral()
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
 
 ## 2. Library Method Signature Error  
 Error Message: No signature of method: java.util.ArrayList.call() is applicable for argument types...
@@ -62,19 +85,12 @@ Fix:
    ```
    sdkmanager "build-tools;30.0.3"
    ```
-2. Ensure the correct version is referenced in `build.gradle`:  
-   ```
-   nano app/build.gradle
-   ```
+2. Ensure the correct version is referenced in `app/build.gradle`:  
    ```
    android {
        compileSdkVersion 30
        buildToolsVersion "30.0.3"
    }
-   ```
-3. Run:  
-   ```
-   ./gradlew build
    ```
 
 ## 5. Gradle Wrapper / Java Version Mismatch Error  
@@ -89,7 +105,7 @@ Fix:
 2. Check the compatible Java version based on identified Gradle version in below table:
    || Gradle version || Java version ||
    || 2.0~ || 8 ||
-   || 5.0~ || 11 ||
+   || 5.5~ || 11 ||
    || 7.3~ || 17 ||
    || 8.5~ || 21 ||
    For example, if Gradle version is 5.2, you should install Java 11.
@@ -103,17 +119,18 @@ Fix:
    export JAVA_HOME=<new_java_path>
    ```
 
-## 6. Gradle Wrapper Not Found Error  
+## 6. Gradle Wrapper Doesn't Exist
 Error Message: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
 Fix: 
-1. Copy missing Gradle wrapper files:  
+1. Install gradle:  
    ```
-   cp -r ~/.gradle/wrapper/gradle gradle/
+   sudo apt install gradle
    ```
-2. Reinstall the Gradle wrapper:  
+2. Reinstall the Gradle wrapper and make the script executable:  
    ```
-   ./gradlew wrapper
+   gradle wrapper && chmod +x gradlew
    ```
+NOTE: If gradlew file doesn't exist, then all commands starting with `./gradlew` will fail. Execute `gradle` commands instead.
 
 ## 7. Target Platform Not Found Error  
 Error Message: failed to find target with hash string 'android-30'
@@ -189,7 +206,6 @@ Fix:
 
 ## 12. Gradle Distribution Checksum Mismatch
 Error message: Verification of Gradle distribution failed! Your Gradle distribution may have been tampered with.
-This error happens when you update gradle distribution version in `gradle-wrapper.properties`.
 Fix:
 1. Delete the checksum line in `gradle-wrapper.properties`:
    ```
@@ -197,9 +213,28 @@ Fix:
    ```
 2. Do the same for all `gradle-wrapper.properties` file in the working directory since there can be more than one file.
 
+## 13. Google() repository not found
+Error message: Could not find method google() for arguments [] on repository container.
+NOTE: Google repository is not available if gradle version is lower than 5.4.1. Unless you have met a missing dependency issue, try to keep the gradle version.
+Fix:
+1. The line `google()` in `build.gradle`.
+   ```
+    repositories {
+         // google() <- REMOVE
+         mavenCentral()
+    }
+    ```
+   
+2. Update gradle wrapper by setting `gradle-wrapper.properties` file to:
+   ```
+   distributionUrl=https\://services.gradle.org/distributions/gradle-5.4.1-all.zip
+   ```
+   or higher.
+
+
 ## Final Notes  
 - IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
-- If you're not sure which error, check logs using:  
+- If you're not sure which error or the same error persists for a while, then check logs using:  
   ```
   ./gradlew assembleDebug --stacktrace
   ```
@@ -218,3 +253,4 @@ Fix:
 - When using linux commands, never use bash exclusive commands, instead use shell compatible commands.
 - Use `find . -name *.apk` to check output .apk file.
 - Empty output does not necessarily mean command failure. For example, `export` or `chmod` commands do not output anything, so you can continue.
+- Some projects explicitly state required dependencies and environment versions in `README.md`. If build fails, read the `README.md` file to look for the cause of failure

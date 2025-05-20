@@ -1,10 +1,10 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "reseau-discord-app",
-    "project_url": "https://github.com/GoudronViande24/reseau-discord-app",
+    "project_path": "privacypolice",
+    "project_url": "https://github.com/BramBonne/privacypolice",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "image": "reseau-discord-app_image:ExecutionAgent",
+    "image": "privacypolice_image:ExecutionAgent",
     "keep_container": true
 }

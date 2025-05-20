@@ -9,7 +9,7 @@ def clone_repository(github_url, project_name):
     # Clone the repository
 
     os.chdir("execution_agent_workspace/")
-    subprocess.run(["git", "clone", github_url])
+    subprocess.run(["git", "clone", "--recursive", github_url])
     # Define project directory
     project_directory = os.path.join(os.getcwd(), project_name)
 

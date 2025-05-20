@@ -12,7 +12,8 @@ apt-get update && apt-get install -y \
     libffi-dev \
     curl \
     wget \
-    libbz2-dev
+    libbz2-dev \
+    git-lfs
 
 # Download Python 3.10.x source code from the official website
 PYTHON_VERSION="3.10.10"

@@ -274,7 +274,7 @@ def run_interaction_loop(
     container = start_container(f"{agent.workspace_path}_image:ExecutionAgent")
     if container is not None:
         agent.container = container
-        subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
+        result = subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
         print(image_log + "Container launched successfully\n")
     else:
         print(str(image_log) + "\n" + str(container))
