@@ -28,6 +28,7 @@ def ask_chatgpt(query, system_message, model=None):
     # Update base url for different API providers
     openai.api_base = None
 
+    print("Post processing with model: ", model)
     if openai.api_base is not None and "google" in openai.api_base: # Gemini version
         genai.configure(api_key=openai.api_key)
         gemini_model = genai.GenerativeModel(model)

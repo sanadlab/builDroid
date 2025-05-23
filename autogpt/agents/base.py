@@ -6,9 +6,12 @@ from __future__ import unicode_literals
 import pexpect
 import time
 
+from colorama import Fore
 import re
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Literal, Optional
+import google.generativeai as genai
+from google.generativeai.generative_models import ChatSession
 import json
 import os
 import subprocess
@@ -20,9 +23,8 @@ if TYPE_CHECKING:
 
 from autogpt.llm.base import ChatModelResponse, ChatSequence, Message
 from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS, get_openai_command_specs, get_model_info
-from autogpt.llm.utils import count_message_tokens, create_chat_completion
+from autogpt.llm.utils import count_message_tokens, send_request
 from autogpt.logs import logger
-from autogpt.memory.message_history import MessageHistory
 from autogpt.prompts.prompt import DEFAULT_TRIGGERING_PROMPT
 from autogpt.json_utils.utilities import extract_dict_from_response
 from autogpt.commands.info_collection_static import collect_requirements, infer_requirements, extract_instructions_from_readme
@@ -43,6 +45,7 @@ class BaseAgent(metaclass=ABCMeta):
         ai_config: AIConfig,
         command_registry: CommandRegistry,
         config: Config,
+        chat: ChatSession,
         java_version: str = "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64",
         big_brain: bool = True,
         default_cycle_instruction: str = DEFAULT_TRIGGERING_PROMPT,
@@ -152,11 +155,6 @@ class BaseAgent(metaclass=ABCMeta):
         The token limit for prompt construction. Should leave room for the completion;
         defaults to 75% of `llm.max_tokens`.
         """
-
-        self.history = MessageHistory(
-            self.llm,
-            max_summary_tlength=summary_max_tlength or self.send_token_limit // 6,
-        )
 
         self.project_path = self.hyperparams["project_path"]
         self.project_url = self.hyperparams["project_url"]
@@ -389,7 +387,9 @@ class BaseAgent(metaclass=ABCMeta):
 
     def think(
         self,
-        instruction: Optional[str] = None,
+        command_name: CommandName | None,
+        command_args: CommandArgs | None,
+        result: str | None,
         thought_process_id: ThoughtProcessID = "one-shot",
     ) -> tuple[CommandName | None, CommandArgs | None, AgentThoughts]:
         """Runs the agent for one cycle.
@@ -400,64 +400,33 @@ class BaseAgent(metaclass=ABCMeta):
         Returns:
             The command name and arguments, if any, and the agent's thoughts.
         """
-
-        instruction = instruction or self.default_cycle_instruction
-
-        prompt: ChatSequence = self.construct_prompt(instruction, thought_process_id)
-        prompt = self.on_before_think(prompt, thought_process_id, instruction)
-        
-        ## This is a line added by me to save prompts at each step
-        self.prompt_text = prompt.dump()
-        #logger.info("CURRENT DIRECTORY {}".format(os.getcwd()))
-        
-
+        if self.cycle_count == 0: # Initial cycle: send guidelines as system instructions
+            prompt = self.construct_base_prompt()
+            genai.configure(api_key=self.config.openai_api_key)
+            model = genai.GenerativeModel(self.config.other_llm)
+            self.chat = model.start_chat(history=[])
+            logger.info(
+                f"{Fore.GREEN}Starting chat with model {self.config.other_llm}, temperature {self.config.temperature}{Fore.RESET}"
+            )
+        else:
+            prompt = self.cmd_cycle_instruction + "\n================Previous Command================\n" + command_name + "\n" + str(command_args) + "\n================Command Result================\n" + result
+            
         with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "a+") as patf:
-            patf.write(prompt.dump())
+            patf.write("\n\n\n" + prompt)
         
-        with open(os.path.join("experimental_setups", self.exp_number, "logs", "cycles_list_{}".format(self.project_path.replace("/", ""))), "a+") as patf:
-            patf.write(self.cycle_type+"\n")
-        # handle querying strategy
-        # For now, we do not evaluate the external query
-        # we just want to observe how good is it
-
-        raw_response = create_chat_completion(
+        logger.info(
+            f"{Fore.GREEN}Sending request to model {self.config.other_llm}{Fore.RESET}"
+        )
+        response = send_request(
             prompt,
             self.config,
-            functions=get_openai_command_specs(self.command_registry)
-            if self.config.openai_functions
-            else None,
+            stream = True,
+            chat = self.chat,
         )
-        
-        try:
-            response_dict = extract_dict_from_response(
-                raw_response.content
-            )
-            repetition = self.detect_command_repetition(response_dict)
-            if repetition:
-                logger.info("REPETITION DETECTED, WARNING CODE RR1")
-                logger.info(str(self.handle_command_repitition(response_dict, self.hyperparams["repetition_handling"])))
-                prompt.extend([Message("user", self.handle_command_repitition(response_dict, self.hyperparams["repetition_handling"]))])
-                logger.info("2222222222222222222222222")
-                new_response = create_chat_completion(
-                        prompt,
-                        self.config,
-                        functions=get_openai_command_specs(self.command_registry)
-                        if self.config.openai_functions
-                        else None,
-                    )
-                if self.hyperparams["repetition_handling"] == "TOP3":
-                    top3_list = json.loads(new_response.content)
-                    for r in top3_list:
-                        repetition = self.detect_command_repetition(r)
-                        if not repetition:
-                            raw_response = Message("assistant", str(r))
-                elif self.hyperparams["repetition_handling"] == "RESTRICT":
-                    raw_response = new_response
-            self.cycle_count += 1
 
-            return self.on_response(raw_response, thought_process_id, prompt, instruction)
-        except SyntaxError as e:
-            return self.on_response(raw_response, thought_process_id, prompt, instruction)
+        self.cycle_count += 1
+
+        return self.on_response(response, thought_process_id, prompt)
         
     @abstractmethod
     def execute(
@@ -478,28 +447,14 @@ class BaseAgent(metaclass=ABCMeta):
         """
         ...
 
-    def construct_executed_steps_text(self,):
-        text = ""
-
-        with open("prompt_files/gradle_guidelines") as pgl:
-            text += pgl.read()
-        
-        text += "\nBelow is a list of commands that you have executed so far and summary of the result of each command:\n"
-        tmp = ""
-        for command, summary in reversed(self.commands_and_summary):
-            tmp = command + "\nThe summary of the output of above command: " + str(summary)+"\n\n" + tmp
-            if len(tmp) > 10000:
-                break
-        text += tmp
-        return text
 
     def construct_base_prompt(
         self,
-        thought_process_id: ThoughtProcessID,
+        thought_process_id: ThoughtProcessID = "one-shot",
         prepend_messages: list[Message] = [],
         append_messages: list[Message] = [],
         reserve_tokens: int = 0,
-    ) -> ChatSequence:
+    ) -> str:
         """Constructs and returns a prompt with the following structure:
         1. System prompt
         2. `prepend_messages`
@@ -514,14 +469,7 @@ class BaseAgent(metaclass=ABCMeta):
 
         ## added this part to change the prompt structure
 
-        if self.customize["GENERAL_GUIDELINES"]:
-            steps_text = self.construct_executed_steps_text()
-        else:
-            steps_text = "\n"
-
-        prompt = ChatSequence.for_model(
-            self.llm.name,
-            [Message("system", self.prompt_dictionary["role"])])
+        prompt = self.prompt_dictionary["role"]
         
         definitions_prompt = ""
         static_sections_names = ["goals", "commands", "general_guidelines"]
@@ -534,202 +482,26 @@ class BaseAgent(metaclass=ABCMeta):
             else:
                 raise TypeError("For now we only support list and str types.")
         
-        #definitions_prompt += "\nProject path: the project under scope has the following path/name within the file system, which you should use when calling the tools: {}".format(self.project_path) + "\n"
-        definitions_prompt += "\nProject github url (in case if you need to clone repo): {}\n".format(self.project_url)
+        definitions_prompt += "Project github url (in case if you need to clone repo): {}".format(self.project_url)
         
         if os.path.exists("problems_memory/{}".format(self.project_path)):
             with open("problems_memory/{}".format(self.project_path)) as pm:
                 previous_memory = pm.read()
             definitions_prompt += "\nFrom previous attempts we learned that: {}\n".format(previous_memory)
-        
-        if self.found_workflows and self.customize["WORKFLOWS_SEARCH"]:
-            definitions_prompt += "\nThe following workflow files might contain information on how to setup the project and run test cases. We extracted the most important installation steps found in those workflows and turned them into a bash script. This might be useful later on when building/installing and testing the project:\n"
-            for w in self.found_workflows:
-                definitions_prompt += "\nWorkflow file: {}\nExtracted installation steps:\n{}\n".format(w, self.workflow_to_script(w))
-        
-        if self.dockerfiles and self.customize["WORKFLOWS_SEARCH"]:
-            definitions_prompt += "\nWe found the following dockerfile scripts within the repo. The dockerfile scripts might help you build a suitable docker image for this repository: "+ " ,".join(self.dockerfiles) + "\n"
-        
-        #if self.search_results and self.customize["WEB_SEARCH"]:
-        #    definitions_prompt += "\nWe searched on google for installing / building {} from source code on Ubuntu/Debian.".format(self.project_path)
-        #    definitions_prompt += "Here is the summary of the top 5 results:\n" + self.search_results + "\n"
-        
-        
-        #if self.hyperparams["image"]!="NIL":
-        #    definitions_prompt += "For this particular project, the docker image have been already created and the container have been launched, you can #skip steps 1 and 2; You can start directly from step 3 (see the steps list below).\n"
-        #definitions_prompt += steps_text + "\n"
-        
-        if len(self.history) > 2:
-            last_command = self.history[-2]
-            command_result = self.history[-1]
-            last_command_section = "{}\n".format(last_command.content)
-            append_messages.append(Message("assistant", last_command_section))
-            result_last_command = "The result of executing that last command is:\n {}".format(command_result.content)
-            append_messages.append((Message("user", result_last_command)))
 
-        if self.cycle_type == "CMD":
-            cycle_instruction = self.cmd_cycle_instruction
-            if self.track_budget:
-                cycle_instruction += "\n" + "In this conversation you can only have a limited number of calls tools. You have so far consumed {} call and {} left.\n".format(self.max_budget - self.left_commands, self.left_commands) + "\n Consider this limitation, so you repeat the same commands unless it is really necessary, such as for debugging and resolving issues.\n"
-            prompt.extend(ChatSequence.for_model(
-                self.llm.name,
-                [Message("user", definitions_prompt + "\n" + steps_text + "\n\n" + cycle_instruction)] + prepend_messages,
-            ))
-        
-            if append_messages:
-                prompt.extend(append_messages)
-        else:
-            cycle_instruction = self.summary_cycle_instruction
-            prompt.extend(ChatSequence.for_model(
-                self.llm.name,
-                [Message("user", definitions_prompt + "\n" + steps_text + "\n\n" + cycle_instruction+"\n" + last_command.content + "\n" + command_result.content)]
-            ))
+        gradle_guidelines = ""
+        with open("prompt_files/gradle_guidelines") as pgl:
+            gradle_guidelines += pgl.read()
+
+        prompt += definitions_prompt + "\n\n" + self.cmd_cycle_instruction + "\n\n" + gradle_guidelines
         return prompt
-
-    def construct_prompt(
-        self,
-        cycle_instruction: str,
-        thought_process_id: ThoughtProcessID,
-    ) -> ChatSequence:
-        """Constructs and returns a prompt with the following structure:
-        1. System prompt
-        2. Message history of the agent, truncated & prepended with running summary as needed
-        3. `cycle_instruction`
-
-        Params:
-            cycle_instruction: The final instruction for a thinking cycle
-        """
-
-        if not cycle_instruction:
-            raise ValueError("No instruction given")
-
-        #cycle_instruction_msg = Message("user", cycle_instruction)
-        cycle_instruction_tlength = 0
-        #count_message_tokens(
-        #    cycle_instruction_msg, self.llm.name
-        #)
-
-        append_messages: list[Message] = []
-
-        response_format_instr = self.response_format_instruction(thought_process_id)
-        #if response_format_instr:
-        #s    append_messages.append(Message("user", response_format_instr))
-
-        prompt = self.construct_base_prompt(
-            thought_process_id,
-            append_messages=append_messages,
-            reserve_tokens=cycle_instruction_tlength,
-        )
-
-        # ADD user input message ("triggering prompt")
-        #prompt.append(cycle_instruction_msg)
-
-        return prompt
-
-    # This can be expanded to support multiple types of (inter)actions within an agent
-    def response_format_instruction(self, thought_process_id: ThoughtProcessID) -> str:
-        if thought_process_id != "one-shot":
-            raise NotImplementedError(f"Unknown thought process '{thought_process_id}'")
-
-        RESPONSE_FORMAT_WITH_COMMAND = """```ts
-        interface Response {
-            // Express your thoughts based on the information that you have collected so far, the possible steps that you could do next and also your reasoning about fixing the bug in question"
-            thoughts: string;
-            command: {
-                name: string;
-                args: Record<string, any>;
-            };
-        }
-        ```
-        Here is an example of command call that you can output:
-        {
-            "thoughts": "I have information about the bug, but I need to run the test cases to understand the bug better.",
-            "command": {
-                "name": "run_tests",
-                "args": {
-                "name": "Chart",
-                "index": 1
-                }
-            }
-        }
-        """
-
-        RESPONSE_FORMAT_WITHOUT_COMMAND = """```ts
-        interface Response {
-            thoughts: {
-                // Thoughts
-                text: string;
-                reasoning: string;
-                // Short markdown-style bullet list that conveys the long-term plan
-                plan: string;
-                // Constructive self-criticism
-                criticism: string;
-                // Summary of thoughts to say to the user
-                speak: string;
-            };
-        }
-        ```"""
-
-        response_format = re.sub(
-            r"\n\s+",
-            "\n",
-            RESPONSE_FORMAT_WITHOUT_COMMAND
-            if self.config.openai_functions
-            else RESPONSE_FORMAT_WITH_COMMAND,
-        )
-
-        use_functions = self.config.openai_functions and self.command_registry.commands
-        return (
-            f"Respond strictly with JSON{', and also specify a command to use through a function_call' if use_functions else ''}. "
-            "The JSON should be compatible with the TypeScript type `Response` from the following:\n"
-            f"{response_format}\n"
-        )
-
-    def on_before_think(
-        self,
-        prompt: ChatSequence,
-        thought_process_id: ThoughtProcessID,
-        instruction: str,
-    ) -> ChatSequence:
-        """Called after constructing the prompt but before executing it.
-
-        Calls the `on_planning` hook of any enabled and capable plugins, adding their
-        output to the prompt.
-
-        Params:
-            instruction: The instruction for the current cycle, also used in constructing the prompt
-
-        Returns:
-            The prompt to execute
-        """
-        current_tokens_used = prompt.token_length
-        plugin_count = len(self.config.plugins)
-        for i, plugin in enumerate(self.config.plugins):
-            if not plugin.can_handle_on_planning():
-                continue
-            plugin_response = plugin.on_planning(
-                self.ai_config.prompt_generator, prompt.raw()
-            )
-            if not plugin_response or plugin_response == "":
-                continue
-            message_to_add = Message("system", plugin_response)
-            tokens_to_add = count_message_tokens(message_to_add, self.llm.name)
-            if current_tokens_used + tokens_to_add > self.send_token_limit:
-                logger.debug(f"Plugin response too long, skipping: {plugin_response}")
-                logger.debug(f"Plugins remaining at stop: {plugin_count - i}")
-                break
-            prompt.insert(
-                -1, message_to_add
-            )  # HACK: assumes cycle instruction to be at the end
-            current_tokens_used += tokens_to_add
-        return prompt
+    
 
     def on_response(
         self,
-        llm_response: ChatModelResponse,
+        llm_response: str,
         thought_process_id: ThoughtProcessID,
-        prompt: ChatSequence,
-        instruction: str,
+        prompt: str,
     ) -> tuple[CommandName | None, CommandArgs | None, AgentThoughts]:
         """Called upon receiving a response from the chat model.
 
@@ -745,45 +517,23 @@ class BaseAgent(metaclass=ABCMeta):
             The parsed command name and command args, if any, and the agent thoughts.
         """
 
-        # Save assistant reply to message history
-        self.history.append(prompt[-1])
-        self.history.add(
-            "assistant", llm_response.content, "ai_response"
-        )  # FIXME: support function calls
-
-        if self.cycle_type != "CMD":
-            try:
-                self.summary_result = json.loads(llm_response.content)
-            except:
-                self.summary_result = {"text": llm_response.content}
-            #self.steps_object[str(self.current_step)]["result_of_step"].append(self.summary_result)
-            return
-        
         try:
             return self.parse_and_process_response(
-                llm_response, thought_process_id, prompt, instruction
+                llm_response, thought_process_id, prompt
             )
         except SyntaxError as e:
             logger.error(f"Response could not be parsed: {e}")
             with open("parsing_erros_responses.txt", "a") as pers:
-                pers.write(llm_response.content+"\n")
-            # TODO: tune this message
-            self.history.add(
-                "system",
-                f"Your response could not be parsed."
-                "\n\nRemember to only respond using the specified format above!",
-            )
+                pers.write(llm_response+"\n")
             return None, None, {}
 
-        # TODO: update memory/context
 
     @abstractmethod
     def parse_and_process_response(
         self,
-        llm_response: ChatModelResponse,
+        llm_response: str,
         thought_process_id: ThoughtProcessID,
-        prompt: ChatSequence,
-        instruction: str,
+        prompt: str,
     ) -> tuple[CommandName | None, CommandArgs | None, AgentThoughts]:
         """Validate, parse & process the LLM's response.
 
@@ -800,26 +550,3 @@ class BaseAgent(metaclass=ABCMeta):
         """
         pass
 
-
-def add_history_upto_token_limit(
-    prompt: ChatSequence, history: MessageHistory, t_limit: int
-) -> list[Message]:
-    current_prompt_length = prompt.token_length
-    insertion_index = len(prompt)
-    limit_reached = False
-    trimmed_messages: list[Message] = []
-    for cycle in reversed(list(history.per_cycle())):
-        messages_to_add = [msg for msg in cycle if msg is not None]
-        tokens_to_add = count_message_tokens(messages_to_add, prompt.model.name)
-        if current_prompt_length + tokens_to_add > t_limit:
-            limit_reached = True
-
-        if not limit_reached:
-            # Add the most recent message to the start of the chain,
-            #  after the system prompts.
-            prompt.insert(insertion_index, *messages_to_add)
-            current_prompt_length += tokens_to_add
-        else:
-            trimmed_messages = messages_to_add + trimmed_messages
-
-    return trimmed_messages

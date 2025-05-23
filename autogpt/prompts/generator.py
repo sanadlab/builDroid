@@ -103,7 +103,7 @@ class PromptGenerator:
         """
         return {
             "commands": [
-                "## Commands",
+                "\n## Commands",
                 "You have access to the following commands (EXCLUSIVELY):",
                 f"{self._generate_commands()}",
             ],

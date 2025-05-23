@@ -17,7 +17,7 @@ from autogpt.logs import logger
 
 @command(
     "goals_accomplished",
-    "Goals are accomplished and there is nothing left to do",
+    "Build success and the .apk file is in the container",
     {
         "reason": {
             "type": "string",
@@ -45,7 +45,7 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
     apk_paths = [path for path in apk_paths if path] 
     
     if not apk_paths:
-        return "You have not successfully built the project since there is no .apk file in the container."
+        return "You have not successfully built the project since there is no .apk file in the container. Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem. Try again."
     for apk_path in apk_paths:
         try:
             host_apk_path = f"experimental_setups/{agent.exp_number}/files/{agent.project_path}"

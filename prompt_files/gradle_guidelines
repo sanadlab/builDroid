@@ -236,7 +236,7 @@ Fix:
 - IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
 - If you're not sure which error or the same error persists for a while, then check logs using:  
   ```
-  ./gradlew assembleDebug --stacktrace
+  ./gradlew assembleDebug --stacktrace -q
   ```
 - Use `--refresh-dependencies` if dependencies are outdated:  
   ```
@@ -252,5 +252,7 @@ Fix:
 - If BUILD SUCCESS but the output says Gradle used deprecated features, ignore the warning and check if the .apk file is generated. Your primary goal is to generate the .apk file.
 - When using linux commands, never use bash exclusive commands, instead use shell compatible commands.
 - Use `find . -name *.apk` to check output .apk file.
+- Gradle version 2.3.1 is not available in Google() or mavenCentral() repositories. Upgrade to 3.0.1.
 - Empty output does not necessarily mean command failure. For example, `export` or `chmod` commands do not output anything, so you can continue.
-- Some projects explicitly state required dependencies and environment versions in `README.md`. If build fails, read the `README.md` file to look for the cause of failure
+- Some projects explicitly state required dependencies and environment versions in `README.md`. If build fails, read the `README.md` file to look for the cause of failure.
+- Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem.

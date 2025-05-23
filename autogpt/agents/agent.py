@@ -5,6 +5,8 @@ import time
 import os
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
+import google.generativeai as genai
+from google.generativeai.generative_models import ChatSession
 
 if TYPE_CHECKING:
     from autogpt.config import AIConfig, Config
@@ -39,6 +41,7 @@ class Agent(BaseAgent):
         memory: VectorMemory,
         triggering_prompt: str,
         config: Config,
+        chat: ChatSession = None,
         cycle_budget: Optional[int] = None,
         experiment_file: str = None
     ):
@@ -46,6 +49,7 @@ class Agent(BaseAgent):
             ai_config=ai_config,
             command_registry=command_registry,
             config=config,
+            chat=chat,
             default_cycle_instruction=triggering_prompt,
             cycle_budget=cycle_budget,
             experiment_file = experiment_file
@@ -102,26 +106,6 @@ class Agent(BaseAgent):
 
         return super().construct_base_prompt(*args, **kwargs)
 
-    def on_before_think(self, *args, **kwargs) -> ChatSequence:
-        prompt = super().on_before_think(*args, **kwargs)
-
-        self.log_cycle_handler.log_count_within_cycle = 0
-        self.log_cycle_handler.log_cycle(
-            self.ai_config.ai_name,
-            self.created_at,
-            self.cycle_count,
-            self.history.raw(),
-            FULL_MESSAGE_HISTORY_FILE_NAME,
-        )
-        self.log_cycle_handler.log_cycle(
-            self.project_path,
-            self.created_at,
-            self.cycle_count,
-            prompt.raw(),
-            CURRENT_CONTEXT_FILE_NAME,
-        )
-        return prompt
-
     def execute(
         self,
         command_name: str | None,
@@ -155,39 +139,29 @@ class Agent(BaseAgent):
             if len(str(command_result)) < 5000:
                 result = f"Command {command_name} returned: " f"{command_result}"
             else:
-                result = f"Command {command_name} returned: " f"{str(command_result)[:4000]} ... {str(command_result)[-1000:]}" 
-            result_tlength = count_string_tokens(str(command_result), self.llm.name)
-            memory_tlength = count_string_tokens(
-                str(self.history.summary_message()), self.llm.name
-            )
-            #if result_tlength + memory_tlength > self.send_token_limit:
-            #    result = f"Failure: command {command_name} returned too much output. \
-            #        Do not execute this command again with the same arguments."
+                result = f"Command {command_name} returned: " f"{str(command_result)[:2000]}  ...  {str(command_result)[-3000:]}" 
+                
 
             for plugin in self.config.plugins:
                 if not plugin.can_handle_post_command():
                     continue
                 result = plugin.post_command(command_name, result)
-        # Check if there's a result from the command append it to the message
-        if result is None:
-            self.history.add("user", "Unable to execute command", "action_result")
-        else:
-            self.history.add("user", result, "action_result")
 
         return result
 
 
     def parse_and_process_response(
-        self, llm_response: ChatModelResponse, *args, **kwargs
+        self, llm_response: str, *args, **kwargs
     ) -> tuple[CommandName | None, CommandArgs | None, AgentThoughts]:
-        if not llm_response.content:
+        
+        if not llm_response:
             raise SyntaxError("Assistant response has no text content")
+        
         with open("experimental_setups/experiments_list.txt") as eht:
             exps = eht.read().splitlines()
-
         with open(os.path.join("experimental_setups", exps[-1], "responses", "model_responses_{}".format(self.project_path)), "a+") as patf:
-            patf.write(llm_response.content)
-        assistant_reply_dict = extract_dict_from_response(llm_response.content)
+            patf.write(llm_response + "\n")
+        assistant_reply_dict = extract_dict_from_response(llm_response)
 
         if "command" not in assistant_reply_dict:
             assistant_reply_dict["command"] = {"name": "missing_command", "args":{}}
@@ -218,6 +192,7 @@ class Agent(BaseAgent):
                     if "_" in new_command_dict["args"]["project_name"]:
                         name_only = new_command_dict["args"]["project_name"].split("_")[0]
                         new_command_dict["args"]["project_name"] = name_only
+
                 if new_command_dict["name"] in [
                     "write_fix", 
                     "try_fixes", 
@@ -251,9 +226,7 @@ class Agent(BaseAgent):
         if assistant_reply_dict != {}:
             # Get command name and arguments
             try:
-                command_name, arguments = extract_command(
-                    assistant_reply_dict, llm_response, self.config
-                )
+                command_name, arguments = extract_command(assistant_reply_dict)
                 response = command_name, arguments, assistant_reply_dict
             except Exception as e:
                 logger.error("Error: \n", str(e))
@@ -268,7 +241,7 @@ class Agent(BaseAgent):
         return response
 
 def extract_command(
-    assistant_reply_json: dict, assistant_reply: ChatModelResponse, config: Config
+    assistant_reply_json: dict
 ) -> tuple[str, dict[str, str]]:
     """Parse the response and return the command name and arguments
 
@@ -285,13 +258,6 @@ def extract_command(
 
         Exception: If any other error occurs
     """
-    if config.openai_functions:
-        if assistant_reply.function_call is None:
-            return "Error:", {"message": "No 'function_call' in assistant reply"}
-        assistant_reply_json["command"] = {
-            "name": assistant_reply.function_call.name,
-            "args": json.loads(assistant_reply.function_call.arguments),
-        }
     try:
         if "command" not in assistant_reply_json:
             return "Error:", {"message": "Missing 'command' object in JSON"}

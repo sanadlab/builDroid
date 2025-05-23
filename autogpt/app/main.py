@@ -17,7 +17,6 @@ from colorama import Fore, Style
 
 from autogpt.agents import Agent, AgentThoughts, CommandArgs, CommandName
 from autogpt.app.configurator import create_config
-from autogpt.app.setup import prompt_user
 from autogpt.app.spinner import Spinner
 from autogpt.app.utils import (
     clean_input,
@@ -155,7 +154,6 @@ def run_auto_gpt(
         goals=ai_goals,
     )
     ai_config.command_registry = command_registry
-    # print(prompt)
 
     # add chat plugins capable of report to logger
     if config.chat_messages_enabled:
@@ -261,9 +259,8 @@ def run_interaction_loop(
     current_ts = time.time()
     parsable_log_file = os.path.join(os.getcwd(),"parsable_logs/{}".format(project_path+str(current_ts)) + ".json")
     
-    dft = "FROM ubuntu:22.04\n\nLABEL Description=\"This image provides a base Android development environment.\"\n\nENV DEBIAN_FRONTEND=noninteractive\n\n# set default build arguments\nARG SDK_VERSION=commandlinetools-linux-11076708_latest.zip\nARG ANDROID_BUILD_VERSION=35\nARG ANDROID_TOOLS_VERSION=35.0.0\n\nENV ADB_INSTALL_TIMEOUT=10\nENV ANDROID_HOME=/home/vscode/Android/Sdk\nENV ANDROID_SDK_ROOT=${ANDROID_HOME}\n\nENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64\nENV PATH=${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/emulator:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${PATH}\n\n# Install system dependencies\nRUN apt update -qq && apt install -qq -y --no-install-recommends \\\n        apt-transport-https \\\n        curl \\\n        file \\\n        git \\\n        libc++1-11 \\\n        libgl1 \\\n        make \\\n        openjdk-17-jdk-headless \\\n        patch \\\n        rsync \\\n        unzip \\\n        sudo \\\n        ninja-build \\\n        zip \\\n    && rm -rf /var/lib/apt/lists/*;\n\n# Download and install Android SDK command-line tools\nRUN curl -sS https://dl.google.com/android/repository/${SDK_VERSION} -o /tmp/sdk.zip \\\n    && mkdir -p ${ANDROID_HOME}/cmdline-tools \\\n    && unzip -q -d ${ANDROID_HOME}/cmdline-tools /tmp/sdk.zip \\\n    && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \\\n    && rm /tmp/sdk.zip \\\n    && yes | sdkmanager --licenses \\\n    && yes | sdkmanager \"platform-tools\" \\\n        \"platforms;android-$ANDROID_BUILD_VERSION\" \\\n        \"build-tools;$ANDROID_TOOLS_VERSION\" \\\n    && rm -rf ${ANDROID_HOME}/.android \\\n    && chmod 777 -R ${ANDROID_HOME}\n\n# Copy project files\nCOPY . ."
-    #with open("prompt_files/Template.dockerfile") as df:
-    #    dft = df.read()
+    with open("prompt_files/Template.dockerfile") as df:
+        dft = df.read()
     with open(os.path.join(agent.workspace_path, "Dockerfile"), "w", encoding="utf-8") as f:
         f.write(dft)
     image_log = ""
@@ -284,22 +281,18 @@ def run_interaction_loop(
             "project": project_path,
             "ExecutionAgent_attempt": []
         }, plf)
-    
+        
+    command_name = None
+    command_args = None
+    result = None
     while cycles_remaining > 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
-        #logger.info("XXXXXXXXXXXXXXXXXXX {} XXXXXXXXXXXXXXXXXXXX".format(agent.cycle_type))
-        if agent.cycle_type != "CMD":
-            #agent.think()
-            agent.cycle_type = "CMD"
-            #logger.info(" YYYYYYYYYYYYYYYYY SUMMARY CYCLE EXECUTED YYYYYYYYYYYYYYYYYYYY")
-            logger.info(str(agent.summary_result))
-            continue
         ########
         # Plan #
         ########
         # Have the agent determine the next action to take.
         with spinner:
-            command_name, command_args, assistant_reply_dict = agent.think()
+            command_name, command_args, assistant_reply_dict = agent.think(command_name, command_args, result)
 
         ###############
         # Update User #
@@ -369,62 +362,43 @@ def run_interaction_loop(
             agent.max_budget = cycles_remaining
         if command_name != "human_feedback":
             cycles_remaining -= 1
-        if agent.cycle_type == "CMD":
-            if command_name == "write_to_file":
-                simple_name = command_args["filename"].split("/")[-1] if "/" in command_args["filename"] else command_args["filename"]
-                # todo save written files here
-                if not os.path.exists("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path)):
-                    os.system("mkdir experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
+        if command_name == "write_to_file":
+            simple_name = command_args["filename"].split("/")[-1] if "/" in command_args["filename"] else command_args["filename"]
+            # todo save written files here
+            if not os.path.exists("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path)):
+                os.system("mkdir experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
 
-                files_list = os.listdir("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
+            files_list = os.listdir("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
 
-                #with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
-                #    wrf.write(command_args["text"])
+            #with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
+            #    wrf.write(command_args["text"])
 
-            agent.project_path = agent.project_path.replace(".git","")
-            result = agent.execute(command_name, command_args, user_input)
-            signal.alarm(0)
-            
-            with open(parsable_log_file) as plf:
-                parsable_content = json.load(plf)
+        agent.project_path = agent.project_path.replace(".git","")
+        result = agent.execute(command_name, command_args, user_input)
+        signal.alarm(0)
+        
+        with open(parsable_log_file) as plf:
+            parsable_content = json.load(plf)
 
-            parsable_content["ExecutionAgent_attempt"].append(
-                {
-                    "command_name": command_name,
-                    "command_args": command_args,
-                    "command_result": result,
-                    "prompt_content": agent.prompt_text
-                }
-            )
+        parsable_content["ExecutionAgent_attempt"].append(
+            {
+                "command_name": command_name,
+                "command_args": command_args,
+                "command_result": result,
+            }
+        )
 
-            with open(parsable_log_file, "w") as plf:
-                json.dump(parsable_content, plf)
+        with open(parsable_log_file, "w") as plf:
+            json.dump(parsable_content, plf)
 
-            if result is not None:
-                logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
-                agent.cycle_type = "SUMMARY"
-                agent.think()
-                agent.history = agent.history[:-2]
-                
-                agent.commands_and_summary.append(("Call to tool {} with arguments {}".format(command_name, command_args), "{}".format(agent.summary_result)))
-                with open(parsable_log_file) as plf:
-                    parsable_content = json.load(plf)
+        if result is not None:
+            logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
+        else:
+            logger.typewriter_log("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
 
-                parsable_content["ExecutionAgent_attempt"][-1]["result_summary"] = agent.summary_result
-
-                with open(parsable_log_file, "w") as plf:
-                    json.dump(parsable_content, plf)
-
-                agent.cycle_type = "CMD"
-                parsing_tests = parse_test_results(str(result))
-                if parsing_tests != "No test results found in log file.":
-                    agent.tests_executed = True
-            else:
-                logger.typewriter_log("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
-
-            if not os.path.exists("experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path)):
-                os.system("mkdir experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path))
-            agent.save_to_file("experimental_setups/{}/saved_contexts/{}/cycle_{}".format(agent.exp_number, agent.project_path, cycle_budget - cycles_remaining))
+        if not os.path.exists("experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path)):
+            os.system("mkdir experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path))
+        agent.save_to_file("experimental_setups/{}/saved_contexts/{}/cycle_{}".format(agent.exp_number, agent.project_path, cycle_budget - cycles_remaining))
 
 import re
 
@@ -653,8 +627,8 @@ Continue ({config.authorise_key}/{config.exit_key}): """,
             ai_config = AIConfig()
 
     if any([not ai_config.ai_name, not ai_config.ai_role, not ai_config.ai_goals]):
-        ai_config = prompt_user(config)
-        ai_config.save(config.workdir / config.ai_settings_file)
+        raise ValueError(
+            "AI name, role, and goals must be set in the config file or passed as arguments.")
 
     if config.restrict_to_workspace:
         logger.typewriter_log(

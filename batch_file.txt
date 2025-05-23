@@ -1,9 +1,4 @@
-https://github.com/Dar9586/NClientV2
+https://github.com/LeoColman/Petals
 https://github.com/Leszek111/ReLaunchX
-https://github.com/CasperVerswijvelt/Better-Internet-Tiles
-https://github.com/KaeruCT/Go-To-Sleep-Android
-https://github.com/HobbyOneDroid/HashDroid
-https://github.com/ArneBab/Icicle
-https://github.com/F0x1d/LogFox
-https://github.com/FunkyMuse/SubHub
-https://github.com/Kestutis-Z/World-Weather
+https://github.com/LibChecker/LibChecker
+https://github.com/KafuuNeko/BiliDownload
