@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from colorama import Fore
 
@@ -10,6 +10,7 @@ from autogpt.config import Config
 import google.generativeai as genai
 from google.generativeai.generative_models import ChatSession
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+from pydantic import BaseModel
 
 from ..api_manager import ApiManager
 from ..base import (
@@ -83,17 +84,28 @@ def send_request(
 ) -> str:
     """Create a chat completion using either OpenAI or Gemini, based on config."""
 
+    class Command(BaseModel):
+        name: str
+        args: dict[str, Any]
+
+    class ResponseSchema(BaseModel):
+        thoughts: str
+        command: Command
+        
     chat_completion_kwargs = {
-        "temperature": temperature
+        "temperature": temperature,
+        "response_mime_type": "application/json",
+        "response_schema": ResponseSchema,
     }
+
     backoff_base = 1.2
-    max_attempts = 10
+    max_attempts = 5
     # Dispatch to OpenAI or Gemini based on config
     if config.openai_api_base is not None and "google" in config.openai_api_base:
         backoff_msg = f"{Fore.RED}Rate Limit Reached. Waiting {{backoff}} seconds...{Fore.RESET}"
         error_msg = f"{Fore.RED}Unknown Error. Waiting {{backoff}} seconds...{Fore.RESET}"
         for attempt in range(1, max_attempts + 1):
-            backoff = backoff_base ** (attempt + 2)
+            backoff = round(backoff_base ** (attempt + 2), 2)
             try:
                 response = chat.send_message(prompt, stream=stream, generation_config=chat_completion_kwargs)
                 full_response = ""

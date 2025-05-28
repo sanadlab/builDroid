@@ -32,14 +32,14 @@ make altinstall  # altinstall to avoid overwriting default python
 update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.10 1
 update-alternatives --config python3
 
-# Install pip for Python 3.10
-#curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-#python3.10 get-pip.py
+# Install pip and google-genai package
+apt update
+apt install python3-venv python3-pip
+pip install google-genai
 
 # Clean up
 rm -rf /Python-$PYTHON_VERSION
 rm Python-$PYTHON_VERSION.tgz
-#rm get-pip.py
 
 # Check if Python 3.10 is installed correctly
 python3 --version

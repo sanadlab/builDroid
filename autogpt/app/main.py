@@ -36,7 +36,7 @@ from autogpt.prompts.prompt import DEFAULT_TRIGGERING_PROMPT
 from autogpt.speech import say_text
 from autogpt.workspace import Workspace
 from scripts.install_plugin_deps import install_plugin_dependencies
-from autogpt.commands.docker_helpers_static import build_image, start_container, execute_command_in_container, check_image_exists
+from autogpt.commands.docker_helpers_static import build_image, start_container, stop_and_remove, check_image_exists
 
 
 def run_auto_gpt(
@@ -267,7 +267,8 @@ def run_interaction_loop(
     if not check_image_exists(f"{agent.workspace_path}_image:ExecutionAgent"):
         image_log = build_image(agent.workspace_path, f"{agent.workspace_path}_image:ExecutionAgent")
         if image_log.startswith("An error occurred while building the Docker image"):
-            print("The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log) 
+            print(image_log)
+            exit(1)
     container = start_container(f"{agent.workspace_path}_image:ExecutionAgent")
     if container is not None:
         agent.container = container
@@ -304,8 +305,9 @@ def run_interaction_loop(
         # Get user input #
         ##################
         if cycles_remaining < 1:  # Last cycle
-            #if not agent.keep_container:
-            #    stop_and_remove(agent.container)
+            print(f"Last cycle. keep_container: {agent.keep_container}")
+            if not agent.keep_container:
+                stop_and_remove(agent.container)
             #    os.system("docker system prune -af")
             exit()
             user_feedback, user_input, new_cycles_remaining = get_user_feedback(

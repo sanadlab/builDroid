@@ -251,25 +251,11 @@ import docker
 
 def start_container(image_tag):
     client = docker.from_env()
-    try:        
-        # Check if a container with this image is already running
-        running_containers = client.containers.list(filters={"ancestor": image_tag, "status": "running"})
-        if running_containers:
-            print(f"Attaching to existing running container {running_containers[0].short_id}...")
-            container = running_containers[0]
-        else:
-            # Check if a stopped container exists
-            stopped_containers = client.containers.list(filters={"ancestor": image_tag, "status": "exited"})
-            if stopped_containers:
-                container = stopped_containers[0]
-                print(f"Restarting stopped container {container.short_id}...")
-                container.start()
-            else:
-                # If no container exists, create and start a new one
-                print(f"Running new container from image {image_tag}...")
-                container = client.containers.run(image_tag, detach=True, tty=True)
-                print(f"Container {container.short_id} is running.")
-        
+    try:
+        print(f"Running new container from image {image_tag}...")
+        container = client.containers.run(image_tag, detach=True, tty=True)
+        print(f"Container {container.short_id} is running.")
+            
         create_screen_session(container)
         execute_command_in_container(container, "screen -S my_screen_session -X stuff 'apt install coreutils'")
         return container

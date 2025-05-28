@@ -104,7 +104,7 @@ class Agent(BaseAgent):
                 kwargs["append_messages"] = []
             kwargs["append_messages"].append(budget_msg)
 
-        return super().construct_base_prompt(*args, **kwargs)
+        return super().construct_base_prompt()
 
     def execute(
         self,

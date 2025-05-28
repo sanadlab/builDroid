@@ -12,9 +12,11 @@ from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Literal, Optional
 import google.generativeai as genai
 from google.generativeai.generative_models import ChatSession
+from google.generativeai import types
 import json
 import os
 import subprocess
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from autogpt.config import AIConfig, Config
@@ -159,7 +161,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.project_path = self.hyperparams["project_path"]
         self.project_url = self.hyperparams["project_url"]
         self.workspace_path = "execution_agent_workspace"
-        self.keep_container = True if self.hyperparams["keep_container"] == "TRUE" else False
+        self.keep_container = True if self.hyperparams["keep_container"] == "true" else False
         
         self.cycle_type = "CMD"
         self.tests_executed = False
@@ -400,19 +402,22 @@ class BaseAgent(metaclass=ABCMeta):
         Returns:
             The command name and arguments, if any, and the agent's thoughts.
         """
+        if self.config.openai_api_base is None:
+            llm_name = self.config.smart_llm if self.big_brain else self.config.fast_llm
+        
         if self.cycle_count == 0: # Initial cycle: send guidelines as system instructions
             prompt = self.construct_base_prompt()
             genai.configure(api_key=self.config.openai_api_key)
             model = genai.GenerativeModel(self.config.other_llm)
-            self.chat = model.start_chat(history=[])
             logger.info(
                 f"{Fore.GREEN}Starting chat with model {self.config.other_llm}, temperature {self.config.temperature}{Fore.RESET}"
             )
+            self.chat = model.start_chat(history=[])
         else:
             prompt = self.cmd_cycle_instruction + "\n================Previous Command================\n" + command_name + "\n" + str(command_args) + "\n================Command Result================\n" + result
             
         with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "a+") as patf:
-            patf.write("\n\n\n" + prompt)
+            patf.write("================================PROMPT " + str(self.cycle_count) + "================================" + prompt + "\n\n\n")
         
         logger.info(
             f"{Fore.GREEN}Sending request to model {self.config.other_llm}{Fore.RESET}"
@@ -421,7 +426,7 @@ class BaseAgent(metaclass=ABCMeta):
             prompt,
             self.config,
             stream = True,
-            chat = self.chat,
+            chat = self.chat
         )
 
         self.cycle_count += 1
@@ -449,22 +454,11 @@ class BaseAgent(metaclass=ABCMeta):
 
 
     def construct_base_prompt(
-        self,
-        thought_process_id: ThoughtProcessID = "one-shot",
-        prepend_messages: list[Message] = [],
-        append_messages: list[Message] = [],
-        reserve_tokens: int = 0,
+        self
     ) -> str:
-        """Constructs and returns a prompt with the following structure:
-        1. System prompt
-        2. `prepend_messages`
-        3. Message history of the agent, truncated & prepended with running summary as needed
-        4. `append_messages`
-
-        Params:
-            prepend_messages: Messages to insert between the system prompt and message history
-            append_messages: Messages to insert after the message history
-            reserve_tokens: Number of tokens to reserve for content that is added later
+        """
+        Constructs the base prompt for the agent, including the system prompt,
+        the agent's role, and any additional instructions.
         """
 
         ## added this part to change the prompt structure

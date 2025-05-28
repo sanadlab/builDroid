@@ -79,8 +79,8 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
 #Average coverage: [PUT CONCRETE VALUE HERE]
 #                    """
     logger.info(title="Shutting down...\n", message=reason)
-    #if not agent.keep_container and agent.container != None:
-        #stop_and_remove(agent.container)
+    if not agent.keep_container and agent.container != None:
+        stop_and_remove(agent.container)
         #os.system("docker system prune -af")
     with open(os.path.join("experimental_setups", agent.exp_number, "saved_contexts", agent.project_path, "SUCCESS"), "w") as ssf:
         ssf.write("SUCCESS")

@@ -3,7 +3,7 @@ import argparse
 template=\
 """ai_goals:
 - Build the Android Project: You should run './gradlew assembleDebug' to build the project.
-- Resolve Issues: If build fails, determine the cause of failure(ex. missing dependencies, outdated versions) and attempt to resolve it. The general guideline provides common gradle build errors and their solutions.
+- Resolve Issues: If build fails, determine the cause of failure(ex. missing dependencies, version mismatch) and attempt to resolve it. The general guideline provides common gradle build errors and their solutions.
 ai_name: ExecutionAgent
 ai_role: |
   an AI assistant specialized in automatically setting up a given android project and building it. Your role involves automating the process of gathering project information/requirements and dependencies, modifying the execution environment, and running test suites. You should always gather essential details such as language and version, dependencies, and testing frameworks; Following that you set up the environment and execute test suites based on collected information;
