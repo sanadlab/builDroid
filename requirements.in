@@ -1,0 +1,9 @@
+docker
+google-generativeai==0.8.5
+langchain
+numpy
+openai
+packaging
+pandas
+PyYAML
+spacy

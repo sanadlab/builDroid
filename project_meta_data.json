@@ -1,10 +1,10 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "Dico",
-    "project_url": "https://github.com/Flinou/Dico",
+    "project_path": "Simple-Cleanup",
+    "project_url": "https://github.com/EmmanuelMess/Simple-Cleanup",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "image": "Dico_image:ExecutionAgent",
+    "image": "Simple-Cleanup_image:ExecutionAgent",
     "keep_container": false
 }

@@ -33,9 +33,9 @@ update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.10
 update-alternatives --config python3
 
 # Install pip and google-genai package
-apt update
-apt install python3-venv python3-pip
-pip install google-genai
+apt update -y
+apt install -y python3-venv python3-pip
+python3 -m pip install google-generativeai
 
 # Clean up
 rm -rf /Python-$PYTHON_VERSION
