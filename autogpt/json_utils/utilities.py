@@ -12,36 +12,20 @@ from autogpt.logs import logger
 LLM_DEFAULT_RESPONSE_FORMAT = "llm_response_format_1"
 
 
-def extract_dict_from_response(response_content: str) -> dict[str, Any]:
-    # Someimes the response includes the JSON in a code block with ```
-    start_triple_quote = response_content.find("```")
-    if start_triple_quote != -1:
-        response_content = response_content[start_triple_quote:]
-        end_triple_quote = response_content[3:].find("```")
-        if end_triple_quote !=-1:
-            response_content = response_content[:end_triple_quote+3]
-            response_content = "\n".join(response_content.split("\n")[1:])
-            
-        """if response_content.startswith("```") and response_content.endswith("```"):
-            response_content = response_content.split("\n")[1:]
-            for i in range(len(response_content)-1, 0, -1):
-                if response_content[i]=="```":
-                    response_content = response_content[:i]
-                    break
-            response_content = "\n".join(response_content)"""
-            # Discard the first and last ```, then re-join in case the response naturally included ```
-            #response_content = "```".join(response_content.split("```")[1:-1])
-
-    # response content comes from OpenAI as a Python `str(content_dict)`, literal_eval reverses this
+def extract_dict_from_response(response_string: str) -> dict[str, Any]:    
     try:
-        return ast.literal_eval(response_content)
-    except BaseException as e:
-        with open("response_content.txt", "w") as rct:
-            rct.write(response_content)
-        logger.info(f"Error parsing JSON response with literal_eval {e}")
-        logger.debug(f"Invalid JSON received in response: {response_content}")
-        # TODO: How to raise an error here without causing the program to exit?
-        return {}
+        # Attempt a direct parse
+        return json.loads(response_string)
+    except json.JSONDecodeError:
+        # If direct parse fails, attempt to find JSON within the string
+        start_index = response_string.find('{')
+        end_index = response_string.rfind('}')
+        try:
+            json_string = response_string[start_index:end_index + 1]
+            return json.loads(json_string)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON from response string: {e}")
+            return {"command": {"name": "missing_command", "args": {}}, "thoughts": "Failed to understand the LLM response."}
 
 
 def llm_response_schema(

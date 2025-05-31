@@ -29,8 +29,6 @@ def main():
         print("Missing packages:")
         print(", ".join(missing_packages))
         sys.exit(1)
-    else:
-        print("All packages are installed.")
 
 
 if __name__ == "__main__":

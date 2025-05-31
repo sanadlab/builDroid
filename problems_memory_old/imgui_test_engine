@@ -1,8 +1,0 @@
-Feedback from previous attempts
-- Documentation: Check for any online documentation or alternative setup guides for imgui_test_engine to understand dependencies and directory structure requirements.
-
-- Submodule Verification: After cloning, immediately run git submodule update --init --recursive to ensure all submodules are initialized and available.
-
-- Dependency Paths: If imgui.h or other dependencies are missing, verify their paths or try modifying the make commands to include -I flags pointing to the correct directories (e.g., thirdparty/implot).
-
-- Build in Steps: Continue building components step-by-step to verify each stage, checking each dependency and directory after initialization to avoid cumulative errors.

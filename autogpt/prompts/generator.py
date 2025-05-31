@@ -36,13 +36,10 @@ class PromptGenerator:
         self.commands = []
         self.command_registry = None
         #self.simple_patterns = []
-        self.general_guidelines: list[str] = []
-
-    def add_simple_pattern(self, pattern: str) -> None:
-        self.simple_patterns.append(pattern)
+        self.general_guidelines = ""
 
     def add_general_guidelines(self, line:str) -> None:
-        self.general_guidelines.append(line)
+        self.general_guidelines += line
 
     def add_command(
         self,
@@ -76,54 +73,4 @@ class PromptGenerator:
         )
 
     def _generate_numbered_list(self, items: list[str], start_at: int = 1) -> str:
-        """
-        Generate a numbered list containing the given items.
-
-        Args:
-            items (list): A list of items to be numbered.
-            start_at (int, optional): The number to start the sequence with; defaults to 1.
-
-        Returns:
-            str: The formatted numbered list.
-        """
-        return "\n".join(f"{i}. {item}" for i, item in enumerate(items, start_at))
-
-    def generate_prompt_string(
-        self,
-        *,
-        additional_simple_patterns: list[str] = [],
-        additional_guidelines: list[str] = []
-    ) -> str:
-        """
-        Generate a prompt string based on the constraints, commands, resources,
-            and best practices.
-
-        Returns:
-            str: The generated prompt string.
-        """
-        return {
-            "commands": [
-                "## Commands",
-                "You have access to the following commands (EXCLUSIVELY):",
-                f"{self._generate_commands()}",
-            ],
-            "general guidelines":[
-                "## General guidelines:",
-                "Try to adhere to the following guidlines to the best of your ability:",
-                f"{self._generate_numbered_list(self.general_guidelines + additional_guidelines)}",
-            ]
-        }
-
-    def _generate_commands(self) -> str:
-        command_strings = []
-        if self.command_registry:
-            command_strings += [
-                str(cmd)
-                for cmd in self.command_registry.commands.values()
-                if cmd.enabled
-            ]
-
-        # Add commands from plugins etc.
-        command_strings += [str(cmd) for cmd in self.commands]
-        #print("->>>>>>>>>>>>LIST OF AVAILABLE COMMANDS: " + str(command_strings))
-        return self._generate_numbered_list(command_strings)
+        return 

@@ -45,7 +45,7 @@ When this mode is used, ExecutionAgent will:
 3. Clone the repository and set up metadata.  
 4. Launch the main loop of ExecutionAgent to build the project and run its test cases.  
 
-The `-l` option allows you to specify the number of cycles which corresponds to the number of actions the agent can execute. By default, if `-l` is not provided, it will be set to 40. If you want to set a different number, simply pass the desired value after `-l`. For example, `-l 50` will use 50 instead of the default value.  
+The `-l` option allows you to specify the number of cycles which corresponds to the number of actions the agent can execute. By default, if `-l` is not provided, it will be set to 30. If you want to set a different number, simply pass the desired value after `-l`. For example, `-l 50` will use 50 instead of the default value.  
 
 ### 2️⃣ Batch File Mode  
 Prepare a batch file listing projects to process in the format:  
@@ -84,7 +84,7 @@ To clean all the logs and unset the api token, you can use the following command
 
 ### Control the Number of Iterations:
 By default, the number of attempts `ExecutionAgent` will make is 3. After each attempt, `ExecutionAgent` learns from the previous one and adjust its strategy.
-In each attempt, the agent executes a number of commands (or cycles) defined by the parameter `l` mentioned above (default = 40).
+In each attempt, the agent executes a number of commands (or cycles) defined by the parameter `l` mentioned above (default = 30).
 
 To set the number of attempts, you need to change line 17 (local max_retries=2) to any number you want (the total number of attempts would be max_retries +1).
 

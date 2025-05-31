@@ -155,13 +155,4 @@ class Workspace:
     def init_workspace_directory(
         config: Config, override_workspace_path: Optional[str | Path] = None
     ) -> Path:
-        if override_workspace_path is None:
-            workspace_path = config.workdir / "execution_agent_workspace"
-        elif type(override_workspace_path) == str:
-            workspace_path = Path(override_workspace_path)
-        else:
-            workspace_path = override_workspace_path
-
-        # TODO: pass in the ai_settings file and the env file and have them cloned into
-        #   the workspace directory so we can bind them to the agent.
-        return Workspace.make_workspace(workspace_path)
+        return 

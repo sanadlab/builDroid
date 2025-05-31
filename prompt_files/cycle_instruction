@@ -1,5 +1,4 @@
-Determine exactly one command to use based on the given goals and the progress you have made so far, and respond using the JSON schema specified previously:
-Respond strictly with JSON. The JSON should be compatible with the TypeScript type `Response` from the following:
+Determine exactly one command to use based on the given goals and the progress you have made so far, and respond using the JSON response schema provided. The JSON should be compatible with the TypeScript type `Response` from the following:
 ```ts
 interface Response {
 // Express your thoughts based on the information that you have collected so far, the possible steps that you could do next and also your reasoning. Always express your thoughts in english."

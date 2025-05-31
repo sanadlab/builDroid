@@ -25,7 +25,6 @@ class Logger(metaclass=Singleton):
 
     def __init__(self):
         # create log directory if it doesn't exist
-        # TODO: use workdir from config
         self.log_dir = Path(__file__).parent.parent.parent / "logs"
         if not self.log_dir.exists():
             self.log_dir.mkdir()
@@ -101,10 +100,6 @@ class Logger(metaclass=Singleton):
         speak_text: bool = False,
         level: int = logging.INFO,
     ) -> None:
-        from autogpt.speech import say_text
-
-        if speak_text and self.config and self.config.speak_mode:
-            say_text(f"{title}. {content}", self.config)
 
         for plugin in self.chat_plugins:
             plugin.report(f"{title}. {content}")

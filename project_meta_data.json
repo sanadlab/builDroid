@@ -1,11 +1,10 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "marshmallow",
-    "project_url": "https://github.com/marshmallow-code/marshmallow",
+    "project_path": "Simple-Cleanup",
+    "project_url": "https://github.com/EmmanuelMess/Simple-Cleanup",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "language": "Python",
-    "image": "marshmallow_image:ExecutionAgent",
-    "keep_container": "FALSE"
+    "image": "Simple-Cleanup_image:ExecutionAgent",
+    "keep_container": false
 }

@@ -15,10 +15,8 @@ from typing import Generator, Literal
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
 from autogpt.logs import logger
-from autogpt.memory.vector import MemoryItem, VectorMemory
 from autogpt.commands.docker_helpers_static import build_image, start_container, execute_command_in_container, write_string_to_file, read_file_from_container, check_image_exists
 from .decorators import sanitize_path_arg
-from .file_operations_utils import read_textual_file
 
 import xml.etree.ElementTree as ET
 import yaml
@@ -156,7 +154,7 @@ def log_operation(
     )
 
 
-"""@command(
+@command(
     "read_file",
     "Read an existing file",
     {
@@ -166,7 +164,7 @@ def log_operation(
             "required": True,
         }
     },
-)"""
+)
 #@sanitize_path_arg("file_path")
 def read_file(file_path: str, agent: Agent) -> str:
     """Read a file and return the contents
@@ -177,87 +175,11 @@ def read_file(file_path: str, agent: Agent) -> str:
     Returns:
         str: The contents of the file
     """
-    if not agent.container:
-        print("READING FILE FROM OUTSIDE CONTAINER CRAZZZZZZZZZZZZZZZZZZZZZY")
-        try:
-            workspace = agent.workspace_path
-            project_path = agent.project_path
-            if file_path.lower().endswith("xml"):
-                yaml_content = convert_xml_to_yaml(os.path.join(workspace, project_path, file_path))
-                return "The xml file was converted to yaml format for better readability:\n"+ yaml_content
-        
-            content = read_textual_file(os.path.join(workspace, project_path, file_path), logger)
-            return content
-            # TODO: invalidate/update memory when file is edited
-            file_memory = MemoryItem.from_text_file(content, file_path, agent.config)
-            if len(file_memory.chunks) > 1:
-                return file_memory.summary
-
-            return content
-        except Exception as e:
-            return f"Error: {str(e)}"
-    else:
-        return read_file_from_container(agent.container, os.path.join("/app", agent.project_path, file_path.split("/")[-1]))
-
-
-def ingest_file(
-    filename: str,
-    memory: VectorMemory,
-) -> None:
-    """
-    Ingest a file by reading its content, splitting it into chunks with a specified
-    maximum length and overlap, and adding the chunks to the memory storage.
-
-    Args:
-        filename: The name of the file to ingest
-        memory: An object with an add() method to store the chunks in memory
-    """
-    try:
-        logger.info(f"Ingesting file {filename}")
-        content = read_file(filename)
-
-        # TODO: differentiate between different types of files
-        file_memory = MemoryItem.from_text_file(content, filename)
-        logger.debug(f"Created memory: {file_memory.dump(True)}")
-        memory.add(file_memory)
-
-        logger.info(f"Ingested {len(file_memory.e_chunks)} chunks from {filename}")
-    except Exception as err:
-        logger.warn(f"Error while ingesting file '{filename}': {err}")
-
-def update_dockerfile_content(dockerfile_content: str) -> str:
-    lines = dockerfile_content.splitlines()
-    modified_lines = []
-    in_run_command = False
-
-    for line in lines:
-        stripped_line = line.strip()
-        
-        # Check if the line starts with 'RUN' and is not a continuation of a previous 'RUN' command
-        if stripped_line.startswith("RUN ") and not in_run_command:
-            in_run_command = True
-            if stripped_line.endswith("\\"):
-                modified_lines.append(line.rstrip())
-            else:
-                # Add || exit 0 with an error message
-                modified_lines.append(line.rstrip() + " || { echo \"Command failed with exit code $?\"; exit 0; }")
-                in_run_command = False
-        elif in_run_command:
-            # Check if the line ends with '\', which indicates continuation
-            if stripped_line.endswith("\\"):
-                modified_lines.append(line)
-            else:
-                in_run_command = False
-                # Add || exit 0 with an error message
-                modified_lines.append(line.rstrip() + " || { echo \"Command failed with exit code $?\"; exit 0; }")
-        else:
-            modified_lines.append(line)
-
-    return "\n".join(modified_lines)
+    return read_file_from_container(agent.container, f"{agent.project_path}/{file_path}")
 
 @command(
     "write_to_file",
-    "Writes to a file",
+    "Writes to a file (overwrites all content if already exists)",
     {
         "filename": {
             "type": "string",
@@ -283,8 +205,8 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     Returns:
         str: A message indicating success or failure
     """
-    if "COPY" in text:
-        return "The usage of command 'COPY' is prohibited inside the Dockerfile script. You should just clone the repository inside the docker images and all the files of that repository would be there. No need to copy."
+    #if "COPY" in text:
+        #return "The usage of command 'COPY' is prohibited inside the Dockerfile script. You should just clone the repository inside the docker images and all the files of that repository would be there. No need to copy."
     #checksum = text_checksum(text)
     #if is_duplicate_operation("write", filename, agent, checksum):
     #    return "Error: File has already been updated."
@@ -313,15 +235,15 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
             
             log_operation("write", filename, agent, "STATIC CHECK SUM WAS WRITTEN FROM file_operations:write_to_file")
             
-            print("DOCKER FILE WAS WRITTEN TO ------ ", full_path)
+            #print("DOCKER FILE WAS WRITTEN TO ------ ", full_path)
             
             if "dockerfile" in filename.lower():
                 image_log = "IMAGE ALREADY EXISTS"
-                if not check_image_exists(agent.project_path.lower()+"_image:ExecutionAgent"):
-                    image_log = build_image(os.path.join(workspace, agent.project_path), agent.project_path.lower()+"_image:ExecutionAgent")
+                if not check_image_exists(f"{workspace}_image:ExecutionAgent"):
+                    image_log = build_image(workspace, f"{workspace}_image:ExecutionAgent")
                     if image_log.startswith("An error occurred while building the Docker image"):
                         return "The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log
-                container = start_container(agent.project_path.lower()+"_image:ExecutionAgent")
+                container = start_container(f"{workspace}_image:ExecutionAgent")
                 if container is not None:
                     agent.container = container
                     cwd = execute_command_in_container(container, "pwd")
@@ -332,12 +254,12 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
         except Exception as err:
             return f"Error: {err}"
     else:
-        print("I am HERE TRYING TO WRITE FILE IN CONTAINER 191919191919191919919191919119999911111111111111119")
+        print("Writing file in the container...")
         print("PROJECT_PATH:", agent.project_path)
         print("FILENAME:", filename)
         if "dockerfile" in filename.lower():
-            return "You cannot create another docker image, you already have access to a running container. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
-        write_result = str(write_string_to_file(agent.container, text, os.path.join("/app", agent.project_path, filename.split("/")[-1])))
+            return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
+        write_result = str(write_string_to_file(agent.container.short_id, text, f"{agent.project_path}/{filename}"))
         if write_result=="None":
             if "setup" in filename.lower() or "install" in filename.lower() or ".sh" in filename.lower():
                 return "installation script was written successfully, you should not run this script. If test cases were not yet run, you should do that with the help of linux_terminal. If you arleady run test cases successfully, you are done with the task."
@@ -374,7 +296,7 @@ def append_to_file(
     except Exception as err:
         return f"Error: {err}"
 
-
+'''
 @command(
     "list_files",
     "Lists Files in a Directory",
@@ -387,7 +309,7 @@ def append_to_file(
     },
 )
 @sanitize_path_arg("directory")
-def list_files(directory: str, agent: Agent) -> list[str]:
+def list_files(directory: str, agent: Agent) -> str:
     """lists files in a directory recursively
 
     Args:
@@ -396,15 +318,9 @@ def list_files(directory: str, agent: Agent) -> list[str]:
     Returns:
         list[str]: A list of files found in the directory
     """
-    found_files = []
-
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.startswith("."):
-                continue
-            relative_path = os.path.relpath(
-                os.path.join(root, file), agent.config.workspace_path
-            )
-            found_files.append(relative_path)
-
-    return found_files
+    print(directory)
+    if directory == ".":
+        return execute_command_in_container(agent.container, f"ls -R {agent.project_path}")
+    else:
+        return execute_command_in_container(agent.container, f"ls -R {agent.project_path}/{directory}")
+'''

@@ -1,5 +1,0 @@
-Feedback from previous attempts:
-- Verify Dependencies First: Check for and install CMake and other standard build dependencies (e.g., gcc, g++) upfront to avoid rework.
-- Update Documentation: If possible, update or reference more specific documentation that includes dependency requirements and a basic build command.
-- Optimize Build Process: Run cmake and make in one pass after confirming that CMake is installed, avoiding redundant command execution.
-- Debug Build Errors Actively: If a build fails, review specific errors immediately instead of looping build commands.

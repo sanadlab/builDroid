@@ -1,10 +1,9 @@
 from __future__ import annotations
-
+import os
 from copy import deepcopy
 from dataclasses import dataclass, field
 from math import ceil, floor
 from typing import TYPE_CHECKING, Literal, Optional, Type, TypedDict, TypeVar, overload
-
 if TYPE_CHECKING:
     from autogpt.llm.providers.openai import OpenAIFunctionCall
 
@@ -139,20 +138,18 @@ class ChatSequence:
         messages: list[Message] | ChatSequence = [],
         **kwargs,
     ) -> TChatSequence:
-        from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS
+        from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS, get_model_info
 
-        if not model_name in OPEN_AI_CHAT_MODELS:
-            raise ValueError(f"Unknown chat model '{model_name}'")
+        #if not model_name in OPEN_AI_CHAT_MODELS:
+        #    raise ValueError(f"Unknown chat model '{model_name}'")
 
         return cls(
-            model=OPEN_AI_CHAT_MODELS[model_name], messages=list(messages), **kwargs
+            model=get_model_info(model_name), messages=list(messages), **kwargs
         )
 
     @property
     def token_length(self) -> int:
-        from autogpt.llm.utils import count_message_tokens
-
-        return count_message_tokens(self.messages, self.model.name)
+        return 4000
 
     def raw(self) -> list[MessageDict]:
         return [m.raw() for m in self.messages]

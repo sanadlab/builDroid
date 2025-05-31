@@ -1,0 +1,258 @@
+# General Guidelines for Resolving Android Build Errors  
+
+When a build error occurs, follow these steps:  
+1. Identify the error from the build logs.  
+2. Match it against known error patterns listed below.  
+3. Apply the appropriate fix using the provided commands.  
+4. Retry the build and check if the issue is resolved.  
+
+## 1. Missing Dependency Errors  
+Error Message: Could not resolve all dependencies for configuration ':app:debugCompileClasspath'.
+Fix: 
+1. Ensure these two lines are in the `repositories` block:  
+   ```
+   allprojects {
+       repositories {
+           google() // NOTE: DO NOT ADD if gradle version is 5.4.1 or below
+           mavenCentral() // Must add
+       }
+   }
+   ```
+2. Save the file and sync Gradle:  
+   ```
+   ./gradlew --refresh-dependencies
+   ```
+## 1-2. Missing Dependency Errors (JitPack-based Libraries)
+Error Message: Could not find net.opacapp:multiline-collapsingtoolbar:27.1.1
+Fix:
+1. Confirm whether the dependency version exists in public Maven repositories:
+    ```
+    curl -I https://repo.maven.apache.org/maven2/<group_path>/<artifact>/<version>/<artifact>-<version>.pom
+    ```
+If the result is `404`, it doesn't exist there.
+2. If it's a GitHub-based library, switch to the JitPack-compatible Maven coordinates:
+    ```
+    implementation 'com.github.<user>:<repo>:+'
+    ```
+Use `+` as <tag>, which means use the **latest successfully built version** from GitHub.
+3. In `build.gradle` (project-level) ensure JitPack is in the repositories:
+    ```
+    allprojects {
+        repositories {
+            google()
+            mavenCentral()
+            maven { url 'https://jitpack.io' }
+        }
+    }
+    ```
+
+## 2. Library Method Signature Error  
+Error Message: No signature of method: java.util.ArrayList.call() is applicable for argument types...
+Fix: 
+1. In `build.gradle`, ensure that `dependencies` section does not contain outdated or incompatible libraries.  
+   - Upgrade the Android Gradle Plugin if necessary:  
+     ```
+     ./gradlew dependencies | grep 'com.android.tools.build'
+     ```
+   - If outdated, update the plugin in `build.gradle`:  
+     ```
+     dependencies {
+         classpath 'com.android.tools.build:gradle:7.0.0' // Example version
+     }
+     ```
+   - Run a Gradle sync:  
+     ```
+     ./gradlew clean build
+     ```
+
+## 3. Minimum SDK Version Error  
+Error Message: uses-sdk:minSdkVersion (19) cannot be smaller than version (21) declared in AndroidManifest.xml
+Fix: 
+1. Identify the required `minSdkVersion` from the error message.  
+2. Rewrite this line in `AndroidManifest.xml`:  
+   ```
+   <uses-sdk android:minSdkVersion="21" />
+   ```
+3. Run:  
+   ```
+   ./gradlew assembleDebug
+   ```
+
+## 4. SDK Build Tools Version Error  
+Error Message: The SDK Build Tools revision (29.0.2) is too low for project.
+Fix: 
+1. Install the required SDK version using the SDK Manager:  
+   ```
+   sdkmanager "build-tools;30.0.3"
+   ```
+2. Ensure the correct version is referenced in `app/build.gradle`:  
+   ```
+   android {
+       compileSdkVersion 30
+       buildToolsVersion "30.0.3"
+   }
+   ```
+
+## 5. Gradle Wrapper / Java Version Mismatch Error  
+Error Message: Could not determine java version from '17.0.14'. (Or Inconsistent JVM-target compatibility)
+You must install compatible Java version for project Gradle version.
+Fix: 
+1. Get gradle version of the project:
+   ```
+   grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed -E 's/.*gradle-([0-9.]+)-.*/\1/'
+   ```
+   You should capture `5.2` (for example)
+2. Check the compatible Java version based on identified Gradle version in below table:
+   || Gradle version || Java version ||
+   || 2.0~ || 8 ||
+   || 5.5~ || 11 ||
+   || 7.3~ || 17 ||
+   || 8.5~ || 21 ||
+   For example, if Gradle version is 5.2, you should install Java 11.
+3. Install Java:
+   ```
+   apt update && apt install -y openjdk-<version>-jdk
+   ```
+   Try older Java versions upon install failure. If already installed, proceed to next step.
+4. **IMPORTANT** Execute this line:
+   ```
+   export JAVA_HOME=<new_java_path>
+   ```
+
+## 6. Gradle Wrapper Doesn't Exist
+Error Message: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
+Fix: 
+1. Install gradle:  
+   ```
+   sudo apt install gradle
+   ```
+2. Reinstall the Gradle wrapper and make the script executable:  
+   ```
+   gradle wrapper && chmod +x gradlew
+   ```
+NOTE: If gradlew file doesn't exist, then all commands starting with `./gradlew` will fail. Execute `gradle` commands instead.
+
+## 7. Target Platform Not Found Error  
+Error Message: failed to find target with hash string 'android-30'
+Fix: 
+1. Install the missing platform using SDK Manager:  
+   ```
+   sdkmanager "platforms;android-30"
+   ```
+2. Rebuild the project:  
+   ```
+   ./gradlew build
+   ```
+
+## 8. Build Tools Revision Not Found  
+Error Message: failed to find Build Tools revision 30.0.2
+Fix: 
+1. Install the missing build tools:  
+   ```
+   sdkmanager "build-tools;30.0.2"
+   ```
+2. Verify installation:  
+   ```
+   ls $ANDROID_HOME/build-tools/
+   ```
+3. Clean and rebuild:  
+   ```
+   ./gradlew clean build
+   ```
+
+## 9. NDK Toolchain Error  
+Error Message: NDK toolchains folder not found.
+Fix: 
+1. Install the required NDK version:  
+   ```
+   sdkmanager "ndk;21.3.6528147"
+   ```
+2. Verify NDK path in `local.properties`:  
+   ```
+   echo "ndk.dir=$ANDROID_HOME/ndk/21.3.6528147" >> local.properties
+   ```
+3. Rebuild:  
+   ```
+   ./gradlew build
+   ```
+
+## 10. User-Restricted Install Error  
+Error Message: INSTALL_FAILED_USER_RESTRICTED
+Fix: 
+1. Enable app installation via ADB:  
+   ```
+   adb shell settings put global package_verifier_enable 1
+   ```
+2. Reinstall the APK:  
+   ```
+   adb install app/build/outputs/apk/debug/app-debug.apk
+   ```
+
+## 11. Invalid NDK Configuration  
+Error Message: NDK not found in local.properties.
+Fix: 
+1. Copy a valid `local.properties` file:  
+   ```
+   cp ~/.android/local.properties ./local.properties
+   ```
+2. If necessary, update the NDK path:  
+   ```
+   echo "ndk.dir=$ANDROID_HOME/ndk/21.3.6528147" >> local.properties
+   ```
+3. Rebuild:  
+   ```
+   ./gradlew build
+   ```
+
+## 12. Gradle Distribution Checksum Mismatch
+Error message: Verification of Gradle distribution failed! Your Gradle distribution may have been tampered with.
+Fix:
+1. Delete the checksum line in `gradle-wrapper.properties`:
+   ```
+   distributionSha256Sum=<checksum_value>
+   ```
+2. Do the same for all `gradle-wrapper.properties` file in the working directory since there can be more than one file.
+
+## 13. Google() repository not found
+Error message: Could not find method google() for arguments [] on repository container.
+NOTE: Google repository is not available if gradle version is lower than 5.4.1. Unless you have met a missing dependency issue, try to keep the gradle version.
+Fix:
+1. The line `google()` in `build.gradle`.
+   ```
+    repositories {
+         // google() <- REMOVE
+         mavenCentral()
+    }
+    ```
+   
+2. Update gradle wrapper by setting `gradle-wrapper.properties` file to:
+   ```
+   distributionUrl=https\://services.gradle.org/distributions/gradle-5.4.1-all.zip
+   ```
+   or higher.
+
+
+## Final Notes  
+- IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
+- If you're not sure which error or the same error persists for a while, then check logs using:  
+  ```
+  ./gradlew assembleDebug --stacktrace -q
+  ```
+- Use `--refresh-dependencies` if dependencies are outdated:  
+  ```
+  ./gradlew --refresh-dependencies
+  ```
+- **After you try the solutions above, always clean & retry the build**:  
+  ```
+  ./gradlew --stop
+  ./gradlew clean
+  ./gradlew assembleDebug
+  ```
+- Avoid using git clone to start since the directory is already cloned, unless you meet many errors and need to reset the environment.
+- If BUILD SUCCESS but the output says Gradle used deprecated features, ignore the warning and check if the .apk file is generated. Your primary goal is to generate the .apk file.
+- When using linux commands, never use bash exclusive commands, instead use shell compatible commands.
+- Use `find . -name *.apk` to check output .apk file.
+- Gradle version 2.3.1 is not available in Google() or mavenCentral() repositories. Upgrade to 3.0.1.
+- Empty output does not necessarily mean command failure. For example, `export` or `chmod` commands do not output anything, so you can continue.
+- Some projects explicitly state required dependencies and environment versions in `README.md`. If build fails, read the `README.md` file to look for the cause of failure.
+- Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem.

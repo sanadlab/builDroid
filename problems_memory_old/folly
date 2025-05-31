@@ -1,4 +1,0 @@
-Feedback from previous attempts
-- This project requires GCC 10 or higher
-- Simplify Dockerfile
-- Execute commands via terminal instead of creating and executing sh scripts (not allowed)

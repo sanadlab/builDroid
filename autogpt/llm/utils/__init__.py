@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+import time
+from dataclasses import dataclass
+from typing import List, Optional, Any
 
 from colorama import Fore
 
 from autogpt.config import Config
+import google.generativeai as genai
+from google.generativeai.generative_models import ChatSession
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+from pydantic import BaseModel
 
 from ..api_manager import ApiManager
 from ..base import (
@@ -17,12 +23,9 @@ from ..base import (
 from ..providers import openai as iopenai
 from ..providers.openai import (
     OPEN_AI_CHAT_MODELS,
-    OpenAIFunctionCall,
-    OpenAIFunctionSpec,
-    count_openai_functions_tokens,
 )
-from .token_counter import *
-
+from autogpt.llm.base import Message
+from autogpt.logs import logger
 
 def call_ai_function(
     function: str,
@@ -46,7 +49,10 @@ def call_ai_function(
         str: The response from the function
     """
     if model is None:
-        model = config.smart_llm
+        if config.openai_api_base is None:
+            model = config.smart_llm
+        else:
+            model = config.llm_model
     # For each arg, if any are None, convert to "None":
     args = [str(arg) if arg is not None else "None" for arg in args]
     # parse args to comma separated string
@@ -63,55 +69,58 @@ def call_ai_function(
             Message("user", arg_str),
         ],
     )
-    return create_chat_completion(prompt=prompt, temperature=0, config=config).content
+    return send_request(prompt=prompt, temperature=0, config=config).content
 
-
-def create_text_completion(
+def send_request(
     prompt: str,
     config: Config,
-    model: Optional[str],
-    temperature: Optional[float],
-    max_output_tokens: Optional[int],
+    stream: bool = False,
+    chat: ChatSession = None,
 ) -> str:
-    if model is None:
-        model = config.fast_llm
-    if temperature is None:
-        temperature = config.temperature
+    """Create a chat completion for Gemini, based on config."""
+    chat_completion_kwargs = {
+        "temperature": config.temperature
+    }
+    backoff_base = 1.5
+    max_attempts = 5
+    if config.openai_api_base is not None and "google" in config.openai_api_base:
+        backoff_msg = f"{Fore.RED}Rate Limit Reached. Waiting {{backoff}} seconds...{Fore.RESET}"
+        error_msg = f"{Fore.RED}Unknown Error. Waiting {{backoff}} seconds...{Fore.RESET}"
+        for attempt in range(1, max_attempts + 1):
+            backoff = round(backoff_base ** (attempt + 2), 2)
+            try:
+                response = chat.send_message(message=prompt, stream=stream, generation_config=chat_completion_kwargs)
+                full_response = ""
+                for chunk in response:
+                    full_response += chunk.text
+                return full_response
 
-    kwargs = {"model": model}
-    kwargs.update(config.get_openai_credentials(model))
+            except (ResourceExhausted, ServiceUnavailable) as e:
+                logger.warn(backoff_msg.format(backoff=backoff))
+                if attempt >= max_attempts:
+                    raise
+                if False:  # Changed this to `if True` to display the message. Consider a configuration flag.
+                    logger.double_check(api_key_error_msg)
+                    # Add logging of the exception for debugging
+                    logger.debug(f"Gemini API Error: {e}")
+                    user_warned = True
 
-    response = iopenai.create_text_completion(
-        prompt=prompt,
-        **kwargs,
-        temperature=temperature,
-        max_tokens=max_output_tokens,
-    )
-    logger.debug(f"Response: {response}")
+            except Exception as e:  # Catch-all for other potential Gemini errorsc
+                logger.warn(error_msg.format(backoff=backoff))
+                if attempt >= max_attempts:
+                    raise  # Re-raise after max retries
+                #logger.error(f"Unexpected Gemini API error: {e}")
 
-    return response.choices[0].text
+            time.sleep(backoff)
 
-
-# Overly simple abstraction until we create something better
 def create_chat_completion(
     prompt: ChatSequence,
     config: Config,
-    functions: Optional[List[OpenAIFunctionSpec]] = None,
     model: Optional[str] = None,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
 ) -> ChatModelResponse:
-    """Create a chat completion using the OpenAI API
-
-    Args:
-        messages (List[Message]): The messages to send to the chat completion
-        model (str, optional): The model to use. Defaults to None.
-        temperature (float, optional): The temperature to use. Defaults to 0.9.
-        max_tokens (int, optional): The max tokens to use. Defaults to None.
-
-    Returns:
-        str: The response from the chat completion
-    """
+    """Create a chat completion using either OpenAI or Gemini, based on config."""
 
     if model is None:
         model = prompt.model.name
@@ -119,27 +128,20 @@ def create_chat_completion(
         temperature = config.temperature
     if max_tokens is None:
         prompt_tlength = prompt.token_length
-        max_tokens = (
-            min(OPEN_AI_CHAT_MODELS[model].max_tokens - prompt_tlength - 1, 4000)
-        )  # the -1 is just here because we have a bug and we don't know how to fix it. When using gpt-4-0314 we get a token error.
+        max_tokens = OPEN_AI_CHAT_MODELS[model].max_tokens # Default : 4000 for max output token. Reduced if prompt size is large.
         logger.debug(f"Prompt length: {prompt_tlength} tokens")
-        if functions:
-            functions_tlength = count_openai_functions_tokens(functions, model)
-            max_tokens -= functions_tlength
-            logger.debug(f"Functions take up {functions_tlength} tokens in API call")
 
-    logger.debug(
-        f"{Fore.GREEN}Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}{Fore.RESET}"
+    logger.info(
+        f"{Fore.GREEN}Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}, prompt_length {prompt.token_length}{Fore.RESET}"
     )
-    with open("model_logging_temp.txt", "w") as mlt:
-        mlt.write(f"Creating chat completion with model {model}, temperature {temperature}, max_tokens {max_tokens}")
 
     chat_completion_kwargs = {
         "model": model,
         "temperature": temperature,
         "max_tokens": max_tokens,
-        "response_format": { "type": "json_object" }
+        # "response_format": { "type": "json_object" } # Remove to avoid issues with Gemini.
     }
+    chat_completion_kwargs.update(config.get_openai_credentials())
 
     for plugin in config.plugins:
         if plugin.can_handle_chat_completion(
@@ -153,20 +155,12 @@ def create_chat_completion(
             if message is not None:
                 return message
 
-    chat_completion_kwargs.update(config.get_openai_credentials(model))
-
-    if functions:
-        chat_completion_kwargs["functions"] = [
-            function.schema for function in functions
-        ]
-
-    # Print full prompt to debug log
-    logger.debug(prompt.dump())
-
-    response = iopenai.create_chat_completion(
-        messages=prompt.raw(),
-        **chat_completion_kwargs,
-    )
+    # Dispatch to OpenAI or Gemini based on config
+    if config.openai_api_base is not None and "google" in config.openai_api_base:
+        return iopenai._create_gemini_completion(prompt, config.openai_api_key, model, chat_completion_kwargs)
+    chat_completion_kwargs.update(config.get_openai_credentials())
+    response = iopenai.create_chat_completion(messages=prompt.raw(), **chat_completion_kwargs)
+    
     logger.debug(f"Response: {response}")
 
     if hasattr(response, "error"):
@@ -175,20 +169,9 @@ def create_chat_completion(
 
     first_message: ResponseMessageDict = response.choices[0].message
     content: str | None = first_message.get("content")
-    function_call: FunctionCallDict | None = first_message.get("function_call")
-
-    for plugin in config.plugins:
-        if not plugin.can_handle_on_response():
-            continue
-        # TODO: function call support in plugin.on_response()
-        content = plugin.on_response(content)
 
     return ChatModelResponse(
         model_info=OPEN_AI_CHAT_MODELS[model],
         content=content,
-        function_call=OpenAIFunctionCall(
-            name=function_call["name"], arguments=function_call["arguments"]
-        )
-        if function_call
-        else None,
+        function_call=None,
     )

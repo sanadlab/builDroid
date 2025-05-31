@@ -5,16 +5,13 @@ import subprocess
 import re
 import time
 
-from langchain.chat_models import ChatOpenAI
-from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
-
 ACTIVE_SCREEN = {
     "name": "my_screen_session",
     "id": None,
     "default_process_list": None,
     "prep_end": False
 }
-
+'''
 def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     with open("openai_token.txt") as opt:
         token = opt.read()
@@ -32,7 +29,7 @@ def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     response = chat.invoke(messages)
 
     return response.content
-
+'''
 import xml.etree.ElementTree as ET
 import yaml
 
@@ -122,6 +119,26 @@ def parse_screen_sesssion_id(screen_ls):
 
     return wanted_part.split(".")[0]
 
+def remove_unused_images():
+    client = docker.from_env()
+    
+    try:
+        # Get a list of all images
+        images = client.images.list(all=True)
+        
+        for image in images:
+            # Check if the image is used by any container
+            containers = client.containers.list(all=True, filters={'ancestor': image.id})
+            
+            if not containers:  # If no containers are using the image
+                print(f"Removing image {image.tags} (ID: {image.id})...")
+                client.images.remove(image.id, force=True)
+                print(f"Image {image.id} removed successfully.")
+            else:
+                print(f"Image {image.id} is in use by a container, skipping removal.")
+    
+    except Exception as e:
+        print(f"An error occurred while removing unused images: {e}")
 
 def remove_duplicate_consecutive_lines(text):
     lines = text.split('\n')  # Split the text into individual lines
@@ -221,29 +238,24 @@ def extract_test_sections(maven_output):
 def build_image(dockerfile_path, tag):
     client = docker.from_env()
     try:
-        log_text = ""
         print(f"Building Docker image from {dockerfile_path} with tag {tag}...")
         image, logs = client.images.build(path=dockerfile_path, tag=tag, rm=True, nocache=True)
-        for log in logs:
-            if 'stream' in log:
-                log_text += log['stream'].strip()
         return "Docker image built successfully.\n"
     except Exception as e:
         return f"An error occurred while building the Docker image: {e}"
-        return None
 import docker
 
-def start_container(image_tag):
+def start_container(image_tag, name):
     client = docker.from_env()
     try:
-        print(f"Running container from image {image_tag}...")
-        container = client.containers.run(image_tag, detach=True, tty=True)
+        print(f"Running new container from image {image_tag}...")
+        container = client.containers.run(image_tag, detach=True, tty=True, name=name)
         print(f"Container {container.short_id} is running.")
-        print("CREATING SCREEN SESSION")
         create_screen_session(container)
+        #execute_command_in_container(container, "screen -S my_screen_session -X stuff 'apt install coreutils'")
         return container
     except Exception as e:
-        print(f"ERRRRRRRRRRRR: An error occurred while running the container: {e}")
+        print(f"An error occurred while running the container: {e}")
         return None
 
 def execute_command_in_container_old(container, command):
@@ -262,7 +274,7 @@ def execute_command_in_container(container, command):
     try:
         # Wrap the command in a shell execution context
         shell_command = "/bin/sh -c \"{}\"".format(command)
-        #print(f"Executing command '{command}' in container {container.short_id}...")
+        print(f"Executing command '{command}' in container {container.short_id}...")
 
         # Execute the command without a TTY, but with streaming output
         exec_result = container.exec_run(shell_command, tty=False)
@@ -271,7 +283,7 @@ def execute_command_in_container(container, command):
         output = exec_result.output.decode('utf-8')
         #print(f"Command output:\n{output}")
         
-        THRESH = 600
+        THRESH = 100
         WAIT = 1
         command_threshold = THRESH
         old_command_output = read_file_from_container(container, "/tmp/cmd_result")
@@ -362,20 +374,16 @@ def create_file_tar(file_path, file_content):
     data.seek(0)
     return data
 
+import tempfile
 def write_string_to_file(container, file_content, file_path):
     try:
-        # Create a tarball with the file
-        tar_data = create_file_tar(file_path, file_content)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
+        temp_file.write(file_content)
+        temp_file.close()
 
-        # Copy the tarball into the container
-        container.put_archive('/', tar_data)
-
-        # Verify the file was written
-        exit_code, output = container.exec_run(f"cat {file_path}")
-        if exit_code == 0:
-            print(f"File content in container: {output.decode('utf-8')}", file_path)
-        else:
-            print(f"Failed to verify the file in the container: {output.decode('utf-8')}")
+        subprocess.run(["docker", "cp", temp_file.name, f"{container}:{file_path}"], check=True)
+        os.remove(temp_file.name)
+        print(f"File writen to {file_path}")
     finally:
         # Stop and remove the container
         pass
@@ -405,8 +413,4 @@ def read_file_from_container(container, file_path):
         return f'Failed to read {file_path} in the container. Output: {output.decode("utf-8")}'
 
 if __name__ == "__main__":
-    screen_text = """There is a screen on:
-        37.my_screen_session    (09/13/24 10:12:26)     (Detached)
-1 Socket in /run/screen/S-root."""
-
-    print(parse_screen_sesssion_id(screen_text))
+    remove_unused_images()

@@ -1,3 +1,0 @@
-json-c https://github.com/json-c/json-c C jsonc_image:ExecutionAgent
-
-libevent https://github.com/libevent/libevent C libevent_image:ExecutionAgent

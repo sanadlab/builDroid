@@ -5,8 +5,11 @@ from __future__ import annotations
 COMMAND_CATEGORY = "system"
 COMMAND_CATEGORY_TITLE = "System"
 
+import docker
 from typing import NoReturn
 import os
+from pathlib import Path
+import subprocess
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
 from autogpt.commands.docker_helpers_static import execute_command_in_container, stop_and_remove
@@ -14,7 +17,7 @@ from autogpt.logs import logger
 
 @command(
     "goals_accomplished",
-    "Goals are accomplished and there is nothing left to do",
+    "Exits agent. Call this command if and only if build success and the .apk file is in the container",
     {
         "reason": {
             "type": "string",
@@ -33,13 +36,28 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
         A result string from create chat completion. A list of suggestions to
             improve the code.
     """
-    project_path = agent.project_path
-    workspace = "execution_agent_workspace/"
-    files_list = [x[0].lower() for x in agent.written_files]
+
+    client = docker.from_env()
+    container = client.containers.get(agent.container.id)
+    
+    exit_code, output = container.exec_run(f"/bin/sh -c \"find {agent.project_path} -type f -name '*.apk'\"")
+    apk_paths = output.decode().strip().split("\n")
+    apk_paths = [path for path in apk_paths if path] 
+    
+    if not apk_paths:
+        return "You have not successfully built the project since there is no .apk file in the container. Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem. Try again."
+    for apk_path in apk_paths:
+        try:
+            host_apk_path = f"experimental_setups/{agent.exp_number}/files/{agent.project_path}"
+            os.makedirs(host_apk_path, exist_ok=True)
+            subprocess.run(['docker', 'cp', f'{agent.container.id}:/{apk_path}', host_apk_path], check=True)
+        except Exception as e:
+            print(f"<ERROR> Failed to extract {apk_path}: {e}")
+    
     #if "coverage_results.txt" not in files_list:
     #    return "You cannot claim goal accomplished without running test cases, measuring coverage and saving them to the file 'coverage_results.txt'"
-    if "dockerfile" not in files_list:
-        return "You have not created a docker file that creates a docker images and installs the project within that image, installs the dependencies and run tests"
+    #if "dockerfile" not in files_list:
+    #    return "You have not created a docker file that creates a docker images and installs the project within that image, installs the dependencies and run tests"
     #if not any("coverage" in x for x in files_list):
     #    return "You should write test results into a file called: coverage_results.txt"
     #else:
@@ -61,9 +79,9 @@ def task_complete(reason: str, agent: Agent) -> NoReturn:
 #Average coverage: [PUT CONCRETE VALUE HERE]
 #                    """
     logger.info(title="Shutting down...\n", message=reason)
-    if not agent.keep_container:
+    if not agent.keep_container and agent.container != None:
         stop_and_remove(agent.container)
-        os.system("docker system prune -af")
-    with open(os.path.join("experimental_setups", agent.exp_number, "saved_contexts", project_path, "SUCCESS"), "w") as ssf:
+        #os.system("docker system prune -af")
+    with open(os.path.join("experimental_setups", agent.exp_number, "saved_contexts", agent.project_path, "SUCCESS"), "w") as ssf:
         ssf.write("SUCCESS")
     quit()
