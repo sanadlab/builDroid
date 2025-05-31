@@ -2,6 +2,7 @@
 
 # Default value for the number parameter
 num=30
+chat_stream="false"
 
 # Function to extract project name from GitHub URL
 # Extracts the last component of the URL, which is usually the project name
@@ -66,9 +67,12 @@ while [[ $# -gt 0 ]]; do
       num="$2"
       shift 2
       ;;
+    -s | --stream)
+      chat_stream = "true"
+      shift
+      ;;
     *)
       if [[ -z "$repo_url" && -f "$1" ]]; then
-        echo "Processing file: $1"
         repo_url="$1"
       fi
       shift
@@ -76,13 +80,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Set up API key, increment experiment, and prepare AI settings
-python3.10 setup_api_key.py  # Sets up the API key required for the scripts
+# Set up API token, increment experiment, and prepare AI settings
 if [ $? -ne 0 ]; then
   exit 1
 fi
+source <(python3.10 api_token_setup.py)
 python3.10 experimental_setups/increment_experiment.py  # Updates experimental parameters
-python3.10 prepare_ai_settings.py  # Prepares the AI settings configuration
 
 # Check for the --repo argument or file path
 if [[ -n "$repo_url" ]]; then
@@ -108,7 +111,12 @@ if [[ -n "$repo_url" ]]; then
       python3.10 clone_and_set_metadata.py "$project_name" "$github_url"
 
       # Run the main script with specific AI settings and experiment parameters
-      run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
+      if [[ "${chat_stream}" == "true" ]]; then
+        run_with_retries "./run.sh --stream -l \"$num\"" "$project_name"
+      else
+        run_with_retries "./run.sh -l \"$num\"" "$project_name"
+      fi
+      
     done
     python3.10 experiment_results_sheet.py
   
@@ -129,7 +137,11 @@ if [[ -n "$repo_url" ]]; then
     python3.10 clone_and_set_metadata.py "$project_name" "$repo_url"
 
     # Run the main script with specific AI settings and experiment parameters
-    run_with_retries "./run.sh --ai-settings ai_settings.yaml -c -l \"$num\" -m json_file --experiment-file \"project_meta_data.json\"" "$project_name"
+    if [[ "${chat_stream}" == "true" ]]; then
+      run_with_retries "./run.sh --stream -l \"$num\"" "$project_name"
+    else
+      run_with_retries "./run.sh -l \"$num\"" "$project_name"
+    fi
   fi
 else
   # Handle invalid input cases
@@ -138,3 +150,4 @@ else
   echo "       ./script_name.sh --repo <github_repo_url>"
   exit 1
 fi
+source <(python3.10 api_token_reset.py)

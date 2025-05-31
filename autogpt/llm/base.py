@@ -4,11 +4,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from math import ceil, floor
 from typing import TYPE_CHECKING, Literal, Optional, Type, TypedDict, TypeVar, overload
-from autogpt.llm.llama_tokenizer import Tokenizer
-
-# Load tokenizer instance (ensure the model file path is correct)
-tokenizer = Tokenizer(os.path.join(os.path.dirname(__file__), "tokenizer.model"))
-
 if TYPE_CHECKING:
     from autogpt.llm.providers.openai import OpenAIFunctionCall
 
@@ -154,14 +149,7 @@ class ChatSequence:
 
     @property
     def token_length(self) -> int:
-        if self.model.name.startswith("gpt"):
-            from autogpt.llm.utils import count_message_tokens
-            return count_message_tokens(self.messages, self.model.name)
-        total_tokens = 0
-        for msg in self.messages:
-            tokens = tokenizer.encode(msg.content, bos=False, eos=False)
-            total_tokens += len(tokens)
-        return int(total_tokens)
+        return 4000
 
     def raw(self) -> list[MessageDict]:
         return [m.raw() for m in self.messages]

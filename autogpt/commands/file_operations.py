@@ -15,10 +15,8 @@ from typing import Generator, Literal
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
 from autogpt.logs import logger
-from autogpt.memory.vector import MemoryItem, VectorMemory
 from autogpt.commands.docker_helpers_static import build_image, start_container, execute_command_in_container, write_string_to_file, read_file_from_container, check_image_exists
 from .decorators import sanitize_path_arg
-from .file_operations_utils import read_textual_file
 
 import xml.etree.ElementTree as ET
 import yaml
@@ -156,7 +154,7 @@ def log_operation(
     )
 
 
-"""@command(
+@command(
     "read_file",
     "Read an existing file",
     {
@@ -166,7 +164,7 @@ def log_operation(
             "required": True,
         }
     },
-)"""
+)
 #@sanitize_path_arg("file_path")
 def read_file(file_path: str, agent: Agent) -> str:
     """Read a file and return the contents
@@ -177,83 +175,7 @@ def read_file(file_path: str, agent: Agent) -> str:
     Returns:
         str: The contents of the file
     """
-    if not agent.container:
-        print("READING FILE FROM OUTSIDE CONTAINER CRAZZZZZZZZZZZZZZZZZZZZZY")
-        try:
-            workspace = agent.workspace_path
-            project_path = agent.project_path
-            if file_path.lower().endswith("xml"):
-                yaml_content = convert_xml_to_yaml(os.path.join(workspace, project_path, file_path))
-                return "The xml file was converted to yaml format for better readability:\n"+ yaml_content
-        
-            content = read_textual_file(os.path.join(workspace, project_path, file_path), logger)
-            return content
-            # TODO: invalidate/update memory when file is edited
-            file_memory = MemoryItem.from_text_file(content, file_path, agent.config)
-            if len(file_memory.chunks) > 1:
-                return file_memory.summary
-
-            return content
-        except Exception as e:
-            return f"Error: {str(e)}"
-    else:
-        return read_file_from_container(agent.container, f"{agent.project_path}/{file_path}")
-
-
-def ingest_file(
-    filename: str,
-    memory: VectorMemory,
-) -> None:
-    """
-    Ingest a file by reading its content, splitting it into chunks with a specified
-    maximum length and overlap, and adding the chunks to the memory storage.
-
-    Args:
-        filename: The name of the file to ingest
-        memory: An object with an add() method to store the chunks in memory
-    """
-    try:
-        logger.info(f"Ingesting file {filename}")
-        content = read_file(filename)
-
-        # TODO: differentiate between different types of files
-        file_memory = MemoryItem.from_text_file(content, filename)
-        logger.debug(f"Created memory: {file_memory.dump(True)}")
-        memory.add(file_memory)
-
-        logger.info(f"Ingested {len(file_memory.e_chunks)} chunks from {filename}")
-    except Exception as err:
-        logger.warn(f"Error while ingesting file '{filename}': {err}")
-
-def update_dockerfile_content(dockerfile_content: str) -> str:
-    lines = dockerfile_content.splitlines()
-    modified_lines = []
-    in_run_command = False
-
-    for line in lines:
-        stripped_line = line.strip()
-        
-        # Check if the line starts with 'RUN' and is not a continuation of a previous 'RUN' command
-        if stripped_line.startswith("RUN ") and not in_run_command:
-            in_run_command = True
-            if stripped_line.endswith("\\"):
-                modified_lines.append(line.rstrip())
-            else:
-                # Add || exit 0 with an error message
-                modified_lines.append(line.rstrip() + " || { echo \"Command failed with exit code $?\"; exit 0; }")
-                in_run_command = False
-        elif in_run_command:
-            # Check if the line ends with '\', which indicates continuation
-            if stripped_line.endswith("\\"):
-                modified_lines.append(line)
-            else:
-                in_run_command = False
-                # Add || exit 0 with an error message
-                modified_lines.append(line.rstrip() + " || { echo \"Command failed with exit code $?\"; exit 0; }")
-        else:
-            modified_lines.append(line)
-
-    return "\n".join(modified_lines)
+    return read_file_from_container(agent.container, f"{agent.project_path}/{file_path}")
 
 @command(
     "write_to_file",

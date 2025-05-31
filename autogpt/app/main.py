@@ -16,49 +16,21 @@ from typing import Optional
 from colorama import Fore, Style
 
 from autogpt.agents import Agent, AgentThoughts, CommandArgs, CommandName
-from autogpt.app.configurator import create_config
+from autogpt.agents.base import DEFAULT_TRIGGERING_PROMPT
 from autogpt.app.spinner import Spinner
-from autogpt.app.utils import (
-    clean_input,
-    get_current_git_branch,
-    get_latest_bulletin,
-    get_legal_warning,
-    markdown_to_ansi_style,
-)
 from autogpt.commands import COMMAND_CATEGORIES
-from autogpt.config import AIConfig, Config, ConfigBuilder, check_openai_api_key
-from autogpt.llm.api_manager import ApiManager
+from autogpt.config import AIConfig, Config
+from autogpt.config.config import set_api_token
 from autogpt.logs import logger
-from autogpt.memory.vector import get_memory
 from autogpt.models.command_registry import CommandRegistry
-from autogpt.plugins import scan_plugins
-from autogpt.prompts.prompt import DEFAULT_TRIGGERING_PROMPT
-from autogpt.speech import say_text
-from autogpt.workspace import Workspace
-from scripts.install_plugin_deps import install_plugin_dependencies
 from autogpt.commands.docker_helpers_static import build_image, start_container, stop_and_remove, check_image_exists
 
-
 def run_auto_gpt(
-    continuous: bool,
     continuous_limit: int,
     ai_settings: str,
-    prompt_settings: str,
-    skip_reprompt: bool,
-    speak: bool,
     debug: bool,
-    gpt3only: bool,
-    gpt4only: bool,
-    memory_type: str,
-    browser_name: str,
-    allow_downloads: bool,
-    skip_news: bool,
+    stream: bool,
     working_directory: Path,
-    workspace_directory: str | Path,
-    install_plugin_deps: bool,
-    ai_name: Optional[str] = None,
-    ai_role: Optional[str] = None,
-    ai_goals: tuple[str] = tuple(),
     experiment_file: str = None
 ):
     if not experiment_file:
@@ -66,142 +38,31 @@ def run_auto_gpt(
     # Configure logging before we do anything else.
     logger.set_level(logging.DEBUG if debug else logging.INFO)
 
-    config = ConfigBuilder.build_config_from_env(workdir=working_directory)
+    config = Config()
 
     # HACK: This is a hack to allow the config into the logger without having to pass it around everywhere
     # or import it directly.
     logger.config = config
 
-    # TODO: fill in llm values here
-    check_openai_api_key(config)
-
-    create_config(
-        config,
-        continuous,
-        continuous_limit,
-        ai_settings,
-        prompt_settings,
-        skip_reprompt,
-        speak,
-        debug,
-        gpt3only,
-        gpt4only,
-        memory_type,
-        browser_name,
-        allow_downloads,
-        skip_news,
-    )
-
-    if config.continuous_mode:
-        for line in get_legal_warning().split("\n"):
-            pass
-            #logger.warn(markdown_to_ansi_style(line), "LEGAL:", Fore.RED)
-
-    if not config.skip_news:
-        motd, is_new_motd = get_latest_bulletin()
-        if motd:
-            motd = markdown_to_ansi_style(motd)
-            for motd_line in motd.split("\n"):
-                logger.info(motd_line, "NEWS:", Fore.GREEN)
-            if is_new_motd and not config.chat_messages_enabled:
-                input(
-                    Fore.MAGENTA
-                    + Style.BRIGHT
-                    + "NEWS: Bulletin was updated! Press Enter to continue..."
-                    + Style.RESET_ALL
-                )
-
-        git_branch = get_current_git_branch()
-        if git_branch and git_branch != "stable":
-            logger.typewriter_log(
-                "WARNING: ",
-                Fore.RED,
-                f"You are running on `{git_branch}` branch "
-                "- this is not a supported branch.",
-            )
-        if sys.version_info < (3, 10):
-            logger.typewriter_log(
-                "WARNING: ",
-                Fore.RED,
-                "You are running on an older version of Python. "
-                "Some people have observed problems with certain "
-                "parts of Auto-GPT with this version. "
-                "Please consider upgrading to Python 3.10 or higher.",
-            )
-
-    if install_plugin_deps:
-        install_plugin_dependencies()
-
-    # TODO: have this directory live outside the repository (e.g. in a user's
-    #   home directory) and have it come in as a command line argument or part of
-    #   the env file.
-    config.workspace_path = Workspace.init_workspace_directory(
-        config, workspace_directory
-    )
-
-    # HACK: doing this here to collect some globals that depend on the workspace.
-    config.file_logger_path = Workspace.build_file_logger_path(config.workspace_path)
-
-    config.plugins = scan_plugins(config, config.debug_mode)
+    config.continuous_limit = continuous_limit
+    config.workspace_path = working_directory / "execution_agent_workspace"
+    config.chat_stream = stream
+    set_api_token(config)
+    ai_config = AIConfig.load(working_directory / "ai_settings.yaml")
 
     # Create a CommandRegistry instance and scan default folder
     command_registry = CommandRegistry.with_command_modules(COMMAND_CATEGORIES, config)
 
-    ai_config = construct_main_ai_config(
-        config,
-        name=ai_name,
-        role=ai_role,
-        goals=ai_goals,
-    )
     ai_config.command_registry = command_registry
-
-    # add chat plugins capable of report to logger
-    if config.chat_messages_enabled:
-        for plugin in config.plugins:
-            if hasattr(plugin, "can_handle_report") and plugin.can_handle_report():
-                logger.info(f"Loaded plugin into logger: {plugin.__class__.__name__}")
-                logger.chat_plugins.append(plugin)
-
-    # Initialize memory and make sure it is empty.
-    # this is particularly important for indexing and referencing pinecone memory
-    memory = get_memory(config)
-    memory.clear()
-    logger.typewriter_log(
-        "Using memory of type:", Fore.GREEN, f"{memory.__class__.__name__}"
-    )
-    logger.typewriter_log("Using Browser:", Fore.GREEN, config.selenium_web_browser)
-
     agent = Agent(
-        memory=memory,
-        command_registry=command_registry,
         triggering_prompt=DEFAULT_TRIGGERING_PROMPT,
         ai_config=ai_config,
+        command_registry=command_registry,
         config=config,
-        experiment_file = experiment_file
+        experiment_file=experiment_file,
     )
 
     run_interaction_loop(agent)
-
-
-def _get_cycle_budget(continuous_mode: bool, continuous_limit: int) -> int | None:
-    # Translate from the continuous_mode/continuous_limit config
-    # to a cycle_budget (maximum number of cycles to run without checking in with the
-    # user) and a count of cycles_remaining before we check in..
-    if continuous_mode:
-        cycle_budget = continuous_limit if continuous_limit else math.inf
-    else:
-        cycle_budget = 1
-
-    return cycle_budget
-
-
-class UserFeedback(str, enum.Enum):
-    """Enum for user feedback."""
-
-    AUTHORIZE = "GENERATE NEXT COMMAND JSON"
-    EXIT = "EXIT"
-    TEXT = "TEXT"
-
 
 def run_interaction_loop(
     agent: Agent,
@@ -219,9 +80,8 @@ def run_interaction_loop(
     ai_config = agent.ai_config
     logger.debug(f"{ai_config.ai_name} System Prompt: {str(agent.prompt_dictionary)}")
 
-    cycle_budget = cycles_remaining = _get_cycle_budget(
-        config.continuous_mode, config.continuous_limit
-    )
+    cycle_budget = cycles_remaining = config.continuous_limit
+
     spinner = Spinner("Thinking...", plain_output=config.plain_output)
 
     def graceful_agent_interrupt(signum: int, frame: Optional[FrameType]) -> None:
@@ -253,38 +113,25 @@ def run_interaction_loop(
     # Application Main Loop #
     #########################
 
-
-    ## create log file
-    project_path = agent.project_path
-    current_ts = time.time()
-    parsable_log_file = os.path.join(os.getcwd(),"parsable_logs/{}".format(project_path+str(current_ts)) + ".json")
-    
-    with open("prompt_files/Template.dockerfile") as df:
-        dft = df.read()
-    with open(os.path.join(agent.workspace_path, "Dockerfile"), "w", encoding="utf-8") as f:
-        f.write(dft)
     image_log = ""
     if not check_image_exists(f"{agent.workspace_path}_image:ExecutionAgent"):
+        with open("prompt_files/Template.dockerfile") as df:
+            dft = df.read()
+        with open(os.path.join(agent.workspace_path, "Dockerfile"), "w", encoding="utf-8") as f:
+            f.write(dft)
         image_log = build_image(agent.workspace_path, f"{agent.workspace_path}_image:ExecutionAgent")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
-            exit(1)
-    container = start_container(f"{agent.workspace_path}_image:ExecutionAgent")
-    if container is not None:
-        agent.container = container
-        result = subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
-        print(image_log + "Container launched successfully\n")
-    else:
-        print(str(image_log) + "\n" + str(container))
-
-    with open(parsable_log_file, "w") as plf:
-        json.dump({
-            "project": project_path,
-            "ExecutionAgent_attempt": []
-        }, plf)
+            sys.exit(1)
+    agent.container = start_container(f"{agent.workspace_path}_image:ExecutionAgent", f"{agent.exp_number}_{agent.project_path[:10]}")
+    if agent.container is None:
+        sys.exit(1)
+    result = subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
+    print(image_log + "Container launched successfully\n")
         
     command_name = None
     command_args = None
+    assistant_reply_dict = None
     result = None
     while cycles_remaining > 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
@@ -293,7 +140,7 @@ def run_interaction_loop(
         ########
         # Have the agent determine the next action to take.
         with spinner:
-            command_name, command_args, assistant_reply_dict = agent.think(command_name, command_args, result)
+            command_name, command_args, assistant_reply_dict = agent.think(command_name, command_args, assistant_reply_dict, result)
 
         ###############
         # Update User #
@@ -310,41 +157,7 @@ def run_interaction_loop(
                 stop_and_remove(agent.container)
             #    os.system("docker system prune -af")
             exit()
-            user_feedback, user_input, new_cycles_remaining = get_user_feedback(
-                config,
-                ai_config,
-            )
-
-            if user_feedback == UserFeedback.AUTHORIZE:
-                if new_cycles_remaining is not None:
-                    # Case 1: User is altering the cycle budget.
-                    if cycle_budget > 1:
-                        cycle_budget = new_cycles_remaining + 1
-                    # Case 2: User is running iteratively and
-                    #   has initiated a one-time continuous cycle
-                    cycles_remaining = new_cycles_remaining + 1
-                else:
-                    # Case 1: Continuous iteration was interrupted -> resume
-                    if cycle_budget > 1:
-                        logger.typewriter_log(
-                            "RESUMING CONTINUOUS EXECUTION: ",
-                            Fore.MAGENTA,
-                            f"The cycle budget is {cycle_budget}.",
-                        )
-                    # Case 2: The agent used up its cycle budget -> reset
-                    cycles_remaining = cycle_budget + 1
-                logger.typewriter_log(
-                    "-=-=-=-=-=-=-= COMMAND AUTHORISED BY USER -=-=-=-=-=-=-=",
-                    Fore.MAGENTA,
-                    "",
-                )
-            elif user_feedback == UserFeedback.EXIT:
-                logger.typewriter_log("Exiting...", Fore.YELLOW)
-                exit()
-            else:  # user_feedback == UserFeedback.TEXT
-                command_name = "human_feedback"
         else:
-            user_input = None
             # First log new-line so user can differentiate sections better in console
             logger.typewriter_log("\n")
             if cycles_remaining != math.inf:
@@ -352,6 +165,7 @@ def run_interaction_loop(
                 logger.typewriter_log(
                     "AUTHORISED COMMANDS LEFT: ", Fore.CYAN, f"{cycles_remaining}"
                 )
+            cycles_remaining -= 1
 
         ###################
         # Execute Command #
@@ -360,112 +174,16 @@ def run_interaction_loop(
         # happening during command execution, setting the cycles remaining to 1,
         # and then having the decrement set it to 0, exiting the application.
         agent.left_commands = cycles_remaining
-        if agent.max_budget == -1:
-            agent.max_budget = cycles_remaining
-        if command_name != "human_feedback":
-            cycles_remaining -= 1
-        if command_name == "write_to_file":
-            simple_name = command_args["filename"].split("/")[-1] if "/" in command_args["filename"] else command_args["filename"]
-            # todo save written files here
-            if not os.path.exists("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path)):
-                os.system("mkdir experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
-
-            files_list = os.listdir("experimental_setups/{}/files/{}".format(agent.exp_number, agent.project_path))
-
-            #with open("experimental_setups/{}/files/{}/{}".format(agent.exp_number, agent.project_path, simple_name+"_{}".format(len(files_list))), "w") as wrf:
-            #    wrf.write(command_args["text"])
-
         agent.project_path = agent.project_path.replace(".git","")
-        result = agent.execute(command_name, command_args, user_input)
-        signal.alarm(0)
+        result = agent.execute(command_name, command_args)
         
-        with open(parsable_log_file) as plf:
-            parsable_content = json.load(plf)
-
-        parsable_content["ExecutionAgent_attempt"].append(
-            {
-                "command_name": command_name,
-                "command_args": command_args,
-                "command_result": result,
-            }
-        )
-
-        with open(parsable_log_file, "w") as plf:
-            json.dump(parsable_content, plf)
-
         if result is not None:
             logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
         else:
             logger.typewriter_log("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
 
-        if not os.path.exists("experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path)):
-            os.system("mkdir experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path))
+        os.makedirs("experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path), exist_ok=True)
         agent.save_to_file("experimental_setups/{}/saved_contexts/{}/cycle_{}".format(agent.exp_number, agent.project_path, cycle_budget - cycles_remaining))
-
-import re
-
-def parse_test_results(log_content):
-
-    # Define patterns to match different parts of the log
-    test_case_pattern = re.compile(r'Test Case: (.+)')
-    result_pattern = re.compile(r'Result: (.+)')
-    error_pattern = re.compile(r'Error: (.+)')
-    exception_pattern = re.compile(r'Exception: (.+)')
-
-    # Initialize variables to store results
-    test_results = {}
-    errors = []
-    exceptions = []
-
-    # Parse log content
-    lines = log_content.split('\n')
-    for line in lines:
-        test_case_match = test_case_pattern.match(line)
-        result_match = result_pattern.match(line)
-        error_match = error_pattern.match(line)
-        exception_match = exception_pattern.match(line)
-
-        if test_case_match:
-            test_case = test_case_match.group(1)
-        else:
-            test_case = None
-
-        if test_case_match:
-            test_case = test_case_match.group(1)
-            if test_case not in test_results:
-                test_results[test_case] = None
-        elif result_match:
-            result = result_match.group(1)
-            if test_case:
-                test_results[test_case] = result
-        elif error_match:
-            error = error_match.group(1)
-            errors.append(error)
-        elif exception_match:
-            exception = exception_match.group(1)
-            exceptions.append(exception)
-
-    # Check if any unexpected output exists
-    if not test_results and not errors and not exceptions:
-        return "No test results found in log file."
-
-    # Construct summary
-    summary = ""
-    if test_results:
-        summary += "Test Results:\n"
-        for test_case, result in test_results.items():
-            summary += f"- {test_case}: {result}\n"
-    if errors:
-        summary += "Errors:\n"
-        for error in errors:
-            summary += f"- {error}\n"
-    if exceptions:
-        summary += "Exceptions:\n"
-        for exception in exceptions:
-            summary += f"- {exception}\n"
-
-    return summary
-
 
 def update_user(
     config: Config,
@@ -484,9 +202,11 @@ def update_user(
         assistant_reply_dict: The assistant's reply.
     """
 
-    print_assistant_thoughts(ai_config.ai_name, assistant_reply_dict, config)
+    logger.typewriter_log(
+        f"{ai_config.ai_name.upper()} THOUGHTS:", Fore.YELLOW, str(assistant_reply_dict.get("thoughts", {}))
+    )
 
-    if command_name is not None:
+    if command_name is not None:  
         if command_name.lower().startswith("error"):
             logger.typewriter_log(
                 "ERROR: ",
@@ -495,9 +215,6 @@ def update_user(
                 f"Error message: {command_name}",
             )
         else:
-            if config.speak_mode:
-                say_text(f"I want to execute {command_name}", config)
-
             # First log new-line so user can differentiate sections better in console
             logger.typewriter_log("\n")
             logger.typewriter_log(
@@ -513,206 +230,5 @@ def update_user(
             f"The Agent failed to select an action.",
         )
 
-
-def get_user_feedback(
-    config: Config,
-    ai_config: AIConfig,
-) -> tuple[UserFeedback, str, int | None]:
-    """Gets the user's feedback on the assistant's reply.
-
-    Args:
-        config: The program's configuration.
-        ai_config: The AI's configuration.
-
-    Returns:
-        A tuple of the user's feedback, the user's input, and the number of
-        cycles remaining if the user has initiated a continuous cycle.
-    """
-    # ### GET USER AUTHORIZATION TO EXECUTE COMMAND ###
-    # Get key press: Prompt the user to press enter to continue or escape
-    # to exit
-    logger.info(
-        f"Enter '{config.authorise_key}' to authorise command, "
-        f"'{config.authorise_key} -N' to run N continuous commands, "
-        f"'{config.exit_key}' to exit program, or enter feedback for "
-        f"{ai_config.ai_name}..."
-    )
-
-    user_feedback = None
-    user_input = ""
-    new_cycles_remaining = None
-
-    while user_feedback is None:
-        # Get input from user
-        if config.chat_messages_enabled:
-            console_input = clean_input(config, "Waiting for your response...")
-        else:
-            console_input = clean_input(
-                config, Fore.MAGENTA + "Input:" + Style.RESET_ALL
-            )
-
-        # Parse user input
-        if console_input.lower().strip() == config.authorise_key:
-            user_feedback = UserFeedback.AUTHORIZE
-        elif console_input.lower().strip() == "":
-            logger.warn("Invalid input format.")
-        elif console_input.lower().startswith(f"{config.authorise_key} -"):
-            try:
-                user_feedback = UserFeedback.AUTHORIZE
-                new_cycles_remaining = abs(int(console_input.split(" ")[1]))
-            except ValueError:
-                logger.warn(
-                    f"Invalid input format. "
-                    f"Please enter '{config.authorise_key} -N'"
-                    " where N is the number of continuous tasks."
-                )
-        elif console_input.lower() in [config.exit_key, "exit"]:
-            user_feedback = UserFeedback.EXIT
-        else:
-            user_feedback = UserFeedback.TEXT
-            user_input = console_input
-
-    return user_feedback, user_input, new_cycles_remaining
-
-
-def construct_main_ai_config(
-    config: Config,
-    name: Optional[str] = None,
-    role: Optional[str] = None,
-    goals: tuple[str] = tuple(),
-) -> AIConfig:
-    """Construct the prompt for the AI to respond to
-
-    Returns:
-        str: The prompt string
-    """
-    ai_config = AIConfig.load(config.workdir / config.ai_settings_file)
-
-    # Apply overrides
-    if name:
-        ai_config.ai_name = name
-    if role:
-        ai_config.ai_role = role
-    if goals:
-        ai_config.ai_goals = list(goals)
-
-    if (
-        all([name, role, goals])
-        or config.skip_reprompt
-        and all([ai_config.ai_name, ai_config.ai_role, ai_config.ai_goals])
-    ):
-        logger.typewriter_log("Name :", Fore.GREEN, ai_config.ai_name)
-        logger.typewriter_log("Role :", Fore.GREEN, ai_config.ai_role)
-        logger.typewriter_log("Goals:", Fore.GREEN, f"{ai_config.ai_goals}")
-        logger.typewriter_log(
-            "API Budget:",
-            Fore.GREEN,
-            "infinite" if ai_config.api_budget <= 0 else f"${ai_config.api_budget}",
-        )
-    elif all([ai_config.ai_name, ai_config.ai_role, ai_config.ai_goals]):
-        logger.typewriter_log(
-            "Welcome back! ",
-            Fore.GREEN,
-            f"Would you like me to return to being {ai_config.ai_name}?",
-            speak_text=True,
-        )
-        should_continue = clean_input(
-            config,
-            f"""Continue with the last settings?
-Name:  {ai_config.ai_name}
-Role:  {ai_config.ai_role}
-Goals: {ai_config.ai_goals}
-API Budget: {"infinite" if ai_config.api_budget <= 0 else f"${ai_config.api_budget}"}
-Continue ({config.authorise_key}/{config.exit_key}): """,
-        )
-        if should_continue.lower() == config.exit_key:
-            ai_config = AIConfig()
-
-    if any([not ai_config.ai_name, not ai_config.ai_role, not ai_config.ai_goals]):
-        raise ValueError(
-            "AI name, role, and goals must be set in the config file or passed as arguments.")
-
-    if config.restrict_to_workspace:
-        logger.typewriter_log(
-            "NOTE:All files/directories created by this agent can be found inside its workspace at:",
-            Fore.YELLOW,
-            f"{config.workspace_path}",
-        )
-    # set the total api budget
-    api_manager = ApiManager()
-    api_manager.set_total_budget(ai_config.api_budget)
-
-    # Agent Created, print message
-    logger.typewriter_log(
-        ai_config.ai_name,
-        Fore.LIGHTBLUE_EX,
-        "has been created with the following details:",
-        speak_text=True,
-    )
-
-    # Print the ai_config details
-    # Name
-    logger.typewriter_log("Name:", Fore.GREEN, ai_config.ai_name, speak_text=False)
-    # Role
-    logger.typewriter_log("Role:", Fore.GREEN, ai_config.ai_role, speak_text=False)
-    # Goals
-    logger.typewriter_log("Goals:", Fore.GREEN, "", speak_text=False)
-    for goal in ai_config.ai_goals:
-        logger.typewriter_log("-", Fore.GREEN, goal, speak_text=False)
-
-    return ai_config
-
-
-def print_assistant_thoughts(
-    ai_name: str,
-    assistant_reply_json_valid: dict,
-    config: Config,
-) -> None:
-    from autogpt.speech import say_text
-
-    assistant_thoughts_reasoning = None
-    assistant_thoughts_plan = None
-    assistant_thoughts_speak = None
-    assistant_thoughts_criticism = None
-
-    assistant_thoughts = assistant_reply_json_valid.get("thoughts", {})
-    #assistant_thoughts_text = remove_ansi_escape(assistant_thoughts.get("text", ""))
-    if assistant_thoughts:
-        """assistant_thoughts_reasoning = remove_ansi_escape(
-            assistant_thoughts.get("reasoning", "")
-        )
-        assistant_thoughts_plan = remove_ansi_escape(assistant_thoughts.get("plan", ""))
-        assistant_thoughts_criticism = remove_ansi_escape(
-            assistant_thoughts.get("criticism", "")
-        )
-        assistant_thoughts_speak = remove_ansi_escape(
-            assistant_thoughts.get("speak", "")
-        )"""
-    logger.typewriter_log(
-        f"{ai_name.upper()} THOUGHTS:", Fore.YELLOW, str(assistant_thoughts)
-    )
-    #logger.typewriter_log("REASONING:", Fore.YELLOW, str(assistant_thoughts_reasoning))
-    """
-    if assistant_thoughts_plan:
-        logger.typewriter_log("PLAN:", Fore.YELLOW, "")
-        # If it's a list, join it into a string
-        if isinstance(assistant_thoughts_plan, list):
-            assistant_thoughts_plan = "\n".join(assistant_thoughts_plan)
-        elif isinstance(assistant_thoughts_plan, dict):
-            assistant_thoughts_plan = str(assistant_thoughts_plan)
-
-        # Split the input_string using the newline character and dashes
-        lines = assistant_thoughts_plan.split("\n")
-        for line in lines:
-            line = line.lstrip("- ")
-            logger.typewriter_log("- ", Fore.GREEN, line.strip())
-    logger.typewriter_log("CRITICISM:", Fore.YELLOW, f"{assistant_thoughts_criticism}")
-    # Speak the assistant's thoughts
-    if assistant_thoughts_speak:
-        if config.speak_mode:
-            say_text(assistant_thoughts_speak, config)
-        else:
-            logger.typewriter_log("SPEAK:", Fore.YELLOW, f"{assistant_thoughts_speak}")
-    """
 def remove_ansi_escape(s: str) -> str:
     return s.replace("\x1B", "")

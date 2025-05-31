@@ -38,9 +38,6 @@ class PromptGenerator:
         #self.simple_patterns = []
         self.general_guidelines = ""
 
-    def add_simple_pattern(self, pattern: str) -> None:
-        self.simple_patterns.append(pattern)
-
     def add_general_guidelines(self, line:str) -> None:
         self.general_guidelines += line
 
@@ -76,50 +73,4 @@ class PromptGenerator:
         )
 
     def _generate_numbered_list(self, items: list[str], start_at: int = 1) -> str:
-        """
-        Generate a numbered list containing the given items.
-
-        Args:
-            items (list): A list of items to be numbered.
-            start_at (int, optional): The number to start the sequence with; defaults to 1.
-
-        Returns:
-            str: The formatted numbered list.
-        """
-        return "".join(f"{i}. {item}" for i, item in enumerate(items, start_at))
-
-    def generate_prompt_string(
-        self,
-        *,
-        additional_simple_patterns: list[str] = [],
-        additional_guidelines = ""
-    ) -> str:
-        """
-        Generate a prompt string based on the constraints, commands, resources,
-            and best practices.
-
-        Returns:
-            str: The generated prompt string.
-        """
-        return {
-            "commands": [
-                "\n## Commands",
-                "You have access to the following commands (EXCLUSIVELY):",
-                f"{self._generate_commands()}",
-            ],
-            "general_guidelines":[]
-        }
-
-    def _generate_commands(self) -> str:
-        command_strings = []
-        if self.command_registry:
-            command_strings += [
-                str(cmd)
-                for cmd in self.command_registry.commands.values()
-                if cmd.enabled
-            ]
-
-        # Add commands from plugins etc.
-        command_strings += [str(cmd) for cmd in self.commands]
-        #print("->>>>>>>>>>>>LIST OF AVAILABLE COMMANDS: " + str(command_strings))
-        return self._generate_numbered_list(command_strings)
+        return 

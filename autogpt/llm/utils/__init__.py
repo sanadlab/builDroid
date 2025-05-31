@@ -23,13 +23,9 @@ from ..base import (
 from ..providers import openai as iopenai
 from ..providers.openai import (
     OPEN_AI_CHAT_MODELS,
-    OpenAIFunctionCall,
-    OpenAIFunctionSpec,
-    count_openai_functions_tokens,
-    get_model_info
 )
-from .token_counter import *
-
+from autogpt.llm.base import Message
+from autogpt.logs import logger
 
 def call_ai_function(
     function: str,
@@ -56,7 +52,7 @@ def call_ai_function(
         if config.openai_api_base is None:
             model = config.smart_llm
         else:
-            model = config.other_llm
+            model = config.llm_model
     # For each arg, if any are None, convert to "None":
     args = [str(arg) if arg is not None else "None" for arg in args]
     # parse args to comma separated string
@@ -78,36 +74,22 @@ def call_ai_function(
 def send_request(
     prompt: str,
     config: Config,
-    temperature: Optional[float] = None,
     stream: bool = False,
     chat: ChatSession = None,
 ) -> str:
-    """Create a chat completion using either OpenAI or Gemini, based on config."""
-
-    class Command(BaseModel):
-        name: str
-        args: dict[str, Any]
-
-    class ResponseSchema(BaseModel):
-        thoughts: str
-        command: Command
-        
+    """Create a chat completion for Gemini, based on config."""
     chat_completion_kwargs = {
-        "temperature": temperature,
-        "response_mime_type": "application/json",
-        "response_schema": ResponseSchema,
+        "temperature": config.temperature
     }
-
-    backoff_base = 1.2
+    backoff_base = 1.5
     max_attempts = 5
-    # Dispatch to OpenAI or Gemini based on config
     if config.openai_api_base is not None and "google" in config.openai_api_base:
         backoff_msg = f"{Fore.RED}Rate Limit Reached. Waiting {{backoff}} seconds...{Fore.RESET}"
         error_msg = f"{Fore.RED}Unknown Error. Waiting {{backoff}} seconds...{Fore.RESET}"
         for attempt in range(1, max_attempts + 1):
             backoff = round(backoff_base ** (attempt + 2), 2)
             try:
-                response = chat.send_message(prompt, stream=stream, generation_config=chat_completion_kwargs)
+                response = chat.send_message(message=prompt, stream=stream, generation_config=chat_completion_kwargs)
                 full_response = ""
                 for chunk in response:
                     full_response += chunk.text
@@ -130,40 +112,10 @@ def send_request(
                 #logger.error(f"Unexpected Gemini API error: {e}")
 
             time.sleep(backoff)
-            
-    chat_completion_kwargs.update(config.get_openai_credentials(model))
-    response = iopenai.create_chat_completion(messages=prompt.raw(), **chat_completion_kwargs)
-    
-    logger.debug(f"Response: {response}")
-
-    if hasattr(response, "error"):
-        logger.error(response.error)
-        raise RuntimeError(response.error)
-
-    first_message: ResponseMessageDict = response.choices[0].message
-    content: str | None = first_message.get("content")
-    function_call: FunctionCallDict | None = first_message.get("function_call")
-
-    for plugin in config.plugins:
-        if not plugin.can_handle_on_response():
-            continue
-        # TODO: function call support in plugin.on_response()
-        content = plugin.on_response(content)
-
-    return ChatModelResponse(
-        model_info=OPEN_AI_CHAT_MODELS[model],
-        content=content,
-        function_call=OpenAIFunctionCall(
-            name=function_call["name"], arguments=function_call["arguments"]
-        )
-        if function_call
-        else None,
-    )
 
 def create_chat_completion(
     prompt: ChatSequence,
     config: Config,
-    functions: Optional[List[OpenAIFunctionSpec]] = None,
     model: Optional[str] = None,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
@@ -189,7 +141,7 @@ def create_chat_completion(
         "max_tokens": max_tokens,
         # "response_format": { "type": "json_object" } # Remove to avoid issues with Gemini.
     }
-    chat_completion_kwargs.update(config.get_openai_credentials(model))
+    chat_completion_kwargs.update(config.get_openai_credentials())
 
     for plugin in config.plugins:
         if plugin.can_handle_chat_completion(
@@ -206,7 +158,7 @@ def create_chat_completion(
     # Dispatch to OpenAI or Gemini based on config
     if config.openai_api_base is not None and "google" in config.openai_api_base:
         return iopenai._create_gemini_completion(prompt, config.openai_api_key, model, chat_completion_kwargs)
-    chat_completion_kwargs.update(config.get_openai_credentials(model))
+    chat_completion_kwargs.update(config.get_openai_credentials())
     response = iopenai.create_chat_completion(messages=prompt.raw(), **chat_completion_kwargs)
     
     logger.debug(f"Response: {response}")
@@ -217,20 +169,9 @@ def create_chat_completion(
 
     first_message: ResponseMessageDict = response.choices[0].message
     content: str | None = first_message.get("content")
-    function_call: FunctionCallDict | None = first_message.get("function_call")
-
-    for plugin in config.plugins:
-        if not plugin.can_handle_on_response():
-            continue
-        # TODO: function call support in plugin.on_response()
-        content = plugin.on_response(content)
 
     return ChatModelResponse(
         model_info=OPEN_AI_CHAT_MODELS[model],
         content=content,
-        function_call=OpenAIFunctionCall(
-            name=function_call["name"], arguments=function_call["arguments"]
-        )
-        if function_call
-        else None,
+        function_call=None,
     )

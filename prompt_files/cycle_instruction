@@ -1,2 +1,24 @@
-Determine exactly one command to use based on the given goals and the progress you have made so far, and respond using the JSON response schema provided.
-Make sure the understand the context (e.g., current java version, resolved and unresolved problems, edited files) and progress to your goals.
+Determine exactly one command to use based on the given goals and the progress you have made so far, and respond using the JSON response schema provided. The JSON should be compatible with the TypeScript type `Response` from the following:
+```ts
+interface Response {
+// Express your thoughts based on the information that you have collected so far, the possible steps that you could do next and also your reasoning. Always express your thoughts in english."
+thoughts: string;
+command: {
+name: string;
+args: Record<string, any>;
+};
+}
+```
+Here is an example of command call that you can output:
+
+{
+"thoughts": "I need to check for the available folders and files within the project's root folder.",
+"command": {
+"name": "linux_terminal",
+"args": {
+"command": "ls"
+}
+}
+}
+
+**IMPORTANT NOTE TO THE ASSISTANT:** DO NOT OUTPUT ANY OTHER TEXT AROUND YOUR JSON RESPONSE.

@@ -3,35 +3,28 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import pexpect
-import time
-
 from colorama import Fore
-import re
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Literal, Optional
-import google.generativeai as genai
-from google.generativeai.generative_models import ChatSession
-from google.generativeai import types
+from google import genai
+from google.genai.chats import Chat
 import json
 import os
 import subprocess
-from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from autogpt.config import AIConfig, Config
 
     from autogpt.models.command_registry import CommandRegistry
 
-from autogpt.llm.base import ChatModelResponse, ChatSequence, Message
-from autogpt.llm.providers.openai import OPEN_AI_CHAT_MODELS, get_openai_command_specs, get_model_info
-from autogpt.llm.utils import count_message_tokens, send_request
+from autogpt.llm.providers.openai import get_model_info
+from autogpt.llm.utils import send_request
 from autogpt.logs import logger
-from autogpt.prompts.prompt import DEFAULT_TRIGGERING_PROMPT
-from autogpt.json_utils.utilities import extract_dict_from_response
-from autogpt.commands.info_collection_static import collect_requirements, infer_requirements, extract_instructions_from_readme
-from autogpt.commands.docker_helpers_static import start_container, remove_ansi_escape_sequences, ask_chatgpt
-from autogpt.commands.search_documentation import search_install_doc
+DEFAULT_TRIGGERING_PROMPT = (
+    "Determine exactly one command to use based on the given goals "
+    "and the progress you have made so far, "
+    "and respond using the JSON schema specified previously:"
+)
 
 CommandName = str
 CommandArgs = dict[str, str]
@@ -47,13 +40,11 @@ class BaseAgent(metaclass=ABCMeta):
         ai_config: AIConfig,
         command_registry: CommandRegistry,
         config: Config,
-        chat: ChatSession,
+        chat: Chat,
         java_version: str = "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64",
         big_brain: bool = True,
         default_cycle_instruction: str = DEFAULT_TRIGGERING_PROMPT,
         cycle_budget: Optional[int] = 1,
-        send_token_limit: Optional[int] = None,
-        summary_max_tlength: Optional[int] = None,
         experiment_file: str = None
     ):
         self.experiment_file = experiment_file
@@ -101,76 +92,22 @@ class BaseAgent(metaclass=ABCMeta):
 
         self.prompt_dictionary = ai_config.construct_full_prompt(config)
         
-
         ### Read static prompt files
         prompt_files = "./prompt_files"
-        '''
-        with open(os.path.join(prompt_files, "python_guidelines")) as pgl:
-            self.python_guidelines = pgl.read()
-        with open(os.path.join(prompt_files, "java_guidelines")) as pgl:
-            self.java_guidelines = pgl.read()
-        with open(os.path.join(prompt_files, "javascript_guidelines")) as pgl:
-            self.javascript_guidelines = pgl.read()
-        with open(os.path.join(prompt_files, "c_guidelines")) as pgl:
-            self.c_guidelines = pgl.read()
-        with open(os.path.join(prompt_files, "cpp_guidelines")) as pgl:
-            self.cpp_guidelines = pgl.read()
-        with open(os.path.join(prompt_files, "rust_guidelines")) as pgl:
-            self.rust_guidelines = pgl.read()
-        
-        with open(os.path.join(prompt_files, "tools_list")) as tls:
-            self.prompt_dictionary["commands"] = tls.read()
 
-        if self.customize["LANGUAGE_GUIDELINES"]:
-            if self.hyperparams["language"].lower() == "python":
-                self.prompt_dictionary["general_guidelines"]= self.python_guidelines
-            elif self.hyperparams["language"].lower() == "java":
-                self.prompt_dictionary["general_guidelines"]= self.java_guidelines
-            elif self.hyperparams["language"].lower() == "javascript":
-                self.prompt_dictionary["general_guidelines"]= self.javascript_guidelines
-            elif self.hyperparams["language"].lower() in ["c", "c++"]:
-                self.prompt_dictionary["general_guidelines"]= self.c_guidelines
-        else:
-            self.prompt_dictionary["general_guidelines"]= ""
-        '''
+        llm_name = self.config.llm_model 
 
-        #if self.customize["GENERAL_GUIDELINES"]:
-        if False:
-            self.prompt_dictionary["general_guidelines"] += "When debugging a problem, if an approach does not work for multiple consecutibe iterations, think of changing your approach of addressing the problem. For example, if ./gradlew is not found, try finding the gradlew file and run the command with proper file path."
-            
-        #self.prompt_dictionary["general_guidelines"] = ""
-        
-        """
-        The system prompt sets up the AI's personality and explains its goals,
-        available resources, and restrictions."""
-
-        if self.config.openai_api_base is None:
-            llm_name = self.config.smart_llm if self.big_brain else self.config.fast_llm
-        else:
-            llm_name = self.config.other_llm 
         self.llm = get_model_info(llm_name)
-
-        """The LLM that the agent uses to think."""
-
-        self.send_token_limit = send_token_limit or self.llm.max_tokens * 3 // 4
-        """
-        The token limit for prompt construction. Should leave room for the completion;
-        defaults to 75% of `llm.max_tokens`.
-        """
 
         self.project_path = self.hyperparams["project_path"]
         self.project_url = self.hyperparams["project_url"]
         self.workspace_path = "execution_agent_workspace"
         self.keep_container = True if self.hyperparams["keep_container"] == "true" else False
         
-        self.cycle_type = "CMD"
         self.tests_executed = False
 
         with open(os.path.join(prompt_files, "cycle_instruction")) as cit:
-            self.cmd_cycle_instruction = cit.read()
-
-        with open(os.path.join(prompt_files, "summarize_cycle")) as cit:
-            self.summary_cycle_instruction = cit.read()
+            self.cycle_instruction = cit.read()
         
         with open("experimental_setups/experiments_list.txt") as eht:
             self.exp_number = eht.read().splitlines()[-1]
@@ -179,25 +116,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.left_commands = 0
         self.max_budget = -1
 
-        self.shell = pexpect.spawnu('/bin/bash')
-        self.interact_with_shell("cd {}".format(os.path.join(self.workspace_path, self.project_path)))
-
-        self.commands_and_summary = []
-        self.written_files = []
-
         self.container = None
-
-        if self.hyperparams["image"] != "NIL" and 1 == 0:
-            self.container = start_container(self.hyperparams["image"])
-            if self.container == None:
-                logger.info("ERROR HAPPENED WHILE CREATING THE CONTAINER")
-                self.hyperparams["image"] = "NIL"
-
-        self.found_workflows = self.find_workflows(self.project_path)
-        #self.search_results = self.search_documentation()
-        self.dockerfiles = self.find_dockerfiles()
-        self.command_stuck = False
-
 
     def to_dict(self):
         return {
@@ -213,184 +132,38 @@ class BaseAgent(metaclass=ABCMeta):
             "hyperparams": self.hyperparams,
             "prompt_dictionary": self.prompt_dictionary,
             "llm": str(self.llm),  # Assuming this is a complex object
-            "send_token_limit": self.send_token_limit,
             "project_path": self.project_path,
             "project_url": self.project_url,
             "workspace_path": self.workspace_path,
-            "cycle_type": self.cycle_type,
             "tests_executed": self.tests_executed,
-            "cmd_cycle_instruction": self.cmd_cycle_instruction,
-            "summary_cycle_instruction": self.summary_cycle_instruction,
+            "cycle_instruction": self.cycle_instruction,
             "exp_number": self.exp_number,
             "track_budget": self.track_budget,
             "left_commands": self.left_commands,
             "max_budget": self.max_budget,
-            "container": str(self.container),  # Assuming this is a complex object
-            "found_workflows": self.found_workflows,
-            #"search_results": self.search_results,
-            "dockerfiles": self.dockerfiles,
+            "container": str(self.container),
         }
 
     def save_to_file(self, filename):
         # Save object attributes as JSON to a file
         with open(filename, 'w') as file:
             json.dump(self.to_dict(), file, indent=4)
-
-    def workflow_to_script(self, workflow_path):
-        system_prompt = "This is the content of a workflow file used to run a test workflow for a repository. I want you to turn the file into a '.sh' script that I can use on my machine to prepare and run tests of that specific repository (the file might contain multiple configurations, I want a simple configuration for linux ubuntu). The workflow might be irrelevant or contain no steps for building and testing. In such case, just mention that the script is not about setting up the project for running tests."
-
-        with open(workflow_path) as wpth:
-            query = wpth.read()
-
-        return ask_chatgpt(system_prompt, query)
-
-    def search_documentation(self,):
-        if os.path.exists("search_logs/{}".format(self.project_path)):
-            with open(os.path.join("search_logs", self.project_path, "{}_build_install_from_source.json".format(self.project_path))) as bifs:
-                results = json.load(bifs)
-            return json.dumps(results)
-        results = search_install_doc(self.project_path)
-        return json.dumps(results)
-
-    def find_dockerfiles(self,):
-        DOCKERFILE_NAME = "Dockerfile"
-        PROJ_DIR = "execution_agent_workspace/{}".format(self.project_path)
-        try:
-            # Run the find command to locate Dockerfile scripts
-            result = subprocess.run(
-                ["find", PROJ_DIR, "-name", DOCKERFILE_NAME],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            if result.returncode != 0:
-                print(f"Error finding Dockerfiles: {result.stderr}")
-                return
-
-            # Process the list of found files
-            dockerfiles = result.stdout.splitlines()
-
-            return dockerfiles
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            return []
-            
-    def find_workflows(self, project_name):
-        found_files = []
-        WORKFLOW_DIR = "execution_agent_workspace/{}/.github/workflows".format(project_name)
-        KEYWORDS = ["test", "build", "linux", "unittest", "integration", "deploy"]
-        if not os.path.isdir(WORKFLOW_DIR):
-            print(f"The directory {WORKFLOW_DIR} does not exist.")
-            return
-
-        print(f"Searching for test-related workflows in {WORKFLOW_DIR}...")
-
-        # Find all YAML workflow files in the .github/workflows directory
-        try:
-            result = subprocess.run(
-                ["find", WORKFLOW_DIR, "-name", "*.yml", "-o", "-name", "*.yaml"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            if result.returncode != 0:
-                print(f"Error finding files: {result.stderr}")
-                return []
-
-            # Process the list of found files
-            workflow_files = result.stdout.splitlines()
-
-            for file in workflow_files:
-                # Extract the file name from the full path
-                filename = os.path.basename(file).lower()
-                # Check if any of the keywords are in the file name
-                if any(keyword in filename for keyword in KEYWORDS):
-                    found_files.append(file)
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
-        return found_files
-
-
-    def remove_progress_bars(self, text):
-        try:
-            with open("prompt_files/remove_progress_bars") as rpb:
-                system_prompt= rpb.read()
-            summary = ""
-            for i in range(int(len(text)/100000)+1):
-                query= "Here is the output of a command that you should clean:\n"+ text[i*100000: (i+1)*100000]
-                summary += "\n" + ask_chatgpt(query, system_prompt)
-                print("CLEANED 100K CHARACTERS.........")
-                print("LEN CLEANED:", len(summary))
-        except Exception as e:
-            print("ERRRRRROOOOOOOOOOOR IN PROGRESSSSSSSSSS:", e)
-        return summary
-
-
-    def interact_with_shell(self, command):
-        try:
-            self.shell.sendline(command)
-            self.shell.expect("\$ ", timeout=1500)
-            self.shell.sendline("pwd")
-            self.shell.expect("\$ ", timeout=1500)
-        except Exception as e:
-            return ("Error happened: {}".format(e), None)
-        return remove_ansi_escape_sequences(self.shell.before), remove_ansi_escape_sequences(self.shell.after)
-
-    def validate_command_parsing(self, command_dict):
-        with open("commands_interface.json") as cif:
-            commands_interface = json.load(cif)
-
-        command_dict = command_dict["command"]
-        if command_dict["name"] in list(commands_interface.keys()):
-            ref_args = commands_interface[command_dict["name"]]
-            if isinstance(command_dict["args"], dict):
-                command_args = list(command_dict["args"].keys())
-                if set(command_args) == set(ref_args):
-                    return True
-                else:
-                    return False
-            else:
-                return False
-        else:
-            return False
+    
+    def create_chat_completion(
+        self,
+        client,
+        prompt
+    ) -> str:
+        response = client.models.generate_content(
+            model=self.config.llm_model, contents=prompt
+        )
+        return response.text
         
-    def detect_command_repetition(self, ref_cmd):
-        #TODO("change this")
-        return False
-        assistant_outputs = [str(extract_dict_from_response(msg.content)["command"]) for msg in self.history if msg.role == "assistant"]
-        with open("assistant_output_from_command_repetition.json", "w") as aocr:
-            json.dump(assistant_outputs+[str(ref_cmd["command"])], aocr)
-        try:
-            if str(ref_cmd["command"]) in assistant_outputs:
-                logger.info("REPETITION DETECTED !!! CODE 2")
-                return True
-            else:
-                return False
-        except Exception as e:
-            with open("exception_files.txt", "w") as ef:
-                ef.write(str(e))
-            print("Exception raised,", e)
-            return False
-        
-    def handle_command_repitition(self, repeated_command: dict, handling_strategy: str = ""):
-        if handling_strategy == "":
-            return ""
-        elif handling_strategy == "RESTRICT":
-            return "Your next command should be totally different from this command: {}".format(repeated_command["command"])
-        elif handling_strategy == "TOP3":
-            return "Suggest three commands that would make sense to execute given your current input. Give the full json object of each command with all attributes, put the three commands in a list, i.e, [{...}, {...}, {...}]. Do not add any text explanataion before or after the list of the three commands."
-        else:
-            raise ValueError("The value given to the param handling_strategy is unsuported: {}".format(handling_strategy))
-
     def think(
         self,
         command_name: CommandName | None,
         command_args: CommandArgs | None,
+        agent_thoughts: AgentThoughts | None,
         result: str | None,
         thought_process_id: ThoughtProcessID = "one-shot",
     ) -> tuple[CommandName | None, CommandArgs | None, AgentThoughts]:
@@ -402,25 +175,40 @@ class BaseAgent(metaclass=ABCMeta):
         Returns:
             The command name and arguments, if any, and the agent's thoughts.
         """
-        if self.config.openai_api_base is None:
-            llm_name = self.config.smart_llm if self.big_brain else self.config.fast_llm
+        client = genai.Client(api_key=self.config.openai_api_key)
+        if not self.config.chat_stream:
+            if self.cycle_count == 0:
+                prompt = self.construct_base_prompt()
+            else:
+                with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "r") as patf:
+                    prompt = patf.read()
+                if self.cycle_count == 1:
+                    prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
+                prompt += "\n\n==================Command " + str(self.cycle_count) + "==================\nAgent Thoughts:" + str(agent_thoughts.get("thoughts", {})) + "\n" + command_name + "\n" + str(command_args) + "\n================Command Result================\n" + result
+            
+            logger.info(
+                f"{Fore.GREEN}Creating chat completion with model {self.config.llm_model}, temperature {self.config.temperature}{Fore.RESET}"
+            )
+            response = self.create_chat_completion(client=client, prompt=prompt)
+            self.cycle_count += 1
+            with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "w") as patf:
+                patf.write(prompt)
+            return self.on_response(response, thought_process_id, prompt)
         
         if self.cycle_count == 0: # Initial cycle: send guidelines as system instructions
             prompt = self.construct_base_prompt()
-            genai.configure(api_key=self.config.openai_api_key)
-            model = genai.GenerativeModel(self.config.other_llm)
             logger.info(
-                f"{Fore.GREEN}Starting chat with model {self.config.other_llm}, temperature {self.config.temperature}{Fore.RESET}"
+                f"{Fore.GREEN}Starting chat with model {self.config.llm_model}, temperature {self.config.temperature}{Fore.RESET}"
             )
-            self.chat = model.start_chat(history=[])
+            self.chat = client.chats.create(model = self.config.llm_model)
         else:
-            prompt = self.cmd_cycle_instruction + "\n================Previous Command================\n" + command_name + "\n" + str(command_args) + "\n================Command Result================\n" + result
+            prompt = self.cycle_instruction + "\n================Previous Command================\nAgent Thoughts:" + str(agent_thoughts.get("thoughts", {})) + "\n" + command_name + "\n" + str(command_args) + "\n================Command Result================\n" + result
             
         with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "a+") as patf:
-            patf.write("================================PROMPT " + str(self.cycle_count) + "================================" + prompt + "\n\n\n")
+            patf.write("================================PROMPT " + str(self.cycle_count) + "================================\n" + prompt + "\n\n\n")
         
         logger.info(
-            f"{Fore.GREEN}Sending request to model {self.config.other_llm}{Fore.RESET}"
+            f"{Fore.GREEN}Sending request to model {self.config.llm_model}{Fore.RESET}"
         )
         response = send_request(
             prompt,
@@ -430,9 +218,8 @@ class BaseAgent(metaclass=ABCMeta):
         )
 
         self.cycle_count += 1
-
         return self.on_response(response, thought_process_id, prompt)
-        
+   
     @abstractmethod
     def execute(
         self,
@@ -466,7 +253,7 @@ class BaseAgent(metaclass=ABCMeta):
         prompt = self.prompt_dictionary["role"]
         
         definitions_prompt = ""
-        static_sections_names = ["goals", "commands", "general_guidelines"]
+        static_sections_names = ["goals", "commands"]
 
         for key in static_sections_names:
             if isinstance(self.prompt_dictionary[key], list):
@@ -481,13 +268,13 @@ class BaseAgent(metaclass=ABCMeta):
         if os.path.exists("problems_memory/{}".format(self.project_path)):
             with open("problems_memory/{}".format(self.project_path)) as pm:
                 previous_memory = pm.read()
-            definitions_prompt += "\nFrom previous attempts we learned that: {}\n".format(previous_memory)
+            definitions_prompt += "\n{}\n".format(previous_memory)
 
         gradle_guidelines = ""
         with open("prompt_files/gradle_guidelines") as pgl:
             gradle_guidelines += pgl.read()
 
-        prompt += definitions_prompt + "\n\n" + self.cmd_cycle_instruction + "\n\n" + gradle_guidelines
+        prompt += definitions_prompt + "\n\n" + gradle_guidelines + "\n\n" + self.cycle_instruction
         return prompt
     
 

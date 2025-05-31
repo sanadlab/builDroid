@@ -17,7 +17,7 @@ from autogpt.logs import logger
 
 @command(
     "goals_accomplished",
-    "Build success and the .apk file is in the container",
+    "Exits agent. Call this command if and only if build success and the .apk file is in the container",
     {
         "reason": {
             "type": "string",

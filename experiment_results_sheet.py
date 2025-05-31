@@ -5,13 +5,13 @@ import pandas as pd
 experiments_file = "experimental_setups/experiments_list.txt"
 if not os.path.exists(experiments_file):
     print(f"Error: {experiments_file} does not exist.")
-    sys.exit(1)
+    exit(1)
 
 with open(experiments_file, 'r') as f:
     lines = f.readlines()
     if not lines:
         print(f"Error: {experiments_file} is empty.")
-        sys.exit(1)
+        exit(1)
     last_line = lines[-1].strip()
 
 # Path to the "saved_contexts" directory

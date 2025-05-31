@@ -103,7 +103,7 @@ class AIConfig:
             yaml.dump(config, file, allow_unicode=True)
 
     def construct_full_prompt(
-        self, config: Config, prompt_generator: Optional[PromptGenerator] = None
+        self, config: Config
     ) -> str:
         """
         Returns a prompt to the user with the class information in an organized fashion.
@@ -116,38 +116,13 @@ class AIConfig:
               including the ai_name, ai_role, ai_goals, and api_budget.
         """
 
-        from autogpt.prompts.prompt import build_default_prompt_generator
-
-        prompt_generator = prompt_generator or self.prompt_generator
-        if prompt_generator is None:
-            prompt_generator = build_default_prompt_generator(config)
-            prompt_generator.command_registry = self.command_registry
-            self.prompt_generator = prompt_generator
-
-        for plugin in config.plugins:
-            if not plugin.can_handle_post_prompt():
-                continue
-            prompt_generator = plugin.post_prompt(prompt_generator)
-
         # Construct full prompt
         full_prompt_parts = {
-            
             "role": f"You are {self.ai_name}, {self.ai_role.rstrip('.')}" +\
             "Your decisions must always be made independently without seeking " +\
             "user assistance. Play to your strengths as an LLM and pursue " +\
             "simple strategies with no legal complications."
         }
-
-        if config.execute_local_commands:
-            # add OS info to prompt
-            os_name = platform.system()
-            os_info = (
-                platform.platform(terse=True)
-                if os_name != "Linux"
-                else distro.name(pretty=True)
-            )
-
-            full_prompt_parts.append(f"The OS you are running on is: {os_info}")
 
         if self.ai_goals:
             full_prompt_parts["goals"] = [
@@ -163,9 +138,21 @@ class AIConfig:
                 f"Your API budget is ${self.api_budget:.3f}"
             )
 
-        full_prompt_parts.update(
-            prompt_generator.generate_prompt_string(
-            )
-        )
+        
+        def _generate_commands() -> str:
+            command_strings = []
+            if self.command_registry:
+                command_strings += [
+                    str(cmd)
+                    for cmd in self.command_registry.commands.values()
+                    if cmd.enabled
+                ]
+            return "".join(f"{i}. {item}" for i, item in enumerate(command_strings, 1))
+
+        full_prompt_parts["commands"]=[
+                "\n## Commands",
+                "You have access to the following commands (EXCLUSIVELY):",
+                f"{_generate_commands()}",
+            ]
 
         return full_prompt_parts

@@ -1,17 +1,14 @@
 import os
 import re
-import json
 import sys
-import pandas as pd
-import argparse
 
 import warnings
 warnings.filterwarnings("ignore")
 
 import openai
-import google.generativeai as genai
+from google import genai
 
-def ask_chatgpt(query, system_message, model=None):
+def ask_chatgpt(query, system_message):
     """
     Asks a question to either OpenAI's ChatGPT or Google's Gemini models.
 
@@ -24,33 +21,16 @@ def ask_chatgpt(query, system_message, model=None):
         str: The content of the assistant's response.
     """
     # Set up the OpenAI API key
-    openai.api_key = "GLOBAL-API-KEY-PLACEHOLDER"
+    api_key = os.environ.get("api_key")
     # Update base url for different API providers
-    openai.api_base = None
-
-    print("Post processing with model: ", model)
-    if openai.api_base is not None and "google" in openai.api_base: # Gemini version
-        genai.configure(api_key=openai.api_key)
-        gemini_model = genai.GenerativeModel(model)
-        chat = gemini_model.start_chat(history=[]) # Start a chat session
-        response = chat.send_message(system_message + "\n" + query)  # Combine system and user messages
+    base_url = os.environ.get("base_url")
+    llm_model = os.environ.get("llm_model")
+    print("Post processing with model: ", llm_model)
+    if "google" in base_url: # Gemini version
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(model=llm_model, contents=system_message + "\n" + query)  # Combine system and user messages
         return response.text
     
-    # Construct the messages for the Chat Completion API
-    messages = [
-        {"role": "system", "content": system_message},
-        {"role": "user", "content": query}
-    ]
-
-    # Call the OpenAI API for chat completion
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages
-    )
-
-    # Extract and return the content of the assistant's response
-    return response["choices"][0]["message"]["content"]
-
         
 def extract_agent_log(log_file, output):
     with open(log_file, 'r', encoding='utf-8') as file:
@@ -86,18 +66,6 @@ def extract_agent_log(log_file, output):
                 entry = f"Thoughts:{thoughts[i]}\nCommand:\n{commands[i]}\nOutput:\n{user_responses[i]}\n==========================================\n"
             txtfile.write(entry)
             extracted_data += entry
-
-    # Create DataFrame
-    #df = pd.DataFrame({
-    #    "Thoughts": thoughts,
-    #    "Command": commands,
-    #    "Output": user_responses
-    #})
-    
-    # Save to Excel
-    #df.to_excel(f"{output}.xlsx")
-    
-    #print(f"Extraction complete. Data saved to {output}.xslx")
 
     return extracted_data
 

@@ -5,16 +5,13 @@ import subprocess
 import re
 import time
 
-from langchain.chat_models import ChatOpenAI
-from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
-
 ACTIVE_SCREEN = {
     "name": "my_screen_session",
     "id": None,
     "default_process_list": None,
     "prep_end": False
 }
-
+'''
 def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     with open("openai_token.txt") as opt:
         token = opt.read()
@@ -32,7 +29,7 @@ def ask_chatgpt(query, system_message, model="gpt-4o-mini"):
     response = chat.invoke(messages)
 
     return response.content
-
+'''
 import xml.etree.ElementTree as ET
 import yaml
 
@@ -246,21 +243,19 @@ def build_image(dockerfile_path, tag):
         return "Docker image built successfully.\n"
     except Exception as e:
         return f"An error occurred while building the Docker image: {e}"
-        return None
 import docker
 
-def start_container(image_tag):
+def start_container(image_tag, name):
     client = docker.from_env()
     try:
         print(f"Running new container from image {image_tag}...")
-        container = client.containers.run(image_tag, detach=True, tty=True)
+        container = client.containers.run(image_tag, detach=True, tty=True, name=name)
         print(f"Container {container.short_id} is running.")
-            
         create_screen_session(container)
-        execute_command_in_container(container, "screen -S my_screen_session -X stuff 'apt install coreutils'")
+        #execute_command_in_container(container, "screen -S my_screen_session -X stuff 'apt install coreutils'")
         return container
     except Exception as e:
-        print(f"ERRRRRRRRRRRR: An error occurred while running the container: {e}")
+        print(f"An error occurred while running the container: {e}")
         return None
 
 def execute_command_in_container_old(container, command):

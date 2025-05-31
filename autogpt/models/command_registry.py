@@ -108,32 +108,11 @@ class CommandRegistry:
         new_registry = CommandRegistry()
 
         logger.debug(
-            f"The following command categories are disabled: {config.disabled_command_categories}"
-        )
-        enabled_command_modules = [
-            x for x in modules if x not in config.disabled_command_categories
-        ]
-
-        logger.debug(
-            f"The following command categories are enabled: {enabled_command_modules}"
+            f"The following command categories are enabled: {modules}"
         )
 
-        for command_module in enabled_command_modules:
+        for command_module in modules:
             new_registry.import_command_module(command_module)
-
-        # Unregister commands that are incompatible with the current config
-        incompatible_commands: list[Command] = []
-        for command in new_registry.commands.values():
-            if callable(command.enabled) and not command.enabled(config):
-                command.enabled = False
-                incompatible_commands.append(command)
-
-        for command in incompatible_commands:
-            new_registry.unregister(command)
-            logger.debug(
-                f"Unregistering incompatible command: {command.name}, "
-                f"reason - {command.disabled_reason or 'Disabled by current config.'}"
-            )
 
         return new_registry
 
