@@ -7,3 +7,4 @@ packaging
 pandas
 PyYAML
 spacy
+openpyxl

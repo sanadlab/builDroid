@@ -1,10 +1,10 @@
 {
     "repetition_handling": "RESTRICT",
-    "project_path": "Simple-Cleanup",
-    "project_url": "https://github.com/EmmanuelMess/Simple-Cleanup",
+    "project_path": "react-native-safe-area-context",
+    "project_url": "https://github.com/th3rdwave/react-native-safe-area-context",
     "budget_control": {
         "name": "NO-TRACK"
     },
-    "image": "Simple-Cleanup_image:ExecutionAgent",
+    "image": "react-native-safe-area-context_image:ExecutionAgent",
     "keep_container": false
 }

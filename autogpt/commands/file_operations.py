@@ -210,7 +210,6 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     #checksum = text_checksum(text)
     #if is_duplicate_operation("write", filename, agent, checksum):
     #    return "Error: File has already been updated."
-    agent.written_files.append((filename, text))
     if not agent.container:
         try:
             #directory = os.path.dirname(filename)
