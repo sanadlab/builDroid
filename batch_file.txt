@@ -1,4 +1,3 @@
-https://github.com/coil-kt/coilgit
 https://github.com/Tencent/Hardcoder
 https://github.com/skydoves/Balloon
 https://github.com/princekin-f/EasyFloat

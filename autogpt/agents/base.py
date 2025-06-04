@@ -117,6 +117,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.max_budget = -1
 
         self.container = None
+        self.shell_socket = None
 
     def to_dict(self):
         return {

@@ -18,32 +18,6 @@ from autogpt.logs import logger
 from autogpt.commands.docker_helpers_static import build_image, start_container, execute_command_in_container, write_string_to_file, read_file_from_container, check_image_exists
 from .decorators import sanitize_path_arg
 
-import xml.etree.ElementTree as ET
-import yaml
-
-def xml_to_dict(element):
-    """ Recursively converts XML elements to a dictionary. """
-    if len(element) == 0:
-        return element.text
-    return {
-        element.tag: {
-            child.tag: xml_to_dict(child) for child in element
-        }
-    }
-
-def convert_xml_to_yaml(xml_file):
-    # Parse the XML file
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-    
-    # Convert XML to a dictionary
-    xml_dict = xml_to_dict(root)
-    
-    # Convert the dictionary to a YAML string
-    yaml_str = yaml.dump(xml_dict, default_flow_style=False)
-    
-    return yaml_str
-
 Operation = Literal["write", "append", "delete"]
 
 
@@ -175,7 +149,7 @@ def read_file(file_path: str, agent: Agent) -> str:
     Returns:
         str: The contents of the file
     """
-    return read_file_from_container(agent.container, f"{agent.project_path}/{file_path}")
+    return execute_command_in_container(agent.shell_socket, f'cat {file_path}')
 
 @command(
     "write_to_file",
@@ -205,67 +179,17 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     Returns:
         str: A message indicating success or failure
     """
-    #if "COPY" in text:
-        #return "The usage of command 'COPY' is prohibited inside the Dockerfile script. You should just clone the repository inside the docker images and all the files of that repository would be there. No need to copy."
-    #checksum = text_checksum(text)
-    #if is_duplicate_operation("write", filename, agent, checksum):
-    #    return "Error: File has already been updated."
-    if not agent.container:
-        try:
-            #directory = os.path.dirname(filename)
-            #os.makedirs(directory, exist_ok=True)
-            workspace = agent.workspace_path
-            print("AGENT RPOJECT PATH:::::::", agent.project_path)
-            if (agent.project_path + "/") in filename:
-                print("PATH TAKEN FROM HERE 1111")
-                full_path = os.path.join(workspace, filename)
-            else:
-                full_path = os.path.join(workspace, agent.project_path, filename)
-                #print("PATH TAKEN FROM HERE 2222")
-                #print("FULL PATH++++++", full_path)
-                #print(workspace)
-                #print(agent.project_path)
-                #print(filename)
-            #if "dockerfile" in filename.lower():
-            #    text = update_dockerfile_content(text)
-
-            with open(full_path, "w", encoding="utf-8") as f:
-                f.write(text)
-            
-            log_operation("write", filename, agent, "STATIC CHECK SUM WAS WRITTEN FROM file_operations:write_to_file")
-            
-            #print("DOCKER FILE WAS WRITTEN TO ------ ", full_path)
-            
-            if "dockerfile" in filename.lower():
-                image_log = "IMAGE ALREADY EXISTS"
-                if not check_image_exists(f"{workspace}_image:ExecutionAgent"):
-                    image_log = build_image(workspace, f"{workspace}_image:ExecutionAgent")
-                    if image_log.startswith("An error occurred while building the Docker image"):
-                        return "The following error occured while trying to build a docker image from the docker script you provide (if the error persists, try to simplify your docker script), please fix it:\n" + image_log
-                container = start_container(f"{workspace}_image:ExecutionAgent")
-                if container is not None:
-                    agent.container = container
-                    cwd = execute_command_in_container(container, "pwd")
-                    return image_log + "\nContainer launched successfuly\n" + "\nThe current working directory within the container is: {}".format(cwd)
-                else:
-                    return str(image_log) + "\n" + str(container)
-            return "File written to successfully."
-        except Exception as err:
-            return f"Error: {err}"
+    print("Writing file in the container...")
+    print("FILENAME:", filename)
+    if "dockerfile" in filename.lower():
+        return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
+    write_result = str(write_string_to_file(agent.container.short_id, text, f"{filename}"))
+    if write_result=="None":
+        return "File written successfully."
     else:
-        print("Writing file in the container...")
-        print("PROJECT_PATH:", agent.project_path)
-        print("FILENAME:", filename)
-        if "dockerfile" in filename.lower():
-            return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
-        write_result = str(write_string_to_file(agent.container.short_id, text, f"{agent.project_path}/{filename}"))
-        if write_result=="None":
-            if "setup" in filename.lower() or "install" in filename.lower() or ".sh" in filename.lower():
-                return "installation script was written successfully, you should not run this script. If test cases were not yet run, you should do that with the help of linux_terminal. If you arleady run test cases successfully, you are done with the task."
-            else:
-                return "File written successfully."
-        else:
-            return write_result
+        return write_result
+    
+
 @sanitize_path_arg("filename")
 def append_to_file(
     filename: str, text: str, agent: Agent, should_log: bool = True

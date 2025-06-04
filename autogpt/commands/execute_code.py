@@ -70,72 +70,10 @@ def execute_shell(command: str, agent: Agent) -> str:
     
     if command == "ls -R":
         return "This command usually returns too much output, hence, it is not allowed."
-    if "export JAVA_HOME" in command:
-        agent.java_version = extract_java_home_export(command)
-    if "./gradlew" in command or command.startswith("gradle"):
-        command = "{} && {}".format(agent.java_version, command)
-    if not "git clone" in command and not "rm -rf" in command:
-        command = "cd {} && {}".format(agent.project_path, command)
-        
     current_dir = Path.cwd()
     if not current_dir.is_relative_to(agent.config.workspace_path):
         os.chdir(os.path.join(agent.config.workspace_path, agent.project_path))
-    output = execute_command_in_container(agent.container, command)
+    print(f"Executing command '{command}' in container {agent.container.name}...")
+    output = execute_command_in_container(agent.shell_socket, command)
     os.chdir(current_dir)
     return output
-
-"""
-@command(
-    "execute_shell_popen",
-    "Executes a Shell Command, non-interactive commands only",
-    {
-        "command_line": {
-            "type": "string",
-            "description": "The command line to execute",
-            "required": True,
-        }
-    },
-    lambda config: config.execute_local_commands,
-    "You are not allowed to run local shell commands. To execute"
-    " shell commands, EXECUTE_LOCAL_COMMANDS must be set to 'True' "
-    "in your config. Do not attempt to bypass the restriction.",
-)
-"""
-def execute_shell_popen(command_line, agent: Agent) -> str:
-    """Execute a shell command with Popen and returns an english description
-    of the event and the process id
-
-    Args:
-        command_line (str): The command line to execute
-
-    Returns:
-        str: Description of the fact that the process started and its id
-    """
-    current_dir = os.getcwd()
-    # Change dir into workspace if necessary
-    if agent.config.workspace_path not in current_dir:
-        os.chdir(agent.config.workspace_path)
-
-    logger.info(
-        f"Executing command '{command_line}' in working directory '{os.getcwd()}'"
-    )
-
-    do_not_show_output = subprocess.DEVNULL
-    process = subprocess.Popen(
-        command_line, shell=True, stdout=do_not_show_output, stderr=do_not_show_output
-    )
-
-    # Change back to whatever the prior working dir was
-
-    os.chdir(current_dir)
-
-    return f"Subprocess started with PID:'{str(process.pid)}'"
-
-
-def we_are_running_in_a_docker_container() -> bool:
-    """Check if we are running in a Docker container
-
-    Returns:
-        bool: True if we are running in a Docker container, False otherwise
-    """
-    return os.path.exists("/.dockerenv")

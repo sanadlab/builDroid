@@ -94,7 +94,11 @@ def main():
     success_file = f"experimental_setups/{last_line}/saved_contexts/{project_name}/SUCCESS"
 
     # Extract agent log
-    extracted_content = extract_agent_log(f"experimental_setups/{last_line}/logs/prompt_history_{project_name}", f"extracted_log_{project_name}")
+    try:
+        extracted_content = extract_agent_log(f"experimental_setups/{last_line}/logs/prompt_history_{project_name}", f"extracted_log_{project_name}")
+    except:
+        print("FAILURE")
+        return
     
     if os.path.exists(success_file):
         print("SUCCESS")

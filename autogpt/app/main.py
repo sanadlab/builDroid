@@ -23,7 +23,7 @@ from autogpt.config import AIConfig, Config
 from autogpt.config.config import set_api_token
 from autogpt.logs import logger
 from autogpt.models.command_registry import CommandRegistry
-from autogpt.commands.docker_helpers_static import build_image, start_container, stop_and_remove, check_image_exists
+from autogpt.commands.docker_helpers_static import build_image, start_container, stop_and_remove, check_image_exists, create_persistent_shell, execute_command_in_container, locate_or_import_gradlew
 
 def run_auto_gpt(
     continuous_limit: int,
@@ -124,16 +124,18 @@ def run_interaction_loop(
             print(image_log)
             sys.exit(1)
     agent.container = start_container(f"{agent.workspace_path}_image:ExecutionAgent", f"{agent.exp_number}_{agent.project_path[:10]}")
+    agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
-    result = subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
+    subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
     print(image_log + "Container launched successfully\n")
+    locate_or_import_gradlew(agent)
         
     command_name = None
     command_args = None
     assistant_reply_dict = None
     result = None
-    while cycles_remaining > 0:
+    while cycles_remaining >= 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
         ########
         # Plan #
@@ -151,21 +153,14 @@ def run_interaction_loop(
         ##################
         # Get user input #
         ##################
-        if cycles_remaining < 1:  # Last cycle
-            print(f"Last cycle. keep_container: {agent.keep_container}")
-            if not agent.keep_container:
-                stop_and_remove(agent.container)
-            #    os.system("docker system prune -af")
-            exit()
-        else:
-            # First log new-line so user can differentiate sections better in console
-            logger.typewriter_log("\n")
-            if cycles_remaining != math.inf:
-                # Print authorized commands left value
-                logger.typewriter_log(
-                    "AUTHORISED COMMANDS LEFT: ", Fore.CYAN, f"{cycles_remaining}"
-                )
-            cycles_remaining -= 1
+        # First log new-line so user can differentiate sections better in console
+        logger.typewriter_log("\n")
+        if cycles_remaining != math.inf:
+            # Print authorized commands left value
+            logger.typewriter_log(
+                "CYCLES REMAINING: ", Fore.CYAN, f"{cycles_remaining}"
+            )
+        cycles_remaining -= 1
 
         ###################
         # Execute Command #
@@ -184,6 +179,12 @@ def run_interaction_loop(
 
         os.makedirs("experimental_setups/{}/saved_contexts/{}".format(agent.exp_number, agent.project_path), exist_ok=True)
         agent.save_to_file("experimental_setups/{}/saved_contexts/{}/cycle_{}".format(agent.exp_number, agent.project_path, cycle_budget - cycles_remaining))
+    
+    print(f"Last cycle. keep_container: {agent.keep_container}")
+    agent.shell_socket.close()
+    if not agent.keep_container:
+        stop_and_remove(agent.container)
+    exit()
 
 def update_user(
     config: Config,
