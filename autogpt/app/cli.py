@@ -1,8 +1,20 @@
 """Main script for the autogpt package."""
 from pathlib import Path
 from typing import Optional
+import debugpy
+import os
 
 import click
+if os.getenv("ENABLE_DEBUGGER", "False").lower() == "true":
+    print("Debugger is enabled. Attaching...")
+    # 5678 is the default port, but you can change it.
+    # 0.0.0.0 allows connections from any host (important for containers).
+    debugpy.listen(("0.0.0.0", 5678))
+    
+    print("Waiting for debugger to attach...")
+    # This line will pause your script's execution until you attach the VS Code debugger.
+    debugpy.wait_for_client()
+    print("Debugger attached!")
 
 @click.group(invoke_without_command=True)
 @click.option(

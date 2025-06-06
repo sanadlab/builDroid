@@ -15,7 +15,7 @@ from typing import Generator, Literal
 from autogpt.agents.agent import Agent
 from autogpt.command_decorator import command
 from autogpt.logs import logger
-from autogpt.commands.docker_helpers_static import build_image, start_container, execute_command_in_container, write_string_to_file, read_file_from_container, check_image_exists
+from autogpt.commands.docker_helpers_static import execute_command_in_container
 from .decorators import sanitize_path_arg
 
 Operation = Literal["write", "append", "delete"]
@@ -183,8 +183,9 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     print("FILENAME:", filename)
     if "dockerfile" in filename.lower():
         return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
-    write_result = str(write_string_to_file(agent.container.short_id, text, f"{filename}"))
-    if write_result=="None":
+    command = f"echo -n '{text}' > {filename}"
+    write_result = execute_command_in_container(agent.shell_socket, command)
+    if write_result=="":
         return "File written successfully."
     else:
         return write_result

@@ -3,22 +3,23 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import time
 from colorama import Fore
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Literal, Optional
-from google import genai
-from google.genai.chats import Chat
 import json
 import os
-import subprocess
 
-if TYPE_CHECKING:
-    from autogpt.config import AIConfig, Config
+from autogpt.config import AIConfig, Config
+from autogpt.models.command_registry import CommandRegistry
+from google import genai
+from google.genai import types
+from google.genai.chats import Chat
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
-    from autogpt.models.command_registry import CommandRegistry
+from autogpt.logs import logger
 
 from autogpt.llm.providers.openai import get_model_info
-from autogpt.llm.utils import send_request
 from autogpt.logs import logger
 DEFAULT_TRIGGERING_PROMPT = (
     "Determine exactly one command to use based on the given goals "
@@ -150,7 +151,7 @@ class BaseAgent(metaclass=ABCMeta):
         with open(filename, 'w') as file:
             json.dump(self.to_dict(), file, indent=4)
     
-    def create_chat_completion(
+    def create_chat_completion_gemini(
         self,
         client,
         prompt
@@ -160,6 +161,44 @@ class BaseAgent(metaclass=ABCMeta):
         )
         return response.text
         
+    def send_request(
+        self,
+        prompt: str,
+        config: Config,
+    ) -> str:
+        """Create a chat completion for Gemini, based on config."""
+        chat_completion_kwargs = {
+            "temperature": config.temperature
+        }
+        backoff_base = 1.5
+        max_attempts = 5
+        if config.openai_api_base is not None and "google" in config.openai_api_base:
+            backoff_msg = f"{Fore.RED}Rate Limit Reached. Waiting {{backoff}} seconds...{Fore.RESET}"
+            error_msg = f"{Fore.RED}Unknown Error. Waiting {{backoff}} seconds...{Fore.RESET}"
+            for attempt in range(1, max_attempts + 1):
+                backoff = round(backoff_base ** (attempt + 2), 2)
+                try:
+                    response = self.chat.send_message(message=prompt)
+                    return response.text
+
+                except (ResourceExhausted, ServiceUnavailable) as e:
+                    logger.warn(backoff_msg.format(backoff=backoff))
+                    if attempt >= max_attempts:
+                        raise
+                    if False:  # Changed this to `if True` to display the message. Consider a configuration flag.
+                        logger.double_check(api_key_error_msg)
+                        # Add logging of the exception for debugging
+                        logger.debug(f"Gemini API Error: {e}")
+                        user_warned = True
+
+                except Exception as e:  # Catch-all for other potential Gemini errorsc
+                    logger.warn(error_msg.format(backoff=backoff))
+                    if attempt >= max_attempts:
+                        raise  # Re-raise after max retries
+                    #logger.error(f"Unexpected Gemini API error: {e}")
+
+                time.sleep(backoff)
+
     def think(
         self,
         command_name: CommandName | None,
@@ -190,7 +229,7 @@ class BaseAgent(metaclass=ABCMeta):
             logger.info(
                 f"{Fore.GREEN}Creating chat completion with model {self.config.llm_model}, temperature {self.config.temperature}{Fore.RESET}"
             )
-            response = self.create_chat_completion(client=client, prompt=prompt)
+            response = self.create_chat_completion_gemini(client=client, prompt=prompt)
             self.cycle_count += 1
             with open(os.path.join("experimental_setups", self.exp_number, "logs", "prompt_history_{}".format(self.project_path.replace("/", ""))), "w") as patf:
                 patf.write(prompt)
@@ -211,11 +250,9 @@ class BaseAgent(metaclass=ABCMeta):
         logger.info(
             f"{Fore.GREEN}Sending request to model {self.config.llm_model}{Fore.RESET}"
         )
-        response = send_request(
+        response = self.send_request(
             prompt,
-            self.config,
-            stream = True,
-            chat = self.chat
+            self.config
         )
 
         self.cycle_count += 1

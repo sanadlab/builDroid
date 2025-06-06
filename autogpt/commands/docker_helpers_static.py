@@ -92,7 +92,7 @@ def locate_or_import_gradlew(agent):
     execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
     return
 
-def execute_command_in_container(socket, command):    
+def execute_command_in_container(socket: socket, command: str):    
     """
     Executes a command in the persistent shell.
 
@@ -162,20 +162,6 @@ def stop_and_remove(container):
     container.remove()
     return "Container stopped and removed successfully"
     
-import tempfile
-def write_string_to_file(container, file_content, file_path):
-    try:
-        temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
-        temp_file.write(file_content)
-        temp_file.close()
-
-        subprocess.run(["docker", "cp", temp_file.name, f"{container}:{file_path}"], check=True)
-        os.remove(temp_file.name)
-        print(f"File writen to {file_path}")
-    finally:
-        # Stop and remove the container
-        pass
-
 def read_file_from_container(container, file_path):
     """
     Reads the content of a file within a Docker container and returns it as a string.

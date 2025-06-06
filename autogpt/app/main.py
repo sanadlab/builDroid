@@ -128,7 +128,7 @@ def run_interaction_loop(
     if agent.container is None:
         sys.exit(1)
     subprocess.run(['docker', 'cp', f'{agent.workspace_path}/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
-    print(image_log + "Container launched successfully\n")
+    print(image_log + "Container launched successfully")
     locate_or_import_gradlew(agent)
         
     command_name = None
@@ -141,6 +141,7 @@ def run_interaction_loop(
         # Plan #
         ########
         # Have the agent determine the next action to take.
+        time.sleep(0.2)
         with spinner:
             command_name, command_args, assistant_reply_dict = agent.think(command_name, command_args, assistant_reply_dict, result)
 

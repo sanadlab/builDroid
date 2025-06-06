@@ -68,7 +68,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     -s | --stream)
-      chat_stream = "true"
+      chat_stream="true"
       shift
       ;;
     *)
