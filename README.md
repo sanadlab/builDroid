@@ -1,132 +1,98 @@
-# ExecutionAgent 🚀  
-Automate Building, Testing, and Validation of GitHub Projects in Isolated Containers  
+````markdown
+# buildAnaDroid
 
-ExecutionAgent is a robust tool leveraging a large language model (LLM) to autonomously **clone, build, install**, and **run test cases** for projects hosted on GitHub—all inside an isolated container. With support for multiple languages and configurations, ExecutionAgent aims to streamline development and quality assurance workflows.  
-<div style="text-align: center;">
-  <img src="execution_agent.png" alt="Alt text" width="300" height="300">
-</div>
+> ⚡ Clone, build, and generate debugging APKs for Android projects using LLM-powered automation.
 
----
+**buildAnaDroid** is a Python package that leverages Large Language Models (LLMs) to automatically clone any Android project hosted on GitHub, configure it, and **build the debugging `.apk`** file. This enables faster evaluation, performance testing, reverse engineering, or security analysis of Android applications. The building process happens in an isolated Docker container.
+
+## 🚀 Features
+
+- 🔗 Clone any Android GitHub repository.
+- ⚙️ Auto-configure Gradle build for debugging.
+- 🤖 LLM-guided build troubleshooting and error recovery.
+- 📦 Outputs ready-to-install **debugging APK**.
+- 🧪 Supports workflows for performance evaluation and static/dynamic analysis.
+
+## 📦 Installation
+
+```bash
+pip install build-anadroid
+```
 
 ## 📦 Dev Container Setup  
-To get started in a VSCode Dev Container:  
-1. Install the [Remote - Containers](https://code.visualstudio.com/docs/remote/containers) extension.  
-2. Clone this repository.  
-3. Open the repository in VSCode, and it will prompt you to reopen in the dev container. Alternatively, use a command to open the current folder in a dev container.  
 
----
+To setup in a VSCode Dev Container:  
+1. Install the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension.  
+2. Clone this repository. 
+3. Open the repository in VSCode, and it will prompt you to reopen in the dev container. Alternatively, use a command to open the current folder in a dev container.
 
-## ✨ Key Features  
-- **Dual Mode Execution**: Run ExecutionAgent with a batch file or directly with a GitHub repository URL.  
-- **Autonomous Workflow**: Clone, build, and test GitHub projects with no human intervention (we will add human-in-the-loop soon).
-- **Language Support**: Multiple languages like Python, C, C++, Java, JavaScript, and more.  
-- **Dev Container Integration**: Preconfigured for VSCode Dev Containers for seamless development.  
-- **Metrics** (based on evaluation set of 50 projects):  
-  - Build Success Rate: **80%**  
-  - Test Success Rate: **65%**  
+## ✅ Requirements
 
----
+* Python 3.10+
+* Git installed and accessible from terminal
+* OpenAI API key (or other LLM provider) for LLM access.
 
-## 🚀 How It Works  
+## ⚙️ LLM Configuration
 
-### 1️⃣ Single Repository Mode  
-You can directly process a single GitHub repository using the `--repo` option:  
-```bash
-./ExecutionAgent.sh --repo <github_repo_url> -l <num_value>
-```  
-Example:  
-```bash
-./ExecutionAgent.sh --repo https://github.com/pytest-dev/pytest -l 50
-```  
+`buildAnaDroid` uses an LLM backend for build assistance. To use it:
 
-When this mode is used, ExecutionAgent will:  
-1. Extract the project name from the URL.  
-2. Determine the repository's primary programming language by calling `get_main_language.py`.  
-3. Clone the repository and set up metadata.  
-4. Launch the main loop of ExecutionAgent to build the project and run its test cases.  
+1. Obtain your API key from OpenAI or compatible provider.
+2. Set your API key as a token file:
 
-The `-l` option allows you to specify the number of cycles which corresponds to the number of actions the agent can execute. By default, if `-l` is not provided, it will be set to 30. If you want to set a different number, simply pass the desired value after `-l`. For example, `-l 50` will use 50 instead of the default value.  
-
-### 2️⃣ Batch File Mode  
-Prepare a batch file listing projects to process in the format:  
-`<project_name> <github_url> <language>`  
-
-Example (notice how for now we leave one empty line after each entry):  
-```plaintext
-scipy https://github.com/scipy/scipy Python
-
-pytest https://github.com/pytest-dev/pytest Python
+```openai_token.txt
+"your-api-key-here"
+"your-base-url-here"
+"your-llm-model-here"
 ```
 
-Run ExecutionAgent with the batch file:  
+`Base url` and `LLM model` are optional. If not provided, `buildAnaDroid` will use OpenAI's `gpt-4.1-mini-2025-04-14`.
+For example, if you put 'https://generativelanguage.googleapis.com/v1beta/openai/' as your base url, `buildAnaDroid` will access Google AI's `gemini-2.0-flash-lite`.
+If you want to use other providers, you have to provide the base url and the LLM model in `openai_token.txt`.
+
+## 🖥️ Usage
+
+### CLI Usage
+
 ```bash
-./ExecutionAgent.sh /path/to/batch_file.txt
-```  
-ExecutionAgent will process each project listed in the file, performing the same steps as the single repository mode. The `-l` option can also be applied here by adding it to the command when running the script.
-
-To show the results of the last experiment for a specific project, you can call:
-```sh
-#
-python3.10 show_results.py <project_name>
-# example python3.10 show_results.py pytest
+build-anadroid build https://github.com/user/project # Run on a single repository
+build-anadroid build repos.txt # Run on a list of repositories from a file
+```
+```bash
+build-anadroid clean # Clean test results
 ```
 
-To clean all the logs and unset the api token, you can use the following command (WARNING: ALL THE LOGS AND EXECUTION RESULTS WOULD BE DELETED)
-```sh
-./clean.sh
-```
+### Advanced Options for Builds
 
----
+* `-n`, `--num`: Specify cycle limit (max. number of commands to execute)
+* `-c`, `--conv`: Enable conversation mode
+* `-k`, `--keep-container`: Keep container after build (Removes container by default)
 
-## 🔧 Configuration 
+## 🛠️ Troubleshooting
 
-**More options on configuring the agent would be coming soon**
+If the build fails, `buildAnaDroid` will attempt to:
 
-### Control the Number of Iterations:
-By default, the number of attempts `ExecutionAgent` will make is 3. After each attempt, `ExecutionAgent` learns from the previous one and adjust its strategy.
-In each attempt, the agent executes a number of commands (or cycles) defined by the parameter `l` mentioned above (default = 30).
+1. Analyze the error output.
+2. Query the LLM for common solutions.
+3. Retry the build with suggested fixes.
 
-To set the number of attempts, you need to change line 17 (local max_retries=2) to any number you want (the total number of attempts would be max_retries +1).
+> ❗ **Note:** Some complex/outdated builds may still require manual intervention.
 
-### Keep or Delete a docker container
-You can set this option in the file `customize.json`. Default value is `"FALSE"` (containers would be deleted). The other option is `"True"` which keeps the containers.
+## 🏗️ Roadmap
 
-This options useful for the ones who want to reuse the container already built by the agent.
+* [ ] Support Python usage
+* [ ] Integration with emulator for automated APK testing
 
----
+## 🤝 Contributing
 
-## 📊 Results Summary  
+Pull requests are welcome! For major changes, please open an issue first to discuss.
 
-| **Metric**              | **Success Rate** |  
-|--------------------------|------------------|  
-| Build Success Rate       | 80%              |  
-| Test Execution Rate      | 65%              |  
+## 📜 License
 
-Results are logged under `tests/experiment_XX`, where `XX` is an incremented number for each invocation of ExecutionAgent.  
+MIT License. See `LICENSE` for details.
 
-## 📁 Output Folder Structure Explanation  
+## 🙏 Acknowledgments
 
-The folder structure under `tests/experiment_XX` is organized to keep track of the various outputs and logs generated during the execution of the `ExecutionAgent`. Below is a breakdown of the key directories and their contents:  
+* OpenAI for LLM API
+* ExecutionAgent
 
-- **files**: Contains files generated by the ExecutionAgent, such as `Dockerfile`, installation scripts, or any configuration files necessary for setting up the container environment.  
-  - Example: `Dockerfile`, `INSTALL.sh`   
-
-- **logs**: Stores raw logs capturing the input prompts and the corresponding outputs from the model during execution. These logs are essential for troubleshooting and understanding the behavior of the agent.  
-  - Example: `cycles_list_marshmallow`, `prompt_history_marshmallow`  
-
-- **responses**: Holds the responses generated by the model during the execution process in a structured JSON format. These responses include details about the generated build or test configurations and results.  
-  - Example: `model_responses_marshmallow`  
-
-- **saved_contexts**: Contains the saved states of the agent object at each iteration of the execution process. These snapshots are useful for debugging, tracking changes, and extracting subcomponents of the prompt across different cycles.  
-  - Example: `cycle_1`, `cycle_10`, etc.  
-
-
----
-
-## 📜 Research Paper  
-Dive into the technical details and evaluation in our [paper](https://software-lab.org/publications/ExecutionAgent_2024-12-14.pdf).  
-
----
-
-## 📬 Feedback  
-Have suggestions or found a bug? Open an issue or contact us at [my_email](mailto:fi_bouzenia@esi.dz).
+````
