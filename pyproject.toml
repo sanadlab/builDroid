@@ -1,12 +1,12 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "agpt"
-version = "0.4.7"
+name = "build-anadroid"
+version = "0.1.0"
 authors = [
-  { name="Torantulino", email="support@agpt.co" },
+  { name="Jaehyeon Kim", email="jk7404@nyu.edu" },
 ]
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,47 +17,98 @@ classifiers = [
 ]
 description = "An open-source attempt to make GPT-4 autonomous"
 
+dependencies = [
+    "annotated-types==0.7.0",
+    "anyio==4.9.0",
+    "async-timeout==4.0.3",
+    "blis==1.3.0",
+    "cachetools==5.5.2",
+    "catalogue==2.0.10",
+    "certifi==2025.4.26",
+    "charset-normalizer==3.4.2",
+    "click==8.2.1",
+    "cloudpathlib==0.21.1",
+    "confection==0.1.5",
+    "cymem==2.0.11",
+    "distro==1.9.0",
+    "docker==7.1.0",
+    "et-xmlfile==2.0.0",
+    "exceptiongroup==1.3.0",
+    "google-auth==2.40.2",
+    "google-genai==1.18.0",
+    "greenlet==3.2.2",
+    "h11==0.16.0",
+    "httpcore==1.0.9",
+    "httpx==0.28.1",
+    "idna==3.10",
+    "jinja2==3.1.6",
+    "jiter==0.10.0",
+    "jsonpatch==1.33",
+    "jsonpointer==3.0.0",
+    "langchain==0.3.25",
+    "langchain-core==0.3.63",
+    "langchain-text-splitters==0.3.8",
+    "langcodes==3.5.0",
+    "langsmith==0.3.43",
+    "language-data==1.3.0",
+    "marisa-trie==1.2.1",
+    "markdown-it-py==3.0.0",
+    "markupsafe==3.0.2",
+    "mdurl==0.1.2",
+    "murmurhash==1.0.13",
+    "numpy==2.2.6",
+    "openai==1.82.1",
+    "openpyxl==3.1.5",
+    "orjson==3.10.18",
+    "packaging==24.2",
+    "pandas==2.2.3",
+    "preshed==3.0.10",
+    "pyasn1==0.6.1",
+    "pyasn1-modules==0.4.2",
+    "pydantic==2.11.5",
+    "pydantic-core==2.33.2",
+    "pygments==2.19.1",
+    "python-dateutil==2.9.0.post0",
+    "pytz==2025.2",
+    "pyyaml==6.0.2",
+    "requests==2.32.3",
+    "requests-toolbelt==1.0.0",
+    "rich==14.0.0",
+    "rsa==4.9.1",
+    "shellingham==1.5.4",
+    "six==1.17.0",
+    "smart-open==7.1.0",
+    "sniffio==1.3.1",
+    "spacy==3.8.7",
+    "spacy-legacy==3.0.12",
+    "spacy-loggers==1.0.5",
+    "sqlalchemy==2.0.41",
+    "srsly==2.5.1",
+    "tenacity==9.1.2",
+    "thinc==8.3.6",
+    "tqdm==4.67.1",
+    "typer==0.16.0",
+    "typing-extensions==4.13.2",
+    "typing-inspection==0.4.1",
+    "tzdata==2025.2",
+    "urllib3==2.4.0",
+    "wasabi==1.1.3",
+    "weasel==0.4.1",
+    "websockets==15.0.1",
+    "wrapt==1.17.2",
+    "zstandard==0.23.0",
+]
+
 [project.urls]
-"Homepage" = "https://github.com/Significant-Gravitas/Auto-GPT"
-"Bug Tracker" = "https://github.com/Significant-Gravitas/Auto-GPT"
+"Homepage" = "https://github.com/jk7404/buildAnaDroid"
+"Bug Tracker" = "https://github.com/jk7404/buildAnaDroid/issues"
 
-[tool.black]
-line-length = 88
-target-version = ['py310']
-include = '\.pyi?$'
-packages = ["autogpt"]
-extend-exclude = '.+/(dist|.venv|venv|build)/.+'
+[project.scripts]
+build-anadroid = "buildAnaDroid:main"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 88
-sections = [
-    "FUTURE",
-    "STDLIB",
-    "THIRDPARTY",
-    "FIRSTPARTY",
-    "LOCALFOLDER"
-]
-skip = '''
-    .tox
-    __pycache__
-    *.pyc
-    .env
-    venv*/*
-    .venv/*
-    reports/*
-    dist/*
-
-'''
-
-[tool.pytest.ini_options]
-markers = [
-    "requires_openai_api_key",
-    "requires_huggingface_api_key"
-]
+[tool.setuptools.package-data]
+"buildAnaDroid" = ["files/*", "prompts/prompt_files/*"]

@@ -32,10 +32,9 @@ make altinstall  # altinstall to avoid overwriting default python
 update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.10 1
 update-alternatives --config python3
 
-# Install pip and google-genai package
+# Install pip
 apt update -y
 apt install -y python3-venv python3-pip
-python3 -m pip install google-generativeai
 
 # Clean up
 rm -rf /Python-$PYTHON_VERSION

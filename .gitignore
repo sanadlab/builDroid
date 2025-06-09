@@ -64,10 +64,7 @@ poetry.lock
 # tokens
 openai_token.txt
 
-execution_agent_workspace/*
-experimental_setups/*
+tests/*
 logs/*
-parsable_logs/*
-problems_memory/*
 requirements.in
 project_meta_data.json
