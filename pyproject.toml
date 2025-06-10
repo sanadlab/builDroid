@@ -15,7 +15,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-description = "An open-source attempt to make GPT-4 autonomous"
+description = "Automation of Android Project Building with LLMs"
 
 dependencies = [
     "annotated-types==0.7.0",

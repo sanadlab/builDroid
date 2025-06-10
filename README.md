@@ -1,4 +1,3 @@
-````markdown
 # buildAnaDroid
 
 > ⚡ Clone, build, and generate debugging APKs for Android projects using LLM-powered automation.
@@ -94,5 +93,3 @@ MIT License. See `LICENSE` for details.
 
 * OpenAI for LLM API
 * ExecutionAgent
-
-````
