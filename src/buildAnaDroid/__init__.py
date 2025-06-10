@@ -103,6 +103,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
 def process_repository(github_url: str, num: int, conversation: bool):
     """Processes a single repository."""
     project_name = extract_project_name(github_url)
+    new_experiment(project_name)
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
     print(f"From GitHub URL: {github_url}")
@@ -217,37 +218,41 @@ Examples for 'clean' command:
     elif args.command == "build":
         repo_source = str(args.repo_source)
 
-        # 1. Set up API token and increment experiment
+        # Set up API token and increment experiment
         api_token_setup()
-        project_name = extract_project_name(repo_source)
-        new_experiment(project_name)
-        
-        try:
-            if "github.com" in repo_source:
-                # Handle the case where input is a single URL string
-                print("Processing a single repository URL.")
+        if "github.com" in repo_source:
+            # Handle the case where input is a single URL string
+            print("Processing a single repository URL.")
+            project_name = extract_project_name(repo_source)
+            try:
                 process_repository(args.repo_source, args.num, args.conv)
-
-            else:
-                # Handle the case where the input is a file
-                print(f"Processing repositories from file: {repo_source}")
-                with open(repo_source, 'r') as f:
-                    repo_urls = [line.strip() for line in f if line.strip()]
-                
-                for url in repo_urls:
+            finally:
+                # Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
+                if args.keep_container:
+                    subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                else:
+                    subprocess.run(["docker", "rm", "-f", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            # Handle the case where the input is a file
+            print(f"Processing repositories from file: {repo_source}")
+            with open(repo_source, 'r') as f:
+                repo_urls = [line.strip() for line in f if line.strip()]
+            
+            for url in repo_urls:
+                project_name = extract_project_name(url)
+                try:
                     process_repository(url, args.num, args.conv)
-                
-                # Generate the final results sheet after all repos are processed
-                create_results_sheet()
-
-        finally:
-            # 2. Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
-            if args.keep_container:
-                subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:
-                subprocess.run(["docker", "rm", "-f", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            api_token_reset()
-            print("Execution finished.")
+                finally:
+                    # Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
+                    if args.keep_container:
+                        subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    else:
+                        subprocess.run(["docker", "rm", "-f", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            # Generate the final results sheet after all repos are processed
+            create_results_sheet()
+        api_token_reset()
+        print("Execution finished.")
 
 if __name__ == "__main__":
     # Check if we're running with Python 3.10+
