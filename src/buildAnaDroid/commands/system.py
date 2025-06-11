@@ -57,4 +57,4 @@ def goals_accomplished(reason: str, agent: Agent) -> NoReturn:
     agent.shell_socket.close()
     with open(os.path.join("tests", agent.project_path, "saved_contexts", "SUCCESS"), "w") as ssf:
         ssf.write("SUCCESS")
-    quit()
+    return "goals_accomplished: SUCCESS"

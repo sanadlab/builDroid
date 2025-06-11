@@ -172,7 +172,9 @@ def run_interaction_loop(
         agent.left_commands = cycles_remaining
         agent.project_path = agent.project_path.replace(".git","")
         result = agent.execute(command_name, command_args)
-        
+        if result == "goals_accomplished: SUCCESS":
+            agent.shell_socket.close()
+            return
         if result is not None:
             logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
         else:
@@ -183,7 +185,7 @@ def run_interaction_loop(
     
     logger.info("Last cycle. Shutting down...")
     agent.shell_socket.close()
-    exit()
+    return
 
 def update_user(
     config: Config,

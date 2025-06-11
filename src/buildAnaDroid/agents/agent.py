@@ -53,7 +53,8 @@ class Agent(BaseAgent):
                 arguments=command_args,
                 agent=self,
             )
-
+            if command_result == "goals_accomplished: SUCCESS":
+                return command_result
             if len(str(command_result)) < 5000:
                 result = f"Command {command_name} returned: " f"{command_result}"
             else:
