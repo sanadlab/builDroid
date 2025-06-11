@@ -10,7 +10,7 @@ from typing import Any, Literal, Optional
 import json
 import os
 from importlib.resources import files
-from pathlib import Path
+import functools
 
 from buildAnaDroid.config import AIConfig, Config
 from buildAnaDroid.models.command_registry import CommandRegistry
@@ -29,6 +29,94 @@ DEFAULT_TRIGGERING_PROMPT = (
 CommandName = str
 CommandArgs = dict[str, str]
 AgentThoughts = dict[str, Any]
+
+def retry(max_attempts=3, backoff_base=1.5, exceptions_to_catch=(ResourceExhausted, ServiceUnavailable)):
+    """
+    A decorator to retry a function if an exception occurs.
+
+    :param max_attempts: Maximum number of times to attempt the function.
+    :param backoff_base: Factor by which the delay increases each time (e.g., 2 for exponential).
+    :param exceptions_to_catch: A tuple of exception types to catch and retry on.
+                                Defaults to all exceptions.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            backoff_msg = f"{Fore.RED}Rate Limit Reached. Waiting {{backoff}} seconds...{Fore.RESET}"
+            error_msg = f"{Fore.RED}Unknown Error: {{err}}. Waiting {{backoff}} seconds...{Fore.RESET}"
+            for attempt in range(1, max_attempts + 1):
+                backoff = round(backoff_base ** (attempt), 2)
+                try:
+                    return func(*args, **kwargs)
+                except exceptions_to_catch as e:
+                    logger.warn(backoff_msg.format(backoff=backoff))
+                    if attempt >= max_attempts:
+                        raise
+                except Exception as e:  # Catch-all for other potential error
+                    logger.warn(error_msg.format(err=e, backoff=backoff))
+                    if attempt >= max_attempts:
+                        raise
+                time.sleep(backoff)
+        return wrapper
+    return decorator
+
+def create_chat_completion(
+    client,
+    model,
+    prompt
+) -> str:
+    if type(client) is genai.Client:
+        return create_chat_completion_gemini(client, model, prompt)
+    elif type(client) is OpenAI:
+        return create_chat_completion_gpt(client, model, prompt)
+    return "ERROR: Client not supported."
+
+@retry()
+def create_chat_completion_gemini(
+    client: genai.Client,
+    model,
+    prompt
+) -> str:
+    """Create a chat completion with Gemini."""
+    response = client.models.generate_content(
+        model=model, contents=prompt
+    )
+    return response.text
+
+@retry()
+def create_chat_completion_gpt(
+    client: OpenAI,
+    model,
+    prompt,
+) -> str:
+    """Create a chat completion with GPT."""
+    response = client.responses.create(
+        model=model, input=prompt
+    )
+    return response.output_text
+    
+@retry()
+def send_message_gemini(
+    chat: Chat,
+    prompt: str
+) -> str:
+    """Send a message to current chat with Gemini."""
+    response = chat.send_message(message=prompt)
+    return response.text
+
+@retry()
+def send_message_gpt(
+    chat: Stream,
+    model: str,
+    client: OpenAI,
+    prompt: str,
+) -> str:
+    """Send a message to current chat with GPT."""
+    chat = client.responses.create(
+        model=model, input=prompt,
+        previous_response_id=chat.id
+    )
+    return chat.output_text
 
 class BaseAgent(metaclass=ABCMeta):
     """Base class for all buildAnaDroid agents."""
@@ -132,78 +220,6 @@ class BaseAgent(metaclass=ABCMeta):
         with open(filename, 'w') as file:
             json.dump(self.to_dict(), file, indent=4)
 
-    def create_chat_completion(
-        self,
-        client,
-        prompt
-    ) -> str:
-        if type(client) is genai.Client:
-            return self.create_chat_completion_gemini(client, prompt)
-        elif type(client) is OpenAI:
-            return self.create_chat_completion_gpt(client, prompt)
-        return "ERROR: Client not supported."
-    
-    def create_chat_completion_gemini(
-        self,
-        client: genai.Client,
-        prompt
-    ) -> str:
-        """Create a chat completion with Gemini."""
-        response = client.models.generate_content(
-            model=self.config.llm_model, contents=prompt
-        )
-        return response.text
-    
-    def create_chat_completion_gpt(
-        self,
-        client: OpenAI,
-        prompt,
-    ) -> str:
-        """Create a chat completion with GPT."""
-        response = client.responses.create(
-            model=self.config.llm_model, input=prompt
-        )
-        return response.output_text
-        
-    def send_message_gemini(
-        self,
-        prompt: str
-    ) -> str:
-        """Send a message to current chat with Gemini."""
-        backoff_base = 1.5
-        max_attempts = 5
-        backoff_msg = f"{Fore.RED}Rate Limit Reached. Waiting {{backoff}} seconds...{Fore.RESET}"
-        error_msg = f"{Fore.RED}Unknown Error. Waiting {{backoff}} seconds...{Fore.RESET}"
-        for attempt in range(1, max_attempts + 1):
-            backoff = round(backoff_base ** (attempt + 2), 2)
-            try:
-                response = self.chat.send_message(message=prompt)
-                return response.text
-
-            except (ResourceExhausted, ServiceUnavailable) as e:
-                logger.warn(backoff_msg.format(backoff=backoff))
-                if attempt >= max_attempts:
-                    raise
-
-            except Exception as e:  # Catch-all for other potential Gemini error
-                logger.warn(error_msg.format(backoff=backoff))
-                if attempt >= max_attempts:
-                    raise
-
-            time.sleep(backoff)
-
-    def send_message_gpt(
-        self,
-        client: OpenAI,
-        prompt: str,
-    ) -> str:
-        """Send a message to current chat with GPT."""
-        self.chat = client.responses.create(
-            model=self.config.llm_model, input=prompt,
-            previous_response_id=self.chat.id
-        )
-        return self.chat.output_text
-
     def think(
         self,
         command_name: CommandName | None,
@@ -238,7 +254,7 @@ class BaseAgent(metaclass=ABCMeta):
             logger.info(
                 f"{Fore.GREEN}Creating chat completion with model {self.config.llm_model}{Fore.RESET}"
             )
-            response = self.create_chat_completion(client=client, prompt=prompt)
+            response = create_chat_completion(client, self.config.llm_model, prompt)
             self.cycle_count += 1
             with open(f"tests/{self.project_path}/logs/prompt_history", "w") as patf:
                 patf.write(prompt)
@@ -250,7 +266,7 @@ class BaseAgent(metaclass=ABCMeta):
                 f"{Fore.GREEN}Starting chat with model {self.config.llm_model}{Fore.RESET}"
             )
             if "google" in self.config.openai_api_base:
-                self.chat = client.chats.create(model = self.config.llm_model)
+                self.chat = client.chats.create(model=self.config.llm_model)
             else:
                 self.chat = client.responses.create(model=self.config.llm_model, input=prompt)
                 response = self.chat.output_text
@@ -264,9 +280,9 @@ class BaseAgent(metaclass=ABCMeta):
             f"{Fore.GREEN}Sending request to model {self.config.llm_model}{Fore.RESET}"
         )
         if "google" in self.config.openai_api_base:
-            response = self.send_message_gemini(prompt)
+            response = send_message_gemini(self.chat, prompt)
         elif self.cycle_count > 0:
-            response = self.send_message_gpt(client, prompt)
+            response = send_message_gpt(self.chat, self.config.llm_model, client, prompt)
 
         self.cycle_count += 1
         return self.on_response(response, thought_process_id, prompt)

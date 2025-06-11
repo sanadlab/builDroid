@@ -24,7 +24,7 @@ from buildAnaDroid.config import AIConfig, Config
 from buildAnaDroid.config.config import set_api_token
 from buildAnaDroid.logs import logger
 from buildAnaDroid.models.command_registry import CommandRegistry
-from buildAnaDroid.commands.docker_helpers_static import build_image, start_container, stop_and_remove, check_image_exists, create_persistent_shell, execute_command_in_container, locate_or_import_gradlew
+from buildAnaDroid.commands.docker_helpers_static import build_image, start_container, check_image_exists, create_persistent_shell, locate_or_import_gradlew
 
 def run_buildAnaDroid(
     cycle_limit: int,

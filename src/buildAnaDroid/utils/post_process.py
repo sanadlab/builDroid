@@ -1,14 +1,13 @@
 import os
-import re
-import sys
 
 import warnings
 warnings.filterwarnings("ignore")
 
-import openai
+from openai import OpenAI
 from google import genai
+from ..agents.base import create_chat_completion
 
-def ask_chatgpt(query, system_message):
+def ask_chatgpt(prompt):
     """
     Asks a question to either OpenAI's ChatGPT or Google's Gemini models.
 
@@ -21,25 +20,30 @@ def ask_chatgpt(query, system_message):
         str: The content of the assistant's response.
     """
     # Set up the OpenAI API key
-    api_key = os.environ.get("api_key")
+    api_key = os.environ.get("api_key", default="")
     # Update base url for different API providers
-    base_url = os.environ.get("base_url")
-    llm_model = os.environ.get("llm_model")
+    base_url = os.environ.get("base_url", default="")
+    llm_model = os.environ.get("llm_model", default="")
+    if llm_model == "":
+        if "google" in base_url:
+            llm_model = "gemini-2.0-flash-lite"
+        else:
+            llm_model = "gpt-4.1-mini-2025-04-14"
     print("Post processing with model: ", llm_model)
     if "google" in base_url: # Gemini version
         client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(model=llm_model, contents=system_message + "\n" + query)  # Combine system and user messages
-        return response.text
+    else:
+        client = OpenAI(api_key=api_key)
+    return create_chat_completion(client=client, model=llm_model, prompt=prompt)
     
         
 def extract_agent_log(project_name):
     file_path = f"tests/{project_name}/logs/prompt_history"
-    extracted_data = ""
+    with open(file_path, "r", encoding="utf-8") as f:
+        extracted_data = f.read()
     return extracted_data
 
 def run_post_process(project_name):
-    if os.path.exists("project_meta_data.json"):
-        os.remove("project_meta_data.json")
     # Build paths
     success_file = f"tests/{project_name}/saved_contexts/SUCCESS"
 
@@ -51,24 +55,18 @@ def run_post_process(project_name):
     
     if os.path.exists(success_file):
         return True
-    
-    return False
 
     # Summarize problems encountered
     while True:
         # Prepare the query for ask_chatgpt
-        query = (
-            f"the following would represent the sequence of commands and reasoning made by an LLM trying to install \"{project_name}\" project from source code and execute test cases. "
+        prompt = (
+            f"You are a helpful software engineering assistant with capabilities of installing, building, configuring, and testing software projects. The following would represent the sequence of commands and reasoning made by an LLM trying to install \"{project_name}\" project from source code and execute test cases. "
             "I want you to summarize the encountered problems and give advice for next attempt. Be precise and concise. Address the most important and critical issues (ignore non critical warnings and so). Your response should have one header: ### Feedback from previous installation attempts\n"
-            f"+ {extracted_content}"
-        )
-        
-        system_message = (
-            "You are a helpful software engineering assistant with capabilities of installing, building, configuring, and testing software projects."
+            f"\n\n==================Prompt History==================\n{extracted_content}"
         )
 
         # Call ask_chatgpt
-        response = ask_chatgpt(query, system_message)
+        response = ask_chatgpt(prompt)
 
         # Save the response to problems_memory/{project_name}
         problems_memory = f"tests/{project_name}/output/FAILURE"

@@ -72,7 +72,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         run_buildAnaDroid_with_checks(num, conversation, debug, metadata)
 
         # Run post-processing and check the result
-        if run_post_process():
+        if run_post_process(project_name):
             print(f"Post-process succeeded. The extracted .apk file is in the "
                   f"tests/{project_name}/output folder.")
             return # Exit the function on success
