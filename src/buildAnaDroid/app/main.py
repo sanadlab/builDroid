@@ -123,7 +123,7 @@ def run_interaction_loop(
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
-    agent.container = start_container(f"build-anadroid:0.1.0", f"{agent.project_path[:12]}")
+    agent.container = start_container(f"build-anadroid:0.1.0", f"{agent.project_path[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
