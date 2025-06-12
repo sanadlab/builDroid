@@ -12,8 +12,8 @@ def create_results_sheet():
             status = "Succeeded" if os.path.exists(os.path.join(project_path, "saved_contexts", "SUCCESS")) else "Failed"
 
             # Loop through cycle_* files
-            for file in os.listdir(project_path):
-                if file.startswith("cycle_") and os.path.exists(os.path.join(project_path, file)):
+            for file in os.listdir(os.path.join(project_path, "saved_contexts")):
+                if file.startswith("cycle_"):
                     with open(os.path.join(project_path, file), 'r', encoding='utf-8') as f:
                         cmd_count += 1
 

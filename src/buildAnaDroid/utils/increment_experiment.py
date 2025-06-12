@@ -2,7 +2,7 @@ import os
 
 def new_experiment(project_name):
     os.makedirs(f"tests", exist_ok=True)
-    with open("tests/tests_list.txt", "w") as expl:
+    with open("tests/tests_list.txt", "a+") as expl:
         expl.write(f"{project_name}\n")
 
     print("Creating experiment folder:", project_name)
