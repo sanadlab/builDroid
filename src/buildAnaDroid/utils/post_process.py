@@ -61,8 +61,9 @@ def run_post_process(project_name):
         # Prepare the query for ask_chatgpt
         prompt = (
             f"You are a helpful software engineering assistant with capabilities of installing, building, configuring, and testing software projects. The following would represent the sequence of commands and reasoning made by an LLM trying to install \"{project_name}\" project from source code and execute test cases. "
-            "I want you to summarize the encountered problems and give advice for next attempt. Be precise and concise. Address the most important and critical issues (ignore non critical warnings and so). Your response should have one header: ### Feedback from previous installation attempts\n"
-            f"\n\n==================Prompt History==================\n{extracted_content}"
+            "I want you to summarize the encountered problems and give advice for next attempt. Be precise and concise. Address the most important and critical issues (ignore non critical warnings and so).\n"
+            f"\n\n==================Prompt History Start==================\n{extracted_content}\n==================Prompt History End=================="
+            f"\n\n**IMPORTANT:** Ignore the JSON response format provided in Prompt History, which were used in other LLM requests.\nYour response should be in plain text and have one header: ### Feedback from previous installation attempts"
         )
 
         # Call ask_chatgpt

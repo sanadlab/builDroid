@@ -135,7 +135,7 @@ def run_interaction_loop(
     command_args = None
     assistant_reply_dict = None
     result = None
-    while cycles_remaining >= 0:
+    while cycles_remaining > 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
         ########
         # Plan #

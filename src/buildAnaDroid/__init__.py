@@ -15,7 +15,7 @@ PYTHON_EXECUTABLE = sys.executable
 # Default value for the number parameter, as in the original script.
 DEFAULT_NUM = 30
 # Maximum retries for the main execution logic.
-MAX_RETRIES = 1
+MAX_RETRIES = 2
 
 def extract_project_name(github_url: str) -> str:
     """Extracts the project name from a GitHub URL."""
@@ -57,7 +57,7 @@ def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: b
     )
 
 
-def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool, metadata: dict):
+def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool, metadata: dict, user_retry:bool):
     """
     Runs the main logic, handles retries, and performs post-processing.
     This replaces the `run_with_retries` function from the shell script.
@@ -77,33 +77,27 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
                   f"tests/{project_name}/output folder.")
             return # Exit the function on success
 
-        print(f"Attempt {attempt} failed with FAILURE. Retrying...")
+        print(f"Attempt {attempt} failed. Retrying...")
 
-    while False:
+    while user_retry:
         print("=" * 70)
         print("PROMPTING USER FOR ADDITIONAL RETRY:")
         print(f"PROJECT: {project_name}")
         print("=" * 70)
-        user_input = input(f"Post-process failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
-        if user_input.lower().startswith('y'):
-            run_buildAnaDroid_with_checks(num, conversation)
-            result = run_command(
-                [PYTHON_EXECUTABLE, "post_process.py", project_name],
-                capture_output=True
-            )
-            if "SUCCESS" in result.stdout:
-                print("Post-process succeeded.")
-                return
-        elif user_input.lower().startswith('n'):
-            print("Exiting retry loop.")
-            break
-        else:
-            print("Please answer yes or no.")
+        user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
+        run_buildAnaDroid_with_checks(num, conversation, debug, metadata)
+        # Run post-processing and check the result
+        if run_post_process(project_name):
+            print(f"Post-process succeeded. The extracted .apk file is in the "
+                  f"tests/{project_name}/output folder.")
+            return # Exit the function on success
 
-def process_repository(github_url: str, num: int, conversation: bool):
+        print(f"User prompted retry failed. Exiting program.")
+
+def process_repository(github_url: str, num: int, conversation: bool, user_retry:bool):
     """Processes a single repository."""
     project_name = extract_project_name(github_url)
-    new_experiment(project_name)
+    past_attempt = new_experiment(project_name)
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
     print(f"From GitHub URL: {github_url}")
@@ -114,12 +108,12 @@ def process_repository(github_url: str, num: int, conversation: bool):
     image = "build-anadroid:0.1.0"
 
     # Clone the Github repository and set metadata
-    metadata = clone_and_set_metadata(project_name, github_url, image)
+    metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)
 
     debug = False
 
     # Run the main task with retries
-    run_with_retries(project_name, num, conversation, debug, metadata)
+    run_with_retries(project_name, num, conversation, debug, metadata, user_retry)
 
 def main():
     """Initialization function."""
@@ -225,7 +219,7 @@ Examples for 'clean' command:
             print("Processing a single repository URL.")
             project_name = extract_project_name(repo_source)
             try:
-                process_repository(args.repo_source, args.num, args.conv)
+                process_repository(args.repo_source, args.num, args.conv, True)
             finally:
                 # Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
                 if args.keep_container:
@@ -241,7 +235,7 @@ Examples for 'clean' command:
             for url in repo_urls:
                 project_name = extract_project_name(url)
                 try:
-                    process_repository(url, args.num, args.conv)
+                    process_repository(url, args.num, args.conv, False)
                 finally:
                     # Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
                     if args.keep_container:

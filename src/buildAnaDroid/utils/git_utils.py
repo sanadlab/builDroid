@@ -3,7 +3,7 @@ import json
 import subprocess
 import importlib.resources as pkg_resources
 
-def clone_and_set_metadata(project_name, github_url, image):
+def clone_and_set_metadata(project_name, github_url, image, past_attempt):
     cwd = os.getcwd()
 
     # Clone the repository
@@ -21,6 +21,7 @@ def clone_and_set_metadata(project_name, github_url, image):
             "name": "NO-TRACK"
         },
         "image": image,
+        "past_attempt": past_attempt
     }
 
     return metadata
