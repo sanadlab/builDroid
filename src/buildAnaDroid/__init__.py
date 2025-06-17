@@ -104,11 +104,11 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
 def process_repository(github_url: str, num: int, conversation: bool, keep_container:bool, user_retry:bool):
     """Processes a single repository."""
     project_name = extract_project_name(github_url)
-    past_attempt = new_experiment(project_name)
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
     print(f"From GitHub URL: {github_url}")
     print("-" * 70)
+    past_attempt = new_experiment(project_name)
 
     setup_docker_config()
 
