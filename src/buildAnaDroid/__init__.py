@@ -92,12 +92,18 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         print(f"PROJECT: {project_name}")
         print("=" * 70)
         user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
-        run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
-        # Run post-processing and check the result
-        if run_post_process(project_name):
-            print(f"Post-process succeeded. The extracted .apk file is in the "
-                  f"tests/{project_name}/output folder.")
-            return # Exit the function on success
+        while True:
+            if user_input.startswith("Y") or user_input.startswith("Y"):
+                run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
+                # Run post-processing and check the result
+                if run_post_process(project_name):
+                    print(f"Post-process succeeded. The extracted .apk file is in the "
+                        f"tests/{project_name}/output folder.")
+                    return # Exit the function on success
+            elif user_input.startswith("N") or user_input.startswith("n"):
+                return
+            else:
+                user_input = input(f"Invalid input. Please answer with yes/no. \nBuild failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
 
         print(f"User prompted retry failed. Exiting program.")
 
@@ -112,7 +118,7 @@ def process_repository(github_url: str, num: int, conversation: bool, keep_conta
 
     setup_docker_config()
 
-    image = "build-anadroid:0.1.0"
+    image = "build-anadroid:0.1.1"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)
