@@ -37,11 +37,6 @@ class Config():
     
 def set_api_token(config: Config) -> None:
     """Setup api tokens for agent."""
-    config.openai_api_key = os.environ.get("api_key", default="")
-    config.openai_api_base = os.environ.get("base_url", default="")
-    config.llm_model = os.environ.get("llm_model", default="")
-    if config.llm_model == "":
-        if "google" in config.openai_api_base:
-            config.llm_model = "gemini-2.0-flash-lite"
-        else:
-            config.llm_model = "gpt-4.1-mini-2025-04-14"
+    config.openai_api_key = os.getenv("API_KEY", default="")
+    config.openai_api_base = os.getenv("BASE_URL", default="")
+    config.llm_model = os.getenv("LLM_MODEL", default="")

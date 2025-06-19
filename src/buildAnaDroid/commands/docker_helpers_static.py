@@ -94,7 +94,7 @@ def locate_or_import_gradlew(agent):
     return
 
 
-def execute_command_in_container(socket: socket, command: str):    
+def execute_command_in_container(sock: socket.socket, command: str):    
     """
     Executes a command in the persistent shell.
 
@@ -106,16 +106,18 @@ def execute_command_in_container(socket: socket, command: str):
     Returns:
         str: The output of the command.
     """
-    full_command = f"{command.strip()}\n"
-    socket.sendall(full_command.encode('utf-8'))
+    PROMPT_MARKER = b'__AGENT_PROMPT_END_MARKER_789012345__$'
+
+    full_command = f"{command.strip()}\n".encode('utf-8')
+    sock.sendall(full_command)
     output_buffer = b""
     interrupted = False
-    time.sleep(0.2) # Small delay for shell to process
+    sock.settimeout(30.0)
     
     while True:
         try:
             # Adjust buffer size as needed; 4096 is common
-            chunk = socket.recv(4096)
+            chunk = sock.recv(4096)
             if not chunk:
                 # This means the shell (or exec instance) might have exited
                 print("WARNING: Socket recv returned no data. Shell might have exited.")
@@ -130,12 +132,10 @@ def execute_command_in_container(socket: socket, command: str):
             print(f"WARNING: BlockingIOError for '{command}'. Attempting to interrupt with Ctrl+C.")
             # Handle as appropriate, perhaps like timeout
             interrupted = True # Treat as an issue
-            socket.sendall(b'\x03') # Send ETX (Ctrl+C)
-            # Give it a very short moment to see if Ctrl+C produced output or our marker
-            time.sleep(0.2)
+            sock.sendall(b'\x03') # Send ETX (Ctrl+C)
             # Try one more small read to catch any immediate post-Ctrl+C output or the marker
             try:
-                chunk = socket.recv(1024) # Don't block for long here
+                chunk = sock.recv(1024) # Don't block for long here
                 if chunk: output_buffer += chunk
             except BlockingIOError: # Expected if Ctrl+C worked cleanly
                 pass

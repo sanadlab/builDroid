@@ -80,6 +80,7 @@ def run_interaction_loop(
     config = agent.config
     ai_config = agent.ai_config
     logger.debug(f"{ai_config.ai_name} System Prompt: {str(agent.prompt_dictionary)}")
+    agent.project_path = agent.project_path.replace(".git","")
 
     cycle_budget = cycles_remaining = config.cycle_limit
 
@@ -141,7 +142,6 @@ def run_interaction_loop(
         # Plan #
         ########
         # Have the agent determine the next action to take.
-        time.sleep(0.2)
         with spinner:
             command_name, command_args, assistant_reply_dict = agent.think(command_name, command_args, assistant_reply_dict, result)
 
@@ -150,17 +150,7 @@ def run_interaction_loop(
         ###############
         # Print the assistant's thoughts and the next command to the user.
         update_user(config, ai_config, command_name, command_args, assistant_reply_dict)
-
-        ##################
-        # Get user input #
-        ##################
-        # First log new-line so user can differentiate sections better in console
-        logger.typewriter_log("\n")
-        if cycles_remaining != math.inf:
-            # Print authorized commands left value
-            logger.typewriter_log(
-                "CYCLES REMAINING: ", Fore.CYAN, f"{cycles_remaining}"
-            )
+        logger.info("CYCLES REMAINING: ", Fore.CYAN, f"{cycles_remaining}")
         cycles_remaining -= 1
 
         ###################
@@ -170,15 +160,14 @@ def run_interaction_loop(
         # happening during command execution, setting the cycles remaining to 1,
         # and then having the decrement set it to 0, exiting the application.
         agent.left_commands = cycles_remaining
-        agent.project_path = agent.project_path.replace(".git","")
         result = agent.execute(command_name, command_args)
         if result == "goals_accomplished: SUCCESS":
             agent.shell_socket.close()
             return
         if result is not None:
-            logger.typewriter_log("SYSTEM: ", Fore.YELLOW, result)
+            logger.info("SYSTEM: ", Fore.YELLOW, result)
         else:
-            logger.typewriter_log("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
+            logger.info("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
 
         os.makedirs("tests/{}/saved_contexts".format(agent.project_path), exist_ok=True)
         agent.save_to_file("tests/{}/saved_contexts/cycle_{}".format(agent.project_path, cycle_budget - cycles_remaining))

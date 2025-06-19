@@ -9,8 +9,6 @@
             "moby": "false"
         }
     },
-
-    "forwardPorts": [5678],
     
     "postCreateCommand": "sudo chmod +x .devcontainer/install_python.sh && sudo .devcontainer/install_python.sh",
 

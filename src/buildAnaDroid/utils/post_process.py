@@ -20,15 +20,10 @@ def ask_chatgpt(prompt):
         str: The content of the assistant's response.
     """
     # Set up the OpenAI API key
-    api_key = os.environ.get("api_key", default="")
+    api_key = os.getenv("API_KEY", default="")
     # Update base url for different API providers
-    base_url = os.environ.get("base_url", default="")
-    llm_model = os.environ.get("llm_model", default="")
-    if llm_model == "":
-        if "google" in base_url:
-            llm_model = "gemini-2.0-flash-lite"
-        else:
-            llm_model = "gpt-4.1-mini-2025-04-14"
+    base_url = os.getenv("BASE_URL", default="")
+    llm_model = os.getenv("LLM_MODEL", default="")
     print("Post processing with model: ", llm_model)
     if "google" in base_url: # Gemini version
         client = genai.Client(api_key=api_key)

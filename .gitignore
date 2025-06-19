@@ -61,9 +61,6 @@ Python-*
 # Poetry
 poetry.lock
 
-# tokens/debug
-openai_token.txt
-batch_file.txt
-
 tests/*
 logs/*
+.env

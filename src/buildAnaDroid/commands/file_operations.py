@@ -60,9 +60,8 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     """
     print("Writing file in the container...")
     print("FILENAME:", filename)
-    if "dockerfile" in filename.lower():
-        return "You cannot create another docker image, you already have access to a running container. Your next step is to build the project using `./gradlew assembleDebug`. If a pacakge is missing or error happened during installation, you can debug and fix the problem inside the running container by interacting with the linux_terminal tool."
-    command = f"echo -n '{text}' > {filename}"
+    delimiter = "---END_OF_FILE_CONTENT---"
+    command = f"cat <<'{delimiter}' > {filename}\n{text}\n{delimiter}"
     write_result = execute_command_in_container(agent.shell_socket, command)
     if write_result=="":
         return "File written successfully."

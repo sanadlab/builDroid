@@ -14,7 +14,7 @@ def create_results_sheet():
             # Loop through cycle_* files
             for file in os.listdir(os.path.join(project_path, "saved_contexts")):
                 if file.startswith("cycle_"):
-                    with open(os.path.join(project_path, file), 'r', encoding='utf-8') as f:
+                    with open(os.path.join(project_path, "saved_contexts", file), 'r', encoding='utf-8') as f:
                         cmd_count += 1
 
             # Append result
