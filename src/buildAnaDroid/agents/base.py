@@ -182,6 +182,7 @@ class BaseAgent(metaclass=ABCMeta):
         self.project_path = self.metadata["project_path"]
         self.project_url = self.metadata["project_url"]
         self.workspace_path = "tests/workspace"
+        self.past_attempt = self.metadata["past_attempt"]
         
         self.tests_executed = False
         
@@ -332,10 +333,8 @@ class BaseAgent(metaclass=ABCMeta):
         
         definitions_prompt += "Project github url (in case if you need to clone repo): {}".format(self.project_url)
         
-        if os.path.exists(f"tests/{self.project_path}/problems_memory"):
-            with open(f"tests/{self.project_path}/problems_memory") as pm:
-                previous_memory = pm.read()
-            definitions_prompt += "\n{}\n".format(previous_memory)
+        if self.past_attempt != "":
+            definitions_prompt += "\n{}\n".format(self.past_attempt)
 
         ### Read static prompt files
         gradle_guidelines = files("buildAnaDroid.prompts.prompt_files").joinpath("gradle_guidelines").read_text(encoding="utf-8")

@@ -15,7 +15,7 @@ PYTHON_EXECUTABLE = sys.executable
 # Default value for the number parameter, as in the original script.
 DEFAULT_NUM = 30
 # Maximum retries for the main execution logic.
-MAX_RETRIES = 1
+MAX_RETRIES = 2
 
 def extract_project_name(github_url: str) -> str:
     """Extracts the project name from a GitHub URL."""
@@ -28,7 +28,7 @@ def setup_docker_config():
     docker_config_path.write_text("{}")
 
 
-def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, metadata: dict):
+def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, metadata: dict, keep_container: bool):
     """
     This function replaces the logic of `run.sh`.
     It checks/installs requirements and then executes the buildAnaDroid module.
@@ -45,19 +45,26 @@ def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: b
     resource_path: Path = importlib.resources.files('buildAnaDroid').joinpath('files', 'ai_settings.yaml')
     ai_settings = resource_path.read_text(encoding='utf-8')
 
-    run_buildAnaDroid(
-        cycle_limit=cycle_limit,
-        ai_settings=ai_settings,
-        debug=debug,
-        conversation=conversation,
-        working_directory=Path(
-            __file__
-        ).parent.parent.parent,
-        metadata=metadata
-    )
+    try:
+        run_buildAnaDroid(
+            cycle_limit=cycle_limit,
+            ai_settings=ai_settings,
+            debug=debug,
+            conversation=conversation,
+            working_directory=Path(
+                __file__
+            ).parent.parent.parent,
+            metadata=metadata
+        )
+    finally:
+        if keep_container:
+            subprocess.run(["docker", "stop", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.run(["docker", "rm", "-f", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
 
 
-def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool, metadata: dict):
+def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool, metadata: dict, keep_container:bool, user_retry:bool):
     """
     Runs the main logic, handles retries, and performs post-processing.
     This replaces the `run_with_retries` function from the shell script.
@@ -69,7 +76,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         print("=" * 70)
 
         # This call now encapsulates the entire logic of `run.sh`
-        run_buildAnaDroid_with_checks(num, conversation, debug, metadata)
+        run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
 
         # Run post-processing and check the result
         if run_post_process(project_name):
@@ -77,49 +84,49 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
                   f"tests/{project_name}/output folder.")
             return # Exit the function on success
 
-        print(f"Attempt {attempt} failed with FAILURE. Retrying...")
+        print(f"Attempt {attempt} failed. Retrying...")
 
-    while False:
+    while user_retry:
         print("=" * 70)
         print("PROMPTING USER FOR ADDITIONAL RETRY:")
         print(f"PROJECT: {project_name}")
         print("=" * 70)
-        user_input = input(f"Post-process failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
-        if user_input.lower().startswith('y'):
-            run_buildAnaDroid_with_checks(num, conversation)
-            result = run_command(
-                [PYTHON_EXECUTABLE, "post_process.py", project_name],
-                capture_output=True
-            )
-            if "SUCCESS" in result.stdout:
-                print("Post-process succeeded.")
+        user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
+        while True:
+            if user_input.startswith("Y") or user_input.startswith("Y"):
+                run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
+                # Run post-processing and check the result
+                if run_post_process(project_name):
+                    print(f"Post-process succeeded. The extracted .apk file is in the "
+                        f"tests/{project_name}/output folder.")
+                    return # Exit the function on success
+            elif user_input.startswith("N") or user_input.startswith("n"):
                 return
-        elif user_input.lower().startswith('n'):
-            print("Exiting retry loop.")
-            break
-        else:
-            print("Please answer yes or no.")
+            else:
+                user_input = input(f"Invalid input. Please answer with yes/no. \nBuild failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
 
-def process_repository(github_url: str, num: int, conversation: bool):
+        print(f"User prompted retry failed. Exiting program.")
+
+def process_repository(github_url: str, num: int, conversation: bool, keep_container:bool, user_retry:bool):
     """Processes a single repository."""
     project_name = extract_project_name(github_url)
-    new_experiment(project_name)
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
     print(f"From GitHub URL: {github_url}")
     print("-" * 70)
+    past_attempt = new_experiment(project_name)
 
     setup_docker_config()
 
-    image = "build-anadroid:0.1.0"
+    image = "build-anadroid:0.1.1"
 
     # Clone the Github repository and set metadata
-    metadata = clone_and_set_metadata(project_name, github_url, image)
+    metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)
 
     debug = False
 
     # Run the main task with retries
-    run_with_retries(project_name, num, conversation, debug, metadata)
+    run_with_retries(project_name, num, conversation, debug, metadata, keep_container, user_retry)
 
 def main():
     """Initialization function."""
@@ -224,14 +231,7 @@ Examples for 'clean' command:
             # Handle the case where input is a single URL string
             print("Processing a single repository URL.")
             project_name = extract_project_name(repo_source)
-            try:
-                process_repository(args.repo_source, args.num, args.conv)
-            finally:
-                # Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
-                if args.keep_container:
-                    subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                else:
-                    subprocess.run(["docker", "rm", "-f", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            process_repository(args.repo_source, args.num, args.conv, args.keep_container, True)
         else:
             # Handle the case where the input is a file
             print(f"Processing repositories from file: {repo_source}")
@@ -240,14 +240,7 @@ Examples for 'clean' command:
             
             for url in repo_urls:
                 project_name = extract_project_name(url)
-                try:
-                    process_repository(url, args.num, args.conv)
-                finally:
-                    # Reset the API token and stop(and/or remove) Docker container, ensuring this runs even if errors occur
-                    if args.keep_container:
-                        subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    else:
-                        subprocess.run(["docker", "rm", "-f", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                process_repository(url, args.num, args.conv, args.keep_container, False)
             
             # Generate the final results sheet after all repos are processed
             create_results_sheet()
