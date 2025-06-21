@@ -9,6 +9,8 @@ from importlib.resources import files
 import re
 
 PROMPT_MARKER = "\r\n__AGENT_SHELL_END_MARKER__$"
+SOCKET_RECV_TIMEOUT = 5.0 # Timeout for each individual recv() call
+COMMAND_TOTAL_TIMEOUT = 60.0 # Overall timeout for the command to complete
 
 def create_persistent_shell(container):
     """
@@ -144,10 +146,11 @@ def execute_command_in_container(sock: socket.socket, command: str):
 
     full_command = f"{command.strip()}\n".encode('utf-8')
     sock.sendall(full_command)
-    sock.settimeout(10.0) # Set a timeout for individual recv calls
-    interrupted = False
+    sock.settimeout(SOCKET_RECV_TIMEOUT) # Set a timeout for individual recv calls
+    interrupted_by_timeout = False
     
     output_buffer = b""
+    start_time = time.time()
 
     while True:
         try:
@@ -161,7 +164,23 @@ def execute_command_in_container(sock: socket.socket, command: str):
             if PROMPT_MARKER.encode('utf-8') in output_buffer:
                 break # Command completed and prompt returned
         except socket.timeout:
-                interrupted = True
+                if time.time() - start_time > COMMAND_TOTAL_TIMEOUT:
+                    logger.warn(f"Total command timeout ({COMMAND_TOTAL_TIMEOUT}s) reached for: '{command.strip()}'. Sending Ctrl+C.")
+                    sock.sendall(b'\x03') # CORRECT WAY TO SEND CTRL+C
+                    interrupted_by_timeout = True
+                    
+                    # Give it a short grace period to process Ctrl+C and perhaps return prompt
+                    time.sleep(0.5) 
+                    # Try to read any immediate output after Ctrl+C, but don't block indefinitely
+                    try:
+                        chunk_after_ctrlc = sock.recv(4096)
+                        if chunk_after_ctrlc:
+                            output_buffer += chunk_after_ctrlc
+                    except socket.timeout:
+                        pass # Expected if Ctrl+C worked cleanly and no immediate output
+                    except Exception as e:
+                        logger.debug(f"Error reading after Ctrl+C for '{command.strip()}': {e}")
+                    break 
                 # No data received within SOCKET_RECV_TIMEOUT. Continue waiting if total timeout not hit.
                 logger.debug(f"Socket recv timed out, retrying...")
                 continue # Go back to start of loop to check total timeout and try recv again
@@ -172,8 +191,10 @@ def execute_command_in_container(sock: socket.socket, command: str):
     # Decode the full output
     raw_output = output_buffer.decode('utf-8', errors='replace')
     logger.debug("=====================RAW OUTPUT=====================\n"+raw_output)
+
     output = _clean_output(raw_output, command.strip(), PROMPT_MARKER)
-    if interrupted:
+
+    if interrupted_by_timeout:
         output += "\n[AGENT_INFO: Command likely interrupted due to timeout/hang]"
     return output
 

@@ -256,3 +256,4 @@ Fix:
 - Empty output does not necessarily mean command failure. For example, `export` or `chmod` commands do not output anything, so you can continue.
 - Some projects explicitly state required dependencies and environment versions in `README.md`. If build fails, read the `README.md` file to look for the cause of failure.
 - Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem.
+- Avoid interactive prompts at all costs. Use specific non-interactive flags instead.
