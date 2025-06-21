@@ -116,19 +116,19 @@ def run_interaction_loop(
     #########################
 
     image_log = ""
-    if not check_image_exists("build-anadroid:0.1.1"):
+    if not check_image_exists("build-anadroid:0.2.0"):
         dockerfile = files("buildAnaDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
         with open("tests/Dockerfile", "w", encoding="utf-8") as f:
             f.write(dockerfile)
-        image_log = build_image("tests", "build-anadroid:0.1.1")
+        image_log = build_image("tests", "build-anadroid:0.2.0")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
-    agent.container = start_container(f"build-anadroid:0.1.1", f"{agent.project_path[:63]}")
+    agent.container = start_container(f"build-anadroid:0.2.0", f"{agent.project_path[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
-    subprocess.run(['docker', 'cp', f'tests/{agent.project_path}/workspace/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
+    #subprocess.run(['docker', 'cp', f'tests/{agent.project_path}/workspace/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
     print(image_log + "Container launched successfully")
     locate_or_import_gradlew(agent)
         

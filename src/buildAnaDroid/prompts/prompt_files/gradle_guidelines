@@ -250,7 +250,7 @@ Fix:
   ```
 - Avoid using git clone to start since the directory is already cloned, unless you meet many errors and need to reset the environment.
 - If BUILD SUCCESS but the output says Gradle used deprecated features, ignore the warning and check if the .apk file is generated. Your primary goal is to generate the .apk file.
-- When using linux commands, never use bash exclusive commands, instead use shell compatible commands.
+- When using linux commands, always use bash compatible commands.
 - Use `find . -name *.apk` to check output .apk file.
 - Gradle version 2.3.1 is not available in Google() or mavenCentral() repositories. Upgrade to 3.0.1.
 - Empty output does not necessarily mean command failure. For example, `export` or `chmod` commands do not output anything, so you can continue.

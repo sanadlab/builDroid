@@ -36,17 +36,17 @@ To setup in a VSCode Dev Container:
 `buildAnaDroid` uses an LLM backend for build assistance. To use it:
 
 1. Obtain your API key from OpenAI or compatible provider.
-2. Set your API key as a token file:
+2. Set your API key as a .env file:
 
-```openai_token.txt
-"your-api-key-here"
-"your-base-url-here"
-"your-llm-model-here"
+```.env
+API_KEY=<your-api-key-here>
+BASE_URL=<your-base-url-here>
+LLM_MODEL=<your-llm-model-here>
 ```
 
-`Base url` and `LLM model` are optional. If not provided, `buildAnaDroid` will use OpenAI's `gpt-4.1-mini-2025-04-14`.
+`BASE_URL` and `LLM_MODEL` are optional. If not provided, `buildAnaDroid` will use OpenAI's `gpt-4.1-mini-2025-04-14`.
 For example, if you put 'https://generativelanguage.googleapis.com/v1beta/openai/' as your base url, `buildAnaDroid` will access Google AI's `gemini-2.0-flash-lite`.
-If you want to use other providers, you have to provide the base url and the LLM model in `openai_token.txt`.
+If you want to use other providers, you have to provide the base url and the LLM model in `.env`.
 
 ## 🖥️ Usage
 
@@ -63,7 +63,7 @@ build-anadroid clean # Clean test results
 ### Advanced Options for Builds
 
 * `-n`, `--num`: Specify cycle limit (max. number of commands to execute)
-* `-c`, `--conv`: Enable conversation mode
+* `-c`, `--conv`: Enable conversation mode (API works with conversation models)
 * `-k`, `--keep-container`: Keep container after build (Removes container by default)
 
 ## 🛠️ Troubleshooting

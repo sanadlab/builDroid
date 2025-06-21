@@ -15,6 +15,7 @@ ENV ANDROID_SDK_ROOT=${ANDROID_HOME}
 
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV PATH=${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/emulator:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${PATH}
+RUN echo "export PS1='\\n__AGENT_SHELL_END_MARKER__$ '" >> /root/.bashrc
 
 # Install system dependencies
 RUN apt update -qq && apt install -qq -y --no-install-recommends \

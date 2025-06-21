@@ -1,6 +1,1 @@
-https://github.com/jonan/ForkHub
 https://github.com/Dar9586/NClientV2
-https://github.com/x0b/rcx
-https://github.com/celzero/rethink-app
-https://github.com/maxrave-dev/SimpMusic
-https://github.com/aeharding/voyager

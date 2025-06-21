@@ -16,6 +16,7 @@ PYTHON_EXECUTABLE = sys.executable
 DEFAULT_NUM = 30
 # Maximum retries for the main execution logic.
 MAX_RETRIES = 2
+DEV_DEBUG = False
 
 def extract_project_name(github_url: str) -> str:
     """Extracts the project name from a GitHub URL."""
@@ -118,7 +119,7 @@ def process_repository(github_url: str, num: int, conversation: bool, keep_conta
 
     setup_docker_config()
 
-    image = "build-anadroid:0.1.1"
+    image = "build-anadroid:0.2.0"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)
@@ -223,6 +224,14 @@ Examples for 'clean' command:
         sys.exit(0)
 
     elif args.command == "build":
+        if DEV_DEBUG:
+            import debugpy
+            debugpy.listen(("0.0.0.0", 5678))
+            
+            print("Waiting for debugger to attach...")
+            # This line will pause your script's execution until you attach the VS Code debugger.
+            debugpy.wait_for_client()
+            print("Debugger attached!")
         repo_source = str(args.repo_source)
 
         # Set up API token and increment experiment

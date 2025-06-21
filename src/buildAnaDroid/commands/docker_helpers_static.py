@@ -5,6 +5,10 @@ import subprocess
 import time
 from buildAnaDroid.logs import logger
 import socket
+from importlib.resources import files
+import re
+
+PROMPT_MARKER = "\r\n__AGENT_SHELL_END_MARKER__$"
 
 def create_persistent_shell(container):
     """
@@ -15,7 +19,7 @@ def create_persistent_shell(container):
     client = docker.from_env()
     exec_id = client.api.exec_create(
         container.id,
-        cmd="/bin/sh",
+        cmd="/bin/bash",
         stdin=True,
         stdout=True,
         stderr=True,
@@ -30,6 +34,27 @@ def create_persistent_shell(container):
     )
     stream_socket = raw_socket._sock if hasattr(raw_socket, '_sock') else raw_socket
     stream_socket.settimeout(5)
+    
+    interrupted = False
+    output_buffer = ""
+    while True:
+        try:
+            # Adjust buffer size as needed; 4096 is common
+            chunk = stream_socket.recv(4096)
+            if not chunk:
+                break
+            output_buffer += chunk
+            if PROMPT_MARKER.encode('utf-8') in output_buffer:
+                break # Command completed and prompt returned
+        except socket.timeout:
+                interrupted = True
+                # No data received within SOCKET_RECV_TIMEOUT. Continue waiting if total timeout not hit.
+                logger.debug(f"Socket recv timed out, retrying...")
+                continue # Go back to start of loop to check total timeout and try recv again
+        except Exception as e:
+            print(f"ERROR: Exception during socket recv: {e}")
+            break # Exit on other errors
+        
     return stream_socket
 
 
@@ -68,6 +93,7 @@ import docker
 
 def start_container(image_tag, name):
     client = docker.from_env()
+    subprocess.run(['docker', 'rm', '-f', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         print(f"Running new container from image {image_tag}...")
         container = client.containers.run(image_tag, detach=True, tty=True, stdin_open=True, name=name)
@@ -86,12 +112,21 @@ def locate_or_import_gradlew(agent):
         directory, _, _ = gradlew_path_str.partition("/gradlew")
         execute_command_in_container(agent.shell_socket, f"cd {directory}")
         print(f"Found gradlew and cd'd to its directory relative to project root: {directory}")
-        return
+        return 0
     print(f"gradlew not found in '{agent.project_path}'. Importing...")
-    container_gradlew_dest = os.path.join(agent.project_path, 'gradlew')
-    subprocess.run(['docker', 'cp', f'scripts/gradlew', f'{agent.container.id}:/{container_gradlew_dest}'])
-    execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
-    return
+    find_cmd_new = "find . -name build.gradle"
+    build_gradle_path_str = execute_command_in_container(agent.shell_socket, find_cmd_new)
+    if "build.gradle" in build_gradle_path_str:
+        directory, _, _ = build_gradle_path_str.partition("/build.gradle")
+        execute_command_in_container(agent.shell_socket, f"cd {directory}")
+        delimiter = "---END_OF_FILE_CONTENT---"
+        gradlew_text = files("buildAnaDroid.files").joinpath("gradlew").read_text(encoding="utf-8")
+        command = f"cat <<'{delimiter}' > gradlew\n{gradlew_text}\n{delimiter}"
+        execute_command_in_container(agent.shell_socket, command)
+        execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
+        return 0.
+    print(f"build.gradle file not found. {agent.project_path} is not an Android project.")
+    return 1
 
 
 def execute_command_in_container(sock: socket.socket, command: str):    
@@ -106,14 +141,14 @@ def execute_command_in_container(sock: socket.socket, command: str):
     Returns:
         str: The output of the command.
     """
-    PROMPT_MARKER = b'__AGENT_PROMPT_END_MARKER_789012345__$'
 
     full_command = f"{command.strip()}\n".encode('utf-8')
     sock.sendall(full_command)
-    output_buffer = b""
+    sock.settimeout(10.0) # Set a timeout for individual recv calls
     interrupted = False
-    sock.settimeout(30.0)
     
+    output_buffer = b""
+
     while True:
         try:
             # Adjust buffer size as needed; 4096 is common
@@ -123,39 +158,77 @@ def execute_command_in_container(sock: socket.socket, command: str):
                 print("WARNING: Socket recv returned no data. Shell might have exited.")
                 break
             output_buffer += chunk
-            # Check if the marker is in the decoded buffer
-            # Decode carefully, marker might be split across chunks in rare cases
-            # For simplicity, we decode the whole buffer each time.
-            if "#".encode('utf-8') in output_buffer:
-                break
-        except BlockingIOError: # Should not happen if settimeout is used, but good practice
-            print(f"WARNING: BlockingIOError for '{command}'. Attempting to interrupt with Ctrl+C.")
-            # Handle as appropriate, perhaps like timeout
-            interrupted = True # Treat as an issue
-            sock.sendall(b'\x03') # Send ETX (Ctrl+C)
-            # Try one more small read to catch any immediate post-Ctrl+C output or the marker
-            try:
-                chunk = sock.recv(1024) # Don't block for long here
-                if chunk: output_buffer += chunk
-            except BlockingIOError: # Expected if Ctrl+C worked cleanly
-                pass
-            except Exception: # Other socket errors after Ctrl+C
-                pass
-            break
+            if PROMPT_MARKER.encode('utf-8') in output_buffer:
+                break # Command completed and prompt returned
+        except socket.timeout:
+                interrupted = True
+                # No data received within SOCKET_RECV_TIMEOUT. Continue waiting if total timeout not hit.
+                logger.debug(f"Socket recv timed out, retrying...")
+                continue # Go back to start of loop to check total timeout and try recv again
         except Exception as e:
             print(f"ERROR: Exception during socket recv: {e}")
             break # Exit on other errors
 
     # Decode the full output
-    full_output_str = output_buffer.decode('utf-8', errors='replace')
-    logger.debug("=====================FULL OUTPUT=====================\n"+full_output_str)
-    _, _, output = full_output_str.partition(command)
-    final_output, _, _ = output.partition("#")
-    final_output = final_output.strip()
+    raw_output = output_buffer.decode('utf-8', errors='replace')
+    logger.debug("=====================RAW OUTPUT=====================\n"+raw_output)
+    output = _clean_output(raw_output, command.strip(), PROMPT_MARKER)
     if interrupted:
-        final_output += "\n[AGENT_INFO: Command likely interrupted due to timeout/hang]"
-    return final_output
+        output += "\n[AGENT_INFO: Command likely interrupted due to timeout/hang]"
+    return output
 
+def _clean_output(raw_output: str, sent_command_strip: str, prompt_marker: str) -> str:
+    """
+    Helper function to clean the raw output from the shell.
+    Removes initial ANSI escape codes, the echoed command, and the final prompt marker.
+    """
+    # 1. Remove ANSI escape codes (common at the beginning of TTY output)
+    # This regex matches common ANSI escape sequences
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    cleaned_output = ansi_escape.sub('', raw_output)
+
+    logger.debug(f"After ANSI escape removal:\n{cleaned_output}")
+
+    # 2. Find the last occurrence of the prompt marker.
+    # Everything after this marker is typically what we *don't* want (the new prompt)
+    parts = cleaned_output.rpartition(prompt_marker)
+
+    # If the marker isn't found (shouldn't happen if loop exited by it),
+    # return the raw output, possibly indicating an issue.
+    if not parts[1]: # parts[1] is the separator (prompt_marker)
+        logger.warn(f"Prompt marker '{prompt_marker}' not found in CLEANED output. Returning full raw output.")
+        return cleaned_output.strip()
+
+    # The part before the *last* prompt marker is what we're interested in.
+    output_before_final_prompt = parts[0]
+    
+    logger.debug(f"Output before final prompt:\n{output_before_final_prompt}")
+
+    # 3. Try to remove the echoed command itself.
+    # The shell usually echoes the command you sent, including the newline.
+    command_echo_pattern = sent_command_strip + "\r\n\r" # Common echo pattern
+    if "cat" in command_echo_pattern:
+        command_echo_pattern = "\r\n\r"
+
+    # Attempt to find the last occurrence of the command echo in the output
+    # This is still a bit fragile if the command itself outputs the exact echo pattern,
+    # but it's the best we can do without more complex PTY parsing.
+    last_command_echo_idx = output_before_final_prompt.rfind(command_echo_pattern)
+
+    if last_command_echo_idx != -1:
+        # Get everything after the last echoed command
+        final_result = output_before_final_prompt[last_command_echo_idx + len(command_echo_pattern):]
+    else:
+        # If the command echo isn't found, assume the entire content before the prompt is the output.
+        # This handles cases where the shell suppresses echo, or if it's the very first prompt.
+        logger.debug(f"Command echo '{sent_command_strip}' not found in output for cleaning. Returning content before prompt.")
+        final_result = output_before_final_prompt
+
+    # 4. Remove any leading/trailing whitespace, including newlines/carriage returns
+    # that might linger from terminal formatting or initial prompt.
+    final_result = final_result.strip()
+
+    return final_result
 
 def stop_and_remove(container):
     container.stop()
