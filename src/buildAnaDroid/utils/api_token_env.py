@@ -8,12 +8,16 @@ def api_token_setup():
     Sets up API key, base URL, and LLM model as environment variables for buildAnaDroid
     by loading from a .env file.
     """
-    env_path = find_dotenv()
-    if not env_path:
-        print("Warning: .env file not found.", file=sys.stderr)
-    else:
-        print(f"Loading environment variables from: {env_path}")
+    cwd = os.getcwd()
+    env_path = os.path.join(cwd, '.env')
+
+    # Check if the file exists and is a file before trying to load it.
+    if os.path.isfile(env_path):
+        # Directly provide the confirmed path to load_dotenv.
         load_dotenv(dotenv_path=env_path)
+    else:
+        # This will now only trigger if the file is truly missing or is a directory.
+        print("Warning: .env file not found in the current directory. Relying on pre-set environment variables.", file=sys.stderr)
 
     if not os.getenv("API_KEY"):
         print("Error: API_KEY not found in .env file or environment variables.", file=sys.stderr)
