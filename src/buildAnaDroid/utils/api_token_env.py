@@ -1,18 +1,23 @@
 import os
 import sys
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
 def api_token_setup():
     """
     Sets up API key, base URL, and LLM model as environment variables for buildAnaDroid
     by loading from a .env file.
     """
-    load_dotenv()
+    env_path = find_dotenv()
+    if not env_path:
+        print("Warning: .env file not found.", file=sys.stderr)
+    else:
+        print(f"Loading environment variables from: {env_path}")
+        load_dotenv(dotenv_path=env_path)
 
     if not os.getenv("API_KEY"):
-        print("Error: OPENAI_API_KEY not found in .env file or environment variables.", file=sys.stderr)
-        print("Please create a .env file in the project root with at least OPENAI_API_KEY=\"your_key_here\".", file=sys.stderr)
+        print("Error: API_KEY not found in .env file or environment variables.", file=sys.stderr)
+        print("Please create a .env file in the project root with at least API_KEY=<your_key_here>.", file=sys.stderr)
         sys.exit(1)
 
     print("LLM configuration loaded successfully.")

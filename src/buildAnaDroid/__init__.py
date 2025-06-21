@@ -119,7 +119,7 @@ def process_repository(github_url: str, num: int, conversation: bool, keep_conta
 
     setup_docker_config()
 
-    image = "build-anadroid:0.2.0"
+    image = "build-anadroid:0.2.1"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)
