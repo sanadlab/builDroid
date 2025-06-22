@@ -61,8 +61,8 @@ def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: b
         if keep_container:
             subprocess.run(["docker", "stop", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            subprocess.run(["docker", "rm", "-f", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
+            subprocess.run(["docker", "rm", "-vf", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["docker", "system", "prune", "--volumes", "-f"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool, metadata: dict, keep_container:bool, user_retry:bool):
@@ -119,7 +119,7 @@ def process_repository(github_url: str, num: int, conversation: bool, keep_conta
 
     setup_docker_config()
 
-    image = "build-anadroid:0.2.3"
+    image = "build-anadroid:0.3.0"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)

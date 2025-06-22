@@ -38,7 +38,7 @@ def clean_docker_resources():
     # Prompt user to choose action
     while action not in ["containers", "all"]:
         print("\nChoose an action:")
-        print("  1) Stop and remove all Docker containers only.")
+        print("  1) Stop and remove all Docker containers and volumes only.")
         print("  2) Stop and remove all Docker containers, images, volumes, and networks.")
         print("  3) Cancel cleaning and keep all Docker containers.")
         choice = input("Enter option: ").strip()
@@ -63,9 +63,10 @@ def clean_docker_resources():
             subprocess.run(["docker", "kill"] + container_ids, check=True)
 
         if action == "containers":
-            print("Removing all stopped containers...")
+            print("Removing all stopped containers and volumes...")
             subprocess.run(["docker", "container", "prune", "-f"], check=True)
-            print("Removed all containers.")
+            subprocess.run(["docker", "system", "prune", "--volumes", "-f"], check=True)
+            print("Removed all containers and volumes.")
 
         elif action == "all":
             print("Pruning all Docker system resources (containers, images, volumes, networks)...")

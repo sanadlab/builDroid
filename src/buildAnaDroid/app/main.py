@@ -116,19 +116,19 @@ def run_interaction_loop(
     #########################
 
     image_log = ""
-    if not check_image_exists("build-anadroid:0.2.3"):
+    if not check_image_exists("build-anadroid:0.3.0"):
         dockerfile = files("buildAnaDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
         with open("tests/Dockerfile", "w", encoding="utf-8") as f:
             f.write(dockerfile)
-        image_log = build_image("tests", "build-anadroid:0.2.3")
+        image_log = build_image("tests", "build-anadroid:0.3.0")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
-    agent.container = start_container(f"build-anadroid:0.2.3", f"{agent.project_path[:63]}")
+    agent.container = start_container(f"build-anadroid:0.3.0", f"{agent.project_path[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
-    #subprocess.run(['docker', 'cp', f'tests/{agent.project_path}/workspace/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
+    subprocess.run(['docker', 'cp', f'tests/{agent.project_path}/workspace/{agent.project_path}', f'{agent.container.id}:/{agent.project_path}'])
     print(image_log + "Container launched successfully")
     locate_or_import_gradlew(agent)
         
@@ -150,7 +150,7 @@ def run_interaction_loop(
         ###############
         # Print the assistant's thoughts and the next command to the user.
         update_user(config, ai_config, command_name, command_args, assistant_reply_dict)
-        logger.info("CYCLES REMAINING: ", Fore.CYAN, f"{cycles_remaining}")
+        logger.typewriter_log("CYCLES REMAINING: ", Fore.CYAN, f"{cycles_remaining}")
         cycles_remaining -= 1
 
         ###################
@@ -165,9 +165,9 @@ def run_interaction_loop(
             agent.shell_socket.close()
             return
         if result is not None:
-            logger.info("SYSTEM: ", Fore.YELLOW, result)
+            logger.info(title="SYSTEM: ", title_color=Fore.YELLOW, message=result)
         else:
-            logger.info("SYSTEM: ", Fore.YELLOW, "Unable to execute command")
+            logger.info(title="SYSTEM: ", title_color=Fore.YELLOW, message="Unable to execute command")
 
         os.makedirs("tests/{}/saved_contexts".format(agent.project_path), exist_ok=True)
         agent.save_to_file("tests/{}/saved_contexts/cycle_{}".format(agent.project_path, cycle_budget - cycles_remaining))

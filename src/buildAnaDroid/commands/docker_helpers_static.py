@@ -38,7 +38,7 @@ def create_persistent_shell(container):
     stream_socket.settimeout(5)
     
     interrupted = False
-    output_buffer = ""
+    output_buffer = b""
     while True:
         try:
             # Adjust buffer size as needed; 4096 is common
@@ -95,7 +95,7 @@ import docker
 
 def start_container(image_tag, name):
     client = docker.from_env()
-    subprocess.run(['docker', 'rm', '-f', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(['docker', 'rm', '-vf', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         print(f"Running new container from image {image_tag}...")
         container = client.containers.run(image_tag, detach=True, tty=True, stdin_open=True, name=name)
