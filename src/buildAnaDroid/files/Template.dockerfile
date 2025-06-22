@@ -48,6 +48,3 @@ RUN curl -sS https://dl.google.com/android/repository/${SDK_VERSION} -o /tmp/sdk
     "build-tools;$ANDROID_TOOLS_VERSION" \
     && rm -rf ${ANDROID_HOME}/.android \
     && chmod 777 -R ${ANDROID_HOME}
-
-# Copy project files
-COPY . .
