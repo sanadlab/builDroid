@@ -41,10 +41,14 @@ RUN curl -sS https://dl.google.com/android/repository/${SDK_VERSION} -o /tmp/sdk
     && mkdir -p ${ANDROID_HOME}/cmdline-tools \
     && unzip -q -d ${ANDROID_HOME}/cmdline-tools /tmp/sdk.zip \
     && mv ${ANDROID_HOME}/cmdline-tools/cmdline-tools ${ANDROID_HOME}/cmdline-tools/latest \
-    && rm /tmp/sdk.zip \
-    && yes | sdkmanager --licenses \
-    && yes | sdkmanager "platform-tools" \
-    "platforms;android-$ANDROID_BUILD_VERSION" \
-    "build-tools;$ANDROID_TOOLS_VERSION" \
-    && rm -rf ${ANDROID_HOME}/.android \
+    && rm /tmp/sdk.zip
+
+# Accept licenses
+RUN yes | sdkmanager --licenses --sdk_root=${ANDROID_SDK_ROOT}
+
+# Install SDK packages
+RUN sdkmanager --install "platform-tools" "platforms;android-$ANDROID_BUILD_VERSION" "build-tools;$ANDROID_TOOLS_VERSION" --sdk_root=${ANDROID_SDK_ROOT}
+
+# Final cleanup and permissions
+RUN rm -rf ${ANDROID_HOME}/.android \
     && chmod 777 -R ${ANDROID_HOME}
