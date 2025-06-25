@@ -129,7 +129,6 @@ class BaseAgent(metaclass=ABCMeta):
         command_registry: CommandRegistry,
         config: Config,
         chat: Chat | Stream = None,
-        java_version: str = "export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64",
         big_brain: bool = True,
         default_cycle_instruction: str = DEFAULT_TRIGGERING_PROMPT,
         cycle_budget: Optional[int] = 1,
@@ -141,8 +140,6 @@ class BaseAgent(metaclass=ABCMeta):
 
         self.command_registry = command_registry
         """The registry containing all commands available to the agent."""
-
-        self.java_version = java_version
 
         self.config = config
         """The applicable application configuration."""
