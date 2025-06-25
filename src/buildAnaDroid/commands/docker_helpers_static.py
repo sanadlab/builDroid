@@ -86,7 +86,7 @@ def build_image(dockerfile_path, tag):
     client = docker.from_env()
     try:
         print(f"Building Docker image from {dockerfile_path} with tag {tag}...")
-        image, logs = client.images.build(path=dockerfile_path, dockerfile="Dockerfile", tag=tag, rm=True, nocache=True)
+        image, logs = client.images.build(path=dockerfile_path, dockerfile="Dockerfile", tag=tag, rm=True, nocache=True, platform='linux/amd64')
         return "Docker image built successfully.\n"
     except Exception as e:
         return f"An error occurred while building the Docker image: {e}"
