@@ -122,7 +122,7 @@ class AIConfig:
             command_strings = []
             if self.command_registry:
                 command_strings += [
-                    str(cmd)
+                    f"{str(cmd)}\n"
                     for cmd in self.command_registry.commands.values()
                     if cmd.enabled
                 ]
@@ -132,6 +132,7 @@ class AIConfig:
                 "\n## Commands",
                 "You have access to the following commands (EXCLUSIVELY):",
                 f"{_generate_commands()}",
+                "Some commands have error strings in the description; call the function with the error string that appeared in the previous build error. DO NOT call the function of which it's error string is not present in the previous build error.",
             ]
 
         return full_prompt_parts

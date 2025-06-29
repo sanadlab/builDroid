@@ -195,7 +195,8 @@ def execute_command(
         # Execute a command with the same name or alias, if it exists
         if command := agent.command_registry.get_command(command_name):
             return command(**arguments, agent=agent)
-
+        elif command == "missing_command":
+            return "Cannot understand the JSON response. Please ensure the response is in the correct format."
         return f"Cannot execute '{command_name}': unknown command." + " Do not try to use this command again."
     
     except Exception as e:

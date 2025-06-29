@@ -76,6 +76,10 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         print(f"PROJECT: {project_name}")
         print("=" * 70)
 
+        if os.path.exists(f"tests/{project_name}/output/FAILURE"):
+            with open(f"tests/{project_name}/output/FAILURE", "r") as f:
+                metadata["past_attempt"] = f.read()
+        
         # This call now encapsulates the entire logic of `run.sh`
         run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
 

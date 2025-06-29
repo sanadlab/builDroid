@@ -65,38 +65,9 @@ Fix:
      ./gradlew clean build
      ```
 
-## 3. Minimum SDK Version Error  
-Error Message: uses-sdk:minSdkVersion (19) cannot be smaller than version (21) declared in AndroidManifest.xml
-Fix: 
-1. Identify the required `minSdkVersion` from the error message.  
-2. Rewrite this line in `AndroidManifest.xml`:  
-   ```
-   <uses-sdk android:minSdkVersion="21" />
-   ```
-3. Run:  
-   ```
-   ./gradlew assembleDebug
-   ```
-
-## 4. SDK Build Tools Version Error  
-Error Message: The SDK Build Tools revision (29.0.2) is too low for project.
-Fix: 
-1. Install the required SDK version using the SDK Manager:  
-   ```
-   sdkmanager "build-tools;30.0.3"
-   ```
-2. Ensure the correct version is referenced in `app/build.gradle`:  
-   ```
-   android {
-       compileSdkVersion 30
-       buildToolsVersion "30.0.3"
-   }
-   ```
-
-## 5. Gradle Wrapper / Java Version Mismatch Error  
-Error Message: Could not determine java version from '17.0.14'. (Or Inconsistent JVM-target compatibility)
-You must install compatible Java version for project Gradle version.
-Fix: 
+## 3. Java Version Mismatch
+Error Message: Could not determine java version from '17.0.14'. (OR Unsupported class file major version 61)
+Fix:
 1. Get gradle version of the project:
    ```
    grep distributionUrl gradle/wrapper/gradle-wrapper.properties | sed -E 's/.*gradle-([0-9.]+)-.*/\1/'
@@ -119,122 +90,9 @@ Fix:
    export JAVA_HOME=<new_java_path>
    ```
 
-## 6. Gradle Wrapper Doesn't Exist
-Error Message: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
-Fix: 
-1. Install gradle:  
-   ```
-   sudo apt install gradle
-   ```
-2. Reinstall the Gradle wrapper and make the script executable:  
-   ```
-   gradle wrapper && chmod +x gradlew
-   ```
-NOTE: If gradlew file doesn't exist, then all commands starting with `./gradlew` will fail. Execute `gradle` commands instead.
-
-## 7. Target Platform Not Found Error  
-Error Message: failed to find target with hash string 'android-30'
-Fix: 
-1. Install the missing platform using SDK Manager:  
-   ```
-   sdkmanager "platforms;android-30"
-   ```
-2. Rebuild the project:  
-   ```
-   ./gradlew build
-   ```
-
-## 8. Build Tools Revision Not Found  
-Error Message: failed to find Build Tools revision 30.0.2
-Fix: 
-1. Install the missing build tools:  
-   ```
-   sdkmanager "build-tools;30.0.2"
-   ```
-2. Verify installation:  
-   ```
-   ls $ANDROID_HOME/build-tools/
-   ```
-3. Clean and rebuild:  
-   ```
-   ./gradlew clean build
-   ```
-
-## 9. NDK Toolchain Error  
-Error Message: NDK toolchains folder not found.
-Fix: 
-1. Install the required NDK version:  
-   ```
-   sdkmanager "ndk;21.3.6528147"
-   ```
-2. Verify NDK path in `local.properties`:  
-   ```
-   echo "ndk.dir=$ANDROID_HOME/ndk/21.3.6528147" >> local.properties
-   ```
-3. Rebuild:  
-   ```
-   ./gradlew build
-   ```
-
-## 10. User-Restricted Install Error  
-Error Message: INSTALL_FAILED_USER_RESTRICTED
-Fix: 
-1. Enable app installation via ADB:  
-   ```
-   adb shell settings put global package_verifier_enable 1
-   ```
-2. Reinstall the APK:  
-   ```
-   adb install app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-## 11. Invalid NDK Configuration  
-Error Message: NDK not found in local.properties.
-Fix: 
-1. Copy a valid `local.properties` file:  
-   ```
-   cp ~/.android/local.properties ./local.properties
-   ```
-2. If necessary, update the NDK path:  
-   ```
-   echo "ndk.dir=$ANDROID_HOME/ndk/21.3.6528147" >> local.properties
-   ```
-3. Rebuild:  
-   ```
-   ./gradlew build
-   ```
-
-## 12. Gradle Distribution Checksum Mismatch
-Error message: Verification of Gradle distribution failed! Your Gradle distribution may have been tampered with.
-Fix:
-1. Delete the checksum line in `gradle-wrapper.properties`:
-   ```
-   distributionSha256Sum=<checksum_value>
-   ```
-2. Do the same for all `gradle-wrapper.properties` file in the working directory since there can be more than one file.
-
-## 13. Google() repository not found
-Error message: Could not find method google() for arguments [] on repository container.
-NOTE: Google repository is not available if gradle version is lower than 5.4.1. Unless you have met a missing dependency issue, try to keep the gradle version.
-Fix:
-1. The line `google()` in `build.gradle`.
-   ```
-    repositories {
-         // google() <- REMOVE
-         mavenCentral()
-    }
-    ```
-   
-2. Update gradle wrapper by setting `gradle-wrapper.properties` file to:
-   ```
-   distributionUrl=https\://services.gradle.org/distributions/gradle-5.4.1-all.zip
-   ```
-   or higher.
-
-
 ## Final Notes  
 - IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
-- If you're not sure which error or the same error persists for a while, then check logs using:  
+- If you're not sure which error or the same error persists over several cycles, then check logs using:  
   ```
   ./gradlew assembleDebug --stacktrace -q
   ```
