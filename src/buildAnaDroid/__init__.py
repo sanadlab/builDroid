@@ -16,7 +16,7 @@ PYTHON_EXECUTABLE = sys.executable
 DEFAULT_NUM = 30
 # Maximum retries for the main execution logic.
 MAX_RETRIES = 2
-DEV_DEBUG = False
+DEV_DEBUG = False # Set to True for development debugging
 
 def extract_project_name(github_url: str) -> str:
     """Extracts the project name from a GitHub URL."""
