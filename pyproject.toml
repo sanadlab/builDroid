@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "build-anadroid"
-version = "0.4.0"
+version = "0.4.3"
 authors = [
   { name="Jaehyeon Kim", email="jk7404@nyu.edu" },
 ]
@@ -33,6 +33,7 @@ dependencies = [
     "cymem==2.0.11",
     "distro==1.9.0",
     "docker==7.1.0",
+    "debugpy==1.8.14",
     "et-xmlfile==2.0.0",
     "exceptiongroup==1.3.0",
     "google-api-core==2.25.0",

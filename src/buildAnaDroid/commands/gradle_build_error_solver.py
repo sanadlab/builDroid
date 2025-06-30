@@ -347,10 +347,7 @@ def fix_wrapper_error(error_msg: str, agent: Agent):
     if not new_v:
         return "Error: Could not determine a new Gradle version to use."
 
-    # 3. Find and update the gradle-wrapper.properties file
-    prop_file_find_cmd = "find . -name 'gradle-wrapper.properties' -print -quit"
-    prop_file = execute_command_in_container(agent.shell_socket, prop_file_find_cmd)
-    prop_file = prop_file.strip()
+    prop_file = "gradle/wrapper/gradle-wrapper.properties"
 
     if prop_file:
         print(f"Updating Gradle version in {prop_file} to {new_v}...")
