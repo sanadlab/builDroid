@@ -228,8 +228,6 @@ def _clean_output(raw_output: str, sent_command_strip: str, prompt_marker: str) 
     # 3. Try to remove the echoed command itself.
     # The shell usually echoes the command you sent, including the newline.
     command_echo_pattern = sent_command_strip + "\r\n\r" # Common echo pattern
-    if "cat" in command_echo_pattern:
-        command_echo_pattern = "\r\n\r"
 
     # Attempt to find the last occurrence of the command echo in the output
     # This is still a bit fragile if the command itself outputs the exact echo pattern,

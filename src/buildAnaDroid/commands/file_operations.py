@@ -63,7 +63,7 @@ def write_to_file(filename: str, text: str, agent: Agent) -> str:
     delimiter = "---END_OF_FILE_CONTENT---"
     command = f"cat <<'{delimiter}' > {filename}\n{text}\n{delimiter}"
     write_result = execute_command_in_container(agent.shell_socket, command)
-    if write_result=="":
+    if delimiter in write_result:
         return "File written successfully."
     else:
         return write_result

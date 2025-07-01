@@ -5,13 +5,11 @@ COMMAND_CATEGORY_TITLE = "Gradle Build Error Solver"
 
 import os
 import re
-import shutil
-from enum import Enum
 from importlib.resources import files, as_file
 import subprocess
-from sys import version
 
 from buildAnaDroid.commands.docker_helpers_static import execute_command_in_container
+from buildAnaDroid.commands.file_operations import write_to_file
 from buildAnaDroid.agents.agent import Agent
 from buildAnaDroid.models.command_decorator import command
 
@@ -19,55 +17,118 @@ RES_DIR = "buildAnaDroid.files"
 GRADLE_RES_DIR = os.path.join(RES_DIR, "build", "gradle")
 GRADLE_WRAPPER_DIR = os.path.join(GRADLE_RES_DIR, "wrapper", "gradle")
 
+def _get_agp_version_from_project(agent: Agent) -> str | None:
+    """Scans common build files to find the declared AGP version."""
+    build_files_to_check = ["build.gradle.kts", "build.gradle"]
+    pattern = re.compile(
+        r"""(?:id|classpath)\s*\(?\s*["']com\.android\.(?:application|library|tools\.build:gradle)["']\s*\)?\s*(?:version\s*)?["']([^"']+)["']""",
+        re.VERBOSE
+    )
+    for file_path in build_files_to_check:
+        content = execute_command_in_container(agent.shell_socket, f"cat {file_path}")
+        if "No such file or directory" in content:
+            continue
+        match = pattern.search(content)
+        if match:
+            version = match.group(1)
+            print(f"  -> Found AGP version '{version}' in '{file_path}'.")
+            return version
+    return None
+
+def _update_agp_version_in_file(agent: Agent, file_path: str, target_version: str) -> bool:
+    """Safely updates the AGP version in a given Gradle build file."""
+    original_content = execute_command_in_container(agent.shell_socket, f"cat {file_path}")
+    if "No such file or directory" in original_content:
+        return False
+    
+    # This regex is designed to find the AGP dependency in various forms:
+    # 1. `plugins` block: id("com.android.application") version "..."
+    # 2. `buildscript` block: "com.android.tools.build:gradle:..."
+    # It captures the prefix (group 1) and the suffix (group 3) around the version number.
+    pattern = re.compile(
+        r"""
+        # This is group 1: the prefix before the version number.
+        (
+            (?: # A non-capturing group for the two alternatives (modern vs. legacy).
+                # Alternative 1: Modern plugins block, e.g., id("...") version "..."
+                # It looks for 'id(...) version "'
+                id\s*\(\s*["']com\.android\.(?:application|library)["']\s*\)\s*version\s*["']
+            | 
+                # Alternative 2: Legacy buildscript, e.g., classpath "...:gradle:..."
+                # It looks for 'classpath "...:gradle:'
+                (?:classpath)\s*\(?\s*["']com\.android\.tools\.build:gradle:
+            )
+        )
+        # This is group 2: the actual version string to be replaced.
+        ([^"']+)
+        # This is group 3: the closing quote that follows the version.
+        (["'])
+        """,
+        re.VERBOSE
+    )
+
+    # Replace the old version with the target version
+    new_content, count = pattern.subn(rf"\g<1>{target_version}\g<3>", original_content)
+
+    if count > 0:
+        print(f"  -> Found and updated AGP version in '{file_path}'.")
+        # Safely write the modified content back to the file
+        write_to_file(file_path, new_content, agent)
+        return True
+    return False
+
+def _update_gradle_wrapper(agent: Agent, gradle_version: str) -> bool:
+    """Safely updates the Gradle version in gradle-wrapper.properties."""
+    wrapper_properties_file = "gradle/wrapper/gradle-wrapper.properties"
+
+    original_content = execute_command_in_container(agent.shell_socket, f"cat {wrapper_properties_file}")
+    if "No such file or directory" in original_content:
+        return False
+    
+    # Regex to find and replace the Gradle version in the distributionUrl
+    pattern = re.compile(r"(distributionUrl\s*=\s*.*gradle-)[^/]+?(-all\.zip)")
+    new_content, count = pattern.subn(rf"\g<1>{gradle_version}\g<2>", original_content)
+    
+    if count > 0:
+        print(f"  -> Updating Gradle Wrapper to version {gradle_version} in '{wrapper_properties_file}'.")
+        write_to_file(wrapper_properties_file, new_content, agent)
+        return True
+    
+    print(f"  -> Gradle Wrapper in '{wrapper_properties_file}' is already up-to-date.")
+    return False
+
 @command(
     "fix_wrapper_mismatch",
-    "error string: 'Failed to notify project evaluation listener'\nUpdates Gradle Wrapper version to be compatible with the Android Gradle Plugin version.",
+    "Updates the Gradle Wrapper to match the project's AGP version.\nCall if and only if previous output includes 'Failed to notify project evaluation listener'.",
     {
-        "version": {
+        "command": {
             "type": "string",
-            "description": "The version of the Android Gradle Plugin to use",
+            "description": "The command to execute after fixing the error",
             "required": True,
         }
     },
 )
-def fix_wrapper_mismatch(version: str, agent: Agent):
-    print("Attempting to fix WRAPPER_MISMATCH_ERROR...")
-    # 1. Find all build.gradle files
-    find_cmd = f"find . -name 'build.gradle'"
-    build_files_out = execute_command_in_container(agent.shell_socket, find_cmd)
-    if 'build.gradle' not in build_files_out:
-        return "Error: Could not find build.gradle files."
+def fix_wrapper_mismatch(command: str, agent: Agent):
+    print("Attempting to fix WRAPPER_MISMATCH by synchronizing Gradle version...")
+    
+    # 1. Read the existing AGP version from the project.
+    agp_version = _get_agp_version_from_project(agent)
+    if not agp_version:
+        return "Error: Could not determine the project's AGP version from build files."
 
-    for build_file in build_files_out.strip().split('\n'):
-        if not build_file: continue
-        # 2. Extract AGP version
-        # Using sed to extract the version string: com.android.tools.build:gradle:VERSION
-        # This regex captures what's between the last colon and the closing quote.
-        extract_cmd = f"sed -n \"s/.*com\\.android\\.tools\\.build:gradle:\\([^']\\+\\).*/\\1/p\" {build_file}"
-        agp_ver_out = execute_command_in_container(agent.shell_socket, extract_cmd)
-        agp_version = agp_ver_out.strip()
+    # 2. Determine the corresponding Gradle version.
+    required_gradle_version = _get_adequate_gradle_version(agp_version)
+    print(f"Project's AGP version {agp_version} requires Gradle ~{required_gradle_version}.")
 
-        if agp_version:
-            # 3. Determine and apply adequate Gradle version
-            adequate_gradle_v = get_adequate_gradle_version(agp_version)
-            print(f"Found AGP {agp_version}, requires Gradle ~{adequate_gradle_v}. Updating wrapper.")
-            
-            # Find the properties file and update it using sed
-            prop_file_find_cmd = f"find . -name 'gradle-wrapper.properties'"
-            prop_files_out = execute_command_in_container(agent.shell_socket, prop_file_find_cmd)
-
-            for prop_file in prop_files_out.strip().split('\n'):
-                 if not prop_file: continue
-                 # This sed command replaces the version part of the distributionUrl
-                 update_cmd = f"sed -i -E 's/(distributionUrl=.*gradle-)[^/]+(\\-all.zip)/\\1{adequate_gradle_v}\\2/' {prop_file}"
-                 execute_command_in_container(agent.shell_socket, update_cmd)
-            break # Assume the first build.gradle with a version is the root one
-
-    return f"Gradle Wrapper updated to {adequate_gradle_v} based on AGP version {agp_version}."
+    # 3. Update the wrapper.
+    if _update_gradle_wrapper(agent, required_gradle_version):
+        return f"Successfully updated Gradle Wrapper to {required_gradle_version}."
+    else:
+        return f"Error: Failed to update Gradle Wrapper to version {required_gradle_version}."
 
 @command(
-    "fix_no_wrapper",
-    "error string: 'Could not find or load main class org.gradle.wrapper.GradleWrapperMain'\nCopies the entire gradle wrapper template directory into the project.",
+    "import_gradle_wrapper",
+    "Copies the entire gradle wrapper template directory into the project.\nCall if and only if previous output includes 'Could not find or load main class org.gradle.wrapper.GradleWrapperMain'.",
     {
         "version": {
             "type": "string",
@@ -76,7 +137,7 @@ def fix_wrapper_mismatch(version: str, agent: Agent):
         }
     },
 )
-def fix_no_wrapper(version: str, agent: Agent):
+def import_gradle_wrapper(version: str, agent: Agent):
     print("Attempting to fix NO_WRAPPER error...")
     # Ensure the 'gradle' directory exists
     mkdir_cmd = f"mkdir -p gradle/wrapper"
@@ -100,7 +161,7 @@ def fix_no_wrapper(version: str, agent: Agent):
 
 @command(
     "fix_no_gradlew_exec",
-    "error string: 'gradlew: No such file or directory'\nCopies the `gradlew` executable script to the project root and makes it executable.",
+    "Copies the `gradlew` executable script to the project root and makes it executable.\nCall if and only if previous output includes 'gradlew: No such file or directory'.",
     {
         "version": {
             "type": "string",
@@ -123,8 +184,8 @@ def fix_no_gradlew_exec(version: str, agent: Agent):
     return f"Failed to make gradlew executable: {output}"
 
 @command(
-    "fix_no_target_platform",
-    "error string: 'failed to find target with hash string android-([0-9]+)'\nDownloads the missing Android SDK platform.",
+    "download_sdk_platform",
+    "Downloads the missing Android SDK platform.\nCall if and only if previous output includes 'failed to find target with hash string android-<version>'.",
     {
         "version": {
             "type": "string",
@@ -133,15 +194,14 @@ def fix_no_gradlew_exec(version: str, agent: Agent):
         }
     },
 )
-def fix_no_target_platform(version: str, agent: Agent):
+def download_sdk_platform(version: str, agent: Agent):
     print(f"Required platform version: {version}. Attempting download.")
-    # The 'yes' command automatically accepts licenses
     download_cmd = f"yes | sdkmanager \"platforms;android-{version}\""
     return execute_command_in_container(agent.shell_socket, download_cmd)
 
 @command(
-    "fix_no_build_tools",
-    "error string: 'failed to find Build Tools revision'\nDownloads the missing Android Build Tools.",
+    "download_sdk_build_tools",
+    "Downloads the missing Android Build Tools.\nCall if and only if previous output includes 'failed to find Build Tools revision <version>'.",
     {
         "version": {
             "type": "string",
@@ -150,15 +210,14 @@ def fix_no_target_platform(version: str, agent: Agent):
         }
     },
 )
-def fix_no_build_tools(version: str, agent: Agent):
-    print("Attempting to fix NO_BUILD_TOOLS error...")
+def download_sdk_build_tools(version: str, agent: Agent):
     print(f"Required build-tools version: {version}. Attempting download.")
     download_cmd = f"yes | sdkmanager \"build-tools;{version}\""
     return execute_command_in_container(agent.shell_socket, download_cmd)
 
 @command(
-    "fix_google_repo_error",
-    "error string: 'method google() for arguments'\nUpgrades AGP to a version that supports the `google()` repository shortcut.",
+    "upgrade_agp_version",
+    "Upgrades AGP to a version that supports the `google()` repository shortcut.\nCall if and only if previous output includes 'method google() for arguments'.",
     {
         "command": {
             "type": "string",
@@ -167,28 +226,90 @@ def fix_no_build_tools(version: str, agent: Agent):
         }
     },
 )
-def fix_google_repo_error(command: str, agent: Agent):
-    print("Attempting to fix GOOGLE_REPO_ERROR...")
-    # Find root build file
-    root_build_file = "build.gradle"
-    min_agp_version = "3.6.3" # A safe version that supports google()
+def upgrade_agp_version(command: str, agent: Agent):
+    print("Attempting to fix GOOGLE_REPO_ERROR by upgrading AGP...")
+    min_agp_version = "3.6.3"  # Minimum AGP version that supports google() repository shortcut
     
-    # Replace the AGP version using sed
-    update_cmd = (
-        f"sed -i -E \"s/(com.android.tools.build:gradle:)[^']+/\\1'{min_agp_version}'/\" "
-        f"{root_build_file}"
-    )
-    execute_command_in_container(agent.shell_socket, update_cmd)
+    # 1. Update the AGP version in all relevant build files.
+    print(f"Setting AGP version to a compatible baseline: {min_agp_version}.")
+    agp_updated = False
+    for build_file in ["build.gradle.kts", "build.gradle"]:
+        if _update_agp_version_in_file(agent, build_file, min_agp_version):
+            agp_updated = True
+    
+    if not agp_updated:
+        return f"Error: Could not find and update the AGP version to {min_agp_version} in any build file."
 
-    # Now, this will likely cause a wrapper mismatch, so we fix that pre-emptively.
-    if "Gradle Wrapper updated" not in fix_wrapper_mismatch(min_agp_version, agent):
-        return "Upgraded AGP version, but failed to update Gradle Wrapper. Please check manually."
+    # 2. Now that AGP is updated, call the synchronizer to fix the wrapper.
+    # We pass the original command to the next function in the chain.
+    print("\nAGP version updated. Now synchronizing Gradle Wrapper...")
 
-    return f"Upgraded AGP version in {root_build_file} to {min_agp_version}."
+    if "Successfully updated" in fix_wrapper_mismatch(command, agent):
+        return "Successfully upgraded AGP and synchronized Gradle Wrapper."
+    return "Successfully upgraded AGP, but failed to synchronize Gradle Wrapper."
+
+def _add_google_repo_to_file(agent: Agent, file_path: str) -> bool:
+    """
+    Reads a Gradle file, adds google() to repository blocks if missing,
+    and writes the content back.
+
+    Args:
+        agent: The agent instance for shell execution.
+        file_path: The path to the Gradle file (e.g., 'settings.gradle.kts').
+
+    Returns:
+        True if the file was modified, False otherwise.
+    """
+    # Read the file content from the container
+    cat_cmd = f"cat {file_path}"
+    original_content = execute_command_in_container(agent.shell_socket, cat_cmd)
+    if "No such file or directory" in original_content:
+        return False
+    
+    print(f"Checking for missing google() repo in '{file_path}'...")
+    
+
+    # This function is used with re.sub to replace repository blocks.
+    # It checks if 'google()' is present and adds it if not.
+    def replacer(match):
+        # The pattern captures three groups:
+        # 1. The opening part: `repositories {`
+        # 2. The content inside the braces.
+        # 3. The closing brace: `}`
+        opening, content, closing = match.groups()
+        
+        # Check if google() is already present in the block's content.
+        # \b ensures we match the whole word 'google'.
+        if re.search(r"\bgoogle\(\)", content):
+            return match.group(0)  # Return the original, unmodified block
+        else:
+            # Add google() right after the opening brace with standard indentation.
+            # This is much safer than appending to the end of the file.
+            print(f"  -> Adding google() to a repositories block in '{file_path}'.")
+            # Determine indentation from the line of the opening brace
+            start_index = match.start(1)
+            line_start_index = original_content.rfind('\n', 0, start_index) + 1
+            indentation = original_content[line_start_index:start_index]
+            
+            # For Kotlin DSL (.kts), a newline is often preferred. For Groovy, it's flexible.
+            # Adding it at the top of the block is a common and safe convention.
+            return f"{opening}\n{indentation}    google()\n{content}{closing}"
+
+    # The regex finds `repositories { ... }` blocks.
+    # It's non-greedy `([\s\S]*?)` to handle multiple repository blocks in one file correctly.
+    pattern = re.compile(r"(repositories\s*\{)([\s\S]*?)(\})")
+    new_content, num_substitutions = pattern.subn(replacer, original_content)
+
+    if num_substitutions > 0:
+        # If changes were made, write the new content back to the file.
+        write_to_file(file_path, new_content, agent)
+        return True
+
+    return False
 
 @command(
-    "fix_maybe_missing_google_repo",
-    "error string: 'Could not resolve all dependencies for configuration'\nAdds the Google maven repository to the project.",
+    "add_google_repo",
+    "Adds the Google maven repository to the project.\nCall if and only if previous output includes 'Could not resolve all dependencies for configuration'.",
     {
         "command": {
             "type": "string",
@@ -197,30 +318,31 @@ def fix_google_repo_error(command: str, agent: Agent):
         }
     },
 )
-def fix_maybe_missing_google_repo(command: str, agent: Agent):
+def add_google_repo(command: str, agent: Agent):
     print("Attempting to fix MAYBE_MISSING_GOOGLE_REPO...")
-    root_build_file = "build.gradle"
 
-    # Add to allprojects block. A bit naive, but often works.
-    allprojects_repo = "\\nallprojects { repositories { google() } }"
-    add_allprojects_cmd = f"echo -e '{allprojects_repo}' >> {root_build_file}"
-    execute_command_in_container(agent.shell_socket, add_allprojects_cmd)
+    # List of common Gradle files where repositories are defined.
+    # Modern Gradle prefers settings.gradle(.kts), so we check those first.
+    build_files = [
+        "settings.gradle.kts",
+        "settings.gradle",
+        "build.gradle.kts",
+        "build.gradle",
+    ]
 
-    # Check if google() exists in buildscript.repositories
-    # `grep -q` is silent and returns 0 if found, 1 if not.
-    check_cmd = f"grep -q 'google()' {root_build_file}"
-    if execute_command_in_container(agent.shell_socket, check_cmd) != "":
-        # Not found, add it.
-        buildscript_repo = "\\nbuildscript { repositories { google() } }"
-        add_buildscript_cmd = f"echo -e '{buildscript_repo}' >> {root_build_file}"
-        execute_command_in_container(agent.shell_socket, add_buildscript_cmd)
-        return "Added google() repository to buildscript."
+    was_modified = False
+    for file in build_files:
+        if _add_google_repo_to_file(agent, file):
+            was_modified = True
+
+    if was_modified:
+        return "Successfully added google() repository to project configuration."
     else:
-        return "google() repository already present in buildscript."
+        return "No missing google() repository found in any standard Gradle build files; no changes made."
 
 @command(
-    "fix_ndk_bad_config",
-    "error string: 'did not contain a valid NDK and couldn't be used'\nGenerates a local.properties file with correct SDK and NDK paths from within the container.",
+    "generate_local_properties",
+    "Generates a local.properties file with correct SDK and NDK paths from within the container.\nCall if and only if previous output includes 'did not contain a valid NDK and couldn't be used'.",
     {
         "command": {
             "type": "string",
@@ -229,9 +351,7 @@ def fix_maybe_missing_google_repo(command: str, agent: Agent):
         }
     },
 )
-def fix_ndk_bad_config(command: str, agent: Agent):
-    print("Attempting to fix NDK_BAD_CONFIG by dynamically generating local.properties...")
-
+def generate_local_properties(command: str, agent: Agent):
     # 1. Command to find the SDK path.
     # It checks standard environment variables first, then falls back to common locations.
     find_sdk_cmd = (
@@ -244,7 +364,7 @@ def fix_ndk_bad_config(command: str, agent: Agent):
         "'"
     )
     sdk_path_out = execute_command_in_container(agent.shell_socket, find_sdk_cmd)
-    sdk_path = sdk_path_out.strip()
+    sdk_path = sdk_path_out.strip().split("fi\'\r\n\r")[1] 
 
     if sdk_path == "SDK_NOT_FOUND" or not sdk_path:
         return f"Error: Could not determine Android SDK path inside the container."
@@ -256,7 +376,7 @@ def fix_ndk_bad_config(command: str, agent: Agent):
     # `tail -n 1` gets the last entry, which is often the latest version.
     find_ndk_cmd = f"sh -c 'ls -1 {sdk_path}/ndk 2>/dev/null | tail -n 1'"
     ndk_version_dir_out = execute_command_in_container(agent.shell_socket, find_ndk_cmd)
-    ndk_version_dir = ndk_version_dir_out.strip()
+    ndk_version_dir = ndk_version_dir_out.strip().split("tail -n 1'\r\n\r")[1]
 
     # 3. Construct the properties file content
     # Use double newlines for clarity in the echo command.
@@ -273,14 +393,13 @@ def fix_ndk_bad_config(command: str, agent: Agent):
 
     # 4. Write the content to the local.properties file in the project root.
     # The `echo -e` command interprets the \n characters as newlines.
-    write_cmd = f"echo -e '{properties_content}' > local.properties"
-    execute_command_in_container(agent.shell_socket, write_cmd)
+    write_to_file("local.properties", properties_content, agent)
 
     return "Successfully generated and wrote local.properties."
 
 @command(
     "fix_build_tools_cpu_error",
-    "error string: 'Bad CPU type in executable'\nUpgrades the project's Build Tools to a newer version to resolve CPU architecture issues.",
+    "Upgrades the project's Build Tools to a newer version to resolve CPU architecture issues.\nCall if and only if previous output includes 'Bad CPU type in executable'.",
     {
         "version": {
             "type": "string",
@@ -290,7 +409,6 @@ def fix_ndk_bad_config(command: str, agent: Agent):
     },
 )
 def fix_build_tools_cpu_error(version: str, agent: Agent):
-    print("Attempting to fix BUILD_TOOLS_CPU_ERROR...")
     # 1. Download the new version
     download_cmd = f"yes | sdkmanager \"build-tools;{version}\""
     execute_command_in_container(agent.shell_socket, download_cmd)
@@ -311,9 +429,42 @@ def fix_build_tools_cpu_error(version: str, agent: Agent):
 
     return f"Build Tools upgraded to {version} and updated in all build.gradle files."
 
+# Helper function to find the AGP version from project files.
+def _get_agp_version_from_project(agent: Agent) -> str | None:
+    """
+    Scans common build files to find the declared Android Gradle Plugin version.
+    Returns the version string if found, otherwise None.
+    """
+    # Check the most common files where AGP version is defined.
+    build_files_to_check = ["build.gradle.kts", "build.gradle"]
+    
+    # Regex to find AGP dependency in both `plugins` and `buildscript` blocks.
+    pattern = re.compile(
+        r"""
+        (?:id|classpath)\s*\(?\s*
+        ["']com\.android\.(?:application|library|tools\.build:gradle)["']
+        \s*\)?\s*
+        (?:version\s*)?
+        ["']([^"']+)["']
+        """,
+        re.VERBOSE
+    )
+
+    for file_path in build_files_to_check:
+        content = execute_command_in_container(agent.shell_socket, f"cat {file_path}")
+        if "no such file or directory" in content:
+            continue
+        match = pattern.search(content)
+        if match:
+            version = match.group(1)
+            print(f"  -> Found AGP version '{version}' in '{file_path}'.")
+            return version
+            
+    return None
+
 @command(
-    "fix_wrapper_error",
-    "error string: 'try editing the distributionUrl'\nUpdates the Gradle Wrapper version based on an explicit recommendation in the error log.",
+    "update_gradle_wrapper",
+    "Updates the Gradle Wrapper version based on an explicit recommendation in the error log.\nCall if and only if previous output includes 'Minimum supported Gradle version is (.*?)\. Current version'.",
     {
         "error_msg": {
             "type": "string",
@@ -322,42 +473,35 @@ def fix_build_tools_cpu_error(version: str, agent: Agent):
         }
     },
 )
-def fix_wrapper_error(error_msg: str, agent: Agent):
-    print("Attempting to fix WRAPPER_ERROR...")
-    new_v = None
+def update_gradle_wrapper(error_msg: str, agent: Agent):
+    new_gradle_version = None
 
-    # 1. Try to parse the recommended version from the error message
+    # 1. Primary Method: Try to parse the recommended version from the error message.
     match = re.search(r"Minimum supported Gradle version is (.*?)\. Current version", error_msg)
     if match:
-        recom_v_str = match.groups()[0].strip()
-        new_v = f"{recom_v_str}-all"
-        print(f"Found recommended Gradle version in error log: {recom_v_str}")
+        # The version is group 1. Strip any whitespace. This fixes the "-all" bug.
+        recom_v_str = match.group(1).strip()
+        new_gradle_version = recom_v_str
+        print(f"Found recommended Gradle version in error log: {new_gradle_version}")
     else:
-        # 2. Fallback: derive from AGP version (logic from _fix_wrapper_mismatch)
-        print("No recommendation found. Deriving Gradle version from AGP version.")
-        root_build_file = "build.gradle"
-        extract_cmd = f"sed -n \"s/.*com\\.android\\.tools\\.build:gradle:\\([^']\\+\\).*/\\1/p\" {root_build_file}"
-        agp_ver_out = execute_command_in_container(agent.shell_socket, extract_cmd)
-        agp_version = agp_ver_out.strip().split("\r\n\r")[1]
+        # 2. Fallback Method: Derive from the project's AGP version.
+        print("No direct recommendation found in error log. Attempting to derive from AGP version...")
+        agp_version = _get_agp_version_from_project(agent)
         
         if agp_version:
-            new_v = get_adequate_gradle_version(agp_version)
-            print(f"Found AGP {agp_version}, requires Gradle ~{new_v}.")
+            new_gradle_version = _get_adequate_gradle_version(agp_version)
+            print(f"Derived required Gradle version ~{new_gradle_version} from AGP version {agp_version}.")
+    
+    # 3. Apply the fix if a version was determined.
+    if not new_gradle_version:
+        return "Error: Could not determine a new Gradle version to use from the error log or project files."
 
-    if not new_v:
-        return "Error: Could not determine a new Gradle version to use."
-
-    prop_file = "gradle/wrapper/gradle-wrapper.properties"
-
-    if prop_file:
-        print(f"Updating Gradle version in {prop_file} to {new_v}...")
-        update_cmd = f"sed -i -E 's/(distributionUrl=.*gradle-)[^/]+(\\-all.zip)/\\1{new_v}\\2/' {prop_file}"
-        execute_command_in_container(agent.shell_socket, update_cmd)
+    if _update_gradle_wrapper(agent, new_gradle_version):
+        return f"Successfully updated Gradle Wrapper to version {new_gradle_version}."
     else:
-        return "Error: Could not find gradle-wrapper.properties to update."
-    return f"Gradle Wrapper updated to {new_v} based on the error log or AGP version."
+        return f"Error: Determined Gradle version should be {new_gradle_version}, but failed to update the wrapper file."
         
-def get_adequate_gradle_version(plugin_version):
+def _get_adequate_gradle_version(plugin_version):
     """
     Given the gradle plugin version, returns an adequate gradle version to match.
     This version is self-contained and does not require the DefaultSemanticVersion class.
