@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 # List of directories to be completely removed and recreated by --clean.
-DIRECTORIES_TO_CLEAN = ["logs", "tests"]
+DIRECTORIES_TO_CLEAN = ["logs", "tests", "workspace"]
 
 def clean_workspace():
     """

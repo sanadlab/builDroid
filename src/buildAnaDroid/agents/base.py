@@ -176,9 +176,9 @@ class BaseAgent(metaclass=ABCMeta):
         with prompt_files.open("r", encoding="utf-8") as cit:
             self.cycle_instruction = cit.read()
 
-        self.project_path = self.metadata["project_path"]
+        self.project_name = self.metadata["project_name"]
         self.project_url = self.metadata["project_url"]
-        self.workspace_path = "tests/workspace"
+        self.workspace_path = self.metadata["project_url"] if self.metadata["local_path"] else "workspace" / self.project_name
         self.past_attempt = self.metadata["past_attempt"]
         
         self.tests_executed = False
@@ -202,7 +202,7 @@ class BaseAgent(metaclass=ABCMeta):
             "cycle_count": self.cycle_count,
             "metadata": self.metadata,
             "prompt_dictionary": self.prompt_dictionary,
-            "project_path": self.project_path,
+            "project_name": self.project_name,
             "project_url": self.project_url,
             "workspace_path": self.workspace_path,
             "tests_executed": self.tests_executed,
@@ -243,7 +243,7 @@ class BaseAgent(metaclass=ABCMeta):
             if self.cycle_count == 0:
                 prompt = self.construct_base_prompt()
             else:
-                with open(f"tests/{self.project_path}/logs/prompt_history", "r") as patf:
+                with open(f"tests/{self.project_name}/logs/prompt_history", "r") as patf:
                     prompt = patf.read()
                 if self.cycle_count == 1:
                     prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
@@ -254,7 +254,7 @@ class BaseAgent(metaclass=ABCMeta):
             )
             response = create_chat_completion(client, self.config.llm_model, prompt)
             self.cycle_count += 1
-            with open(f"tests/{self.project_path}/logs/prompt_history", "w") as patf:
+            with open(f"tests/{self.project_name}/logs/prompt_history", "w") as patf:
                 patf.write(prompt)
             return self.on_response(response, thought_process_id, prompt)
         
@@ -271,7 +271,7 @@ class BaseAgent(metaclass=ABCMeta):
         else:
             prompt = self.cycle_instruction + "\n================Previous Command Result================\n" + result
             
-        with open(f"tests/{self.project_path}/logs/prompt_history", "a+") as patf:
+        with open(f"tests/{self.project_name}/logs/prompt_history", "a+") as patf:
             patf.write("================================PROMPT " + str(self.cycle_count) + "================================\n" + prompt + "\n\n\n")
         
         logger.info(

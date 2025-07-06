@@ -147,20 +147,20 @@ def import_gradle_wrapper(version: str, agent: Agent):
         with as_file(files("buildAnaDroid.files").joinpath("gradle-wrapper.jar")) as host_path_to_wrapper_jar:
             # Copy the gradle wrapper jar file
             try:
-                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_jar), f'{agent.container.id}:{agent.project_path}/gradle/wrapper/gradle-wrapper.jar'], check=True)
+                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_jar), f'{agent.container.id}:{agent.project_name}/gradle/wrapper/gradle-wrapper.jar'], check=True)
             except subprocess.CalledProcessError as e:
                 return (f"Error copying gradle-wrapper.jar: {e}")
     if "gradle-wrapper.properties" not in execute_command_in_container(agent.shell_socket, f"find . -name \"gradle-wrapper.properties\""):
         with as_file(files("buildAnaDroid.files").joinpath("gradle-wrapper.properties")) as host_path_to_wrapper_properties:
             # Copy the gradle wrapper properties file
             try:
-                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_properties), f'{agent.container.id}:{agent.project_path}/gradle/wrapper/gradle-wrapper.properties'], check=True)
+                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_properties), f'{agent.container.id}:{agent.project_name}/gradle/wrapper/gradle-wrapper.properties'], check=True)
             except subprocess.CalledProcessError as e:
                 return (f"Error copying gradle-wrapper.properties: {e}")
     return "Successfully copied gradle wrapper files to the project root."
 
 @command(
-    "fix_no_gradlew_exec",
+    "import_gradlew_exec",
     "Copies the `gradlew` executable script to the project root and makes it executable.\nCall if and only if previous output includes 'gradlew: No such file or directory'.",
     {
         "version": {
@@ -170,11 +170,11 @@ def import_gradle_wrapper(version: str, agent: Agent):
         }
     },
 )
-def fix_no_gradlew_exec(version: str, agent: Agent):
+def import_gradlew_exec(version: str, agent: Agent):
     print("Attempting to fix NO_GRADLEW_EXEC error...")
     with as_file(files("buildAnaDroid.files").joinpath("gradlew")) as gradlew_path:
         try:
-            subprocess.run(['docker', 'cp', str(gradlew_path), f'{agent.container.id}:{agent.project_path}/gradlew'], check=True)
+            subprocess.run(['docker', 'cp', str(gradlew_path), f'{agent.container.id}:{agent.project_name}/gradlew'], check=True)
         except subprocess.CalledProcessError as e:
             return f"Error copying gradlew: {e}"
     chmod_cmd = f"chmod +x gradlew"

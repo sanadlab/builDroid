@@ -59,9 +59,9 @@ def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: b
         )
     finally:
         if keep_container:
-            subprocess.run(["docker", "stop", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["docker", "stop", metadata["project_name"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            subprocess.run(["docker", "rm", "-vf", metadata["project_path"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["docker", "rm", "-vf", metadata["project_name"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["docker", "system", "prune", "--volumes", "-f"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -112,21 +112,24 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
 
         print(f"User prompted retry failed. Exiting program.")
 
-def process_repository(github_url: str, num: int, conversation: bool, keep_container:bool, user_retry:bool):
+def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: bool=False, keep_container:bool=False, user_retry:bool=False, local_path:bool=False):
     """Processes a single repository."""
-    project_name = extract_project_name(github_url)
+    project_name = extract_project_name(repo_source)
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
-    print(f"From GitHub URL: {github_url}")
+    if local_path:
+        print(f"From Local Path: {repo_source}")
+    else:
+        print(f"From GitHub URL: {repo_source}")
     print("-" * 70)
     past_attempt = new_experiment(project_name)
 
     setup_docker_config()
 
-    image = "build-anadroid:0.4.4"
+    image = "build-anadroid:0.5.0"
 
     # Clone the Github repository and set metadata
-    metadata = clone_and_set_metadata(project_name, github_url, image, past_attempt)
+    metadata = clone_and_set_metadata(project_name, repo_source, image, past_attempt, local_path)
 
     debug = False
 
@@ -171,13 +174,14 @@ For more information on a specific command, use:
 Examples for 'build' command:
   build https://github.com/user/project -n 30 --conv
   build repos.txt -k
+  build project_folder --local
 """
     )
     build_parser.add_argument(
         "repo_source",
         metavar="REPO_SOURCE",
         default = "",
-        help="A single GitHub URL, or a path to a file containing one GitHub URL per line."
+        help="A single GitHub URL, or a path to a .txt file containing one GitHub URL per line, or a local path to a repository."
     )
     build_parser.add_argument(
         "-n", "--num",
@@ -189,6 +193,11 @@ Examples for 'build' command:
         "-c", "--conv",
         action="store_true",
         help="Enable conversation mode."
+    )
+    build_parser.add_argument(
+        "-l", "--local",
+        action="store_true",
+        help="Build from a local path instead of cloning from GitHub."
     )
     build_parser.add_argument(
         "-k", "--keep-container",
@@ -244,7 +253,10 @@ Examples for 'clean' command:
             # Handle the case where input is a single URL string
             print("Processing a single repository URL.")
             project_name = extract_project_name(repo_source)
-            process_repository(args.repo_source, args.num, args.conv, args.keep_container, True)
+            process_repository(repo_source, args.num, args.conv, args.keep_container, user_retry=True)
+        elif args.local:
+            print("Processing a local repository.")
+            process_repository(repo_source, args.num, args.conv, args.keep_container, user_retry=True, local_path=True)
         else:
             # Handle the case where the input is a file
             print(f"Processing repositories from file: {repo_source}")
@@ -253,8 +265,7 @@ Examples for 'clean' command:
             
             for url in repo_urls:
                 project_name = extract_project_name(url)
-                process_repository(url, args.num, args.conv, args.keep_container, False)
-            
+                process_repository(url, args.num, args.conv, args.keep_container, user_retry=False)
             # Generate the final results sheet after all repos are processed
             create_results_sheet()
         api_token_reset()

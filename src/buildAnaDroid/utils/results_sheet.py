@@ -6,13 +6,13 @@ def create_results_sheet():
 
     # Loop through each project folder
     for project_folder in os.listdir("tests"):
-        project_path = os.path.join("tests", project_folder)
-        if os.path.isdir(project_path):
+        project_name = os.path.join("tests", project_folder)
+        if os.path.isdir(project_name):
             cmd_count = 0
-            status = "Succeeded" if os.path.exists(os.path.join(project_path, "saved_contexts", "SUCCESS")) else "Failed"
+            status = "Succeeded" if os.path.exists(os.path.join(project_name, "saved_contexts", "SUCCESS")) else "Failed"
 
             # Loop through cycle_* files
-            for file in os.listdir(os.path.join(project_path, "saved_contexts")):
+            for file in os.listdir(os.path.join(project_name, "saved_contexts")):
                 if file.startswith("cycle_"):
                     cmd_count += 1
 

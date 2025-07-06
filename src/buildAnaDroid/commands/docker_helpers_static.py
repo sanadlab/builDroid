@@ -107,7 +107,7 @@ def start_container(image_tag, name):
 
 
 def locate_or_import_gradlew(agent):
-    execute_command_in_container(agent.shell_socket, f"cd {agent.project_path}")
+    execute_command_in_container(agent.shell_socket, f"cd {agent.project_name}")
     find_cmd = "find . -name gradlew"
     gradlew_path_str = execute_command_in_container(agent.shell_socket, find_cmd)
     if "gradlew" in gradlew_path_str:
@@ -115,7 +115,7 @@ def locate_or_import_gradlew(agent):
         execute_command_in_container(agent.shell_socket, f"cd {directory}")
         print(f"Found gradlew and cd'd to its directory relative to project root: {directory}")
         return 0
-    print(f"gradlew not found in '{agent.project_path}'. Importing...")
+    print(f"gradlew not found in '{agent.project_name}'. Importing...")
     find_cmd_new = "find . -name build.gradle"
     build_gradle_path_str = execute_command_in_container(agent.shell_socket, find_cmd_new)
     if "build.gradle" in build_gradle_path_str:
@@ -127,7 +127,7 @@ def locate_or_import_gradlew(agent):
         execute_command_in_container(agent.shell_socket, command)
         execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
         return 0.
-    print(f"build.gradle file not found. {agent.project_path} is not an Android project.")
+    print(f"build.gradle file not found. {agent.project_name} is not an Android project.")
     return 1
 
 
