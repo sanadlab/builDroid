@@ -23,7 +23,7 @@ class Logger():
 
     def __init__(self):
         # create log directory if it doesn't exist
-        self.log_dir = os.getcwd() + "/logs"
+        self.log_dir = os.getcwd() + "/buildAnaDroid_tests/logs"
         os.makedirs(self.log_dir, exist_ok=True)
 
         log_file = "activity.log"

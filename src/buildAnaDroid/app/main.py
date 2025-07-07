@@ -46,7 +46,7 @@ def run_buildAnaDroid(
     logger.config = config
 
     config.cycle_limit = cycle_limit
-    config.workspace_path = working_directory / "workspace" / metadata["project_name"]
+    config.workspace_path = working_directory / "buildAnaDroid_workspace" / metadata["project_name"]
     config.conversation = conversation
     set_api_token(config)
     ai_config = AIConfig.load(working_directory / "ai_settings.yaml")
@@ -118,9 +118,9 @@ def run_interaction_loop(
     image_log = ""
     if not check_image_exists("build-anadroid:0.5.0"):
         dockerfile = files("buildAnaDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
-        with open("tests/Dockerfile", "w", encoding="utf-8") as f:
+        with open("buildAnaDroid_tests/Dockerfile", "w", encoding="utf-8") as f:
             f.write(dockerfile)
-        image_log = build_image("tests", "build-anadroid:0.5.0")
+        image_log = build_image("buildAnaDroid_tests", "build-anadroid:0.5.0")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
@@ -169,8 +169,8 @@ def run_interaction_loop(
         else:
             logger.info(title="SYSTEM: ", title_color=Fore.YELLOW, message="Unable to execute command")
 
-        os.makedirs("tests/{}/saved_contexts".format(agent.project_name), exist_ok=True)
-        agent.save_to_file("tests/{}/saved_contexts/cycle_{}".format(agent.project_name, cycle_budget - cycles_remaining))
+        os.makedirs("buildAnaDroid_tests/{}/saved_contexts".format(agent.project_name), exist_ok=True)
+        agent.save_to_file("buildAnaDroid_tests/{}/saved_contexts/cycle_{}".format(agent.project_name, cycle_budget - cycles_remaining))
     
     logger.info("Last cycle. Shutting down...")
     agent.shell_socket.close()

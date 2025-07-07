@@ -113,6 +113,7 @@ def locate_or_import_gradlew(agent):
     if "gradlew" in gradlew_path_str:
         directory, _, _ = gradlew_path_str.partition("/gradlew")
         execute_command_in_container(agent.shell_socket, f"cd {directory}")
+        execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
         print(f"Found gradlew and cd'd to its directory relative to project root: {directory}")
         return 0
     print(f"gradlew not found in '{agent.project_name}'. Importing...")

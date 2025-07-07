@@ -5,8 +5,8 @@ def create_results_sheet():
     data = []
 
     # Loop through each project folder
-    for project_folder in os.listdir("tests"):
-        project_name = os.path.join("tests", project_folder)
+    for project_folder in os.listdir("buildAnaDroid_tests"):
+        project_name = os.path.join("buildAnaDroid_tests", project_folder)
         if os.path.isdir(project_name):
             cmd_count = 0
             status = "Succeeded" if os.path.exists(os.path.join(project_name, "saved_contexts", "SUCCESS")) else "Failed"

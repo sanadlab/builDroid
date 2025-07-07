@@ -45,7 +45,7 @@ LLM_MODEL=<your-llm-model-here>
 ```
 
 `BASE_URL` and `LLM_MODEL` are optional. If not provided, `buildAnaDroid` will use OpenAI's `gpt-4.1-mini-2025-04-14`.
-For example, if you put 'https://generativelanguage.googleapis.com/v1beta/openai/' as your base url, `buildAnaDroid` will access Google AI's `gemini-2.0-flash-lite`.
+For example, if you put 'https://generativelanguage.googleapis.com/v1beta/' as your base url, `buildAnaDroid` will access Google AI's `gemini-2.0-flash-lite`.
 If you want to use other providers, you have to provide the base url and the LLM model in `.env`.
 
 ## 🖥️ Usage
@@ -55,6 +55,7 @@ If you want to use other providers, you have to provide the base url and the LLM
 ```bash
 build-anadroid build https://github.com/user/project # Run on a single repository
 build-anadroid build repos.txt # Run on a list of repositories from a file
+build-anadroid build local_path --local # Run with a local repository
 ```
 ```bash
 build-anadroid clean # Clean test results
@@ -64,7 +65,21 @@ build-anadroid clean # Clean test results
 
 * `-n`, `--num`: Specify cycle limit (max. number of commands to execute)
 * `-c`, `--conv`: Enable conversation mode (API works with conversation models)
-* `-k`, `--keep-container`: Keep container after build (Removes container by default)
+* `-k`, `--keep-container`: Keep container after build (buildAnaDroid removes container by default)
+* `-l`, `--local`: Build from a local repository (Provide local path instead of Github link)
+
+### Python Usage
+
+```python
+import buildAnaDroid
+
+# You must load environment variables separately for Python usage
+
+source = "https://github.com/user/project"
+buildAnaDroid.process_repository(repo_source=source)
+# args: 
+# repo_source: str, num: int=40, conversation: bool=False, keep_container:bool=False, user_retry:bool=False, local_path:bool=False
+```
 
 ## 🛠️ Troubleshooting
 
@@ -78,7 +93,6 @@ If the build fails, `buildAnaDroid` will attempt to:
 
 ## 🏗️ Roadmap
 
-* [ ] Support Python usage
 * [ ] Integration with emulator for automated APK testing
 
 ## 🤝 Contributing

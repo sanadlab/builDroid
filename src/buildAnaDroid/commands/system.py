@@ -47,14 +47,13 @@ def goals_accomplished(reason: str, agent: Agent) -> NoReturn:
         return "You have not successfully built the project since there is no .apk file in the container. Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem. Try again."
     for apk_path in apk_paths:
         try:
-            host_apk_path = f"tests/{agent.project_name}/output"
+            host_apk_path = f"buildAnaDroid_tests/{agent.project_name}/output"
             os.makedirs(host_apk_path, exist_ok=True)
             subprocess.run(['docker', 'cp', f'{agent.container.id}:/{apk_path}', host_apk_path], check=True)
         except Exception as e:
             print(f"<ERROR> Failed to extract {apk_path}: {e}")
             
     logger.info(title=f"Shutting down... \n", message=reason)
-    agent.shell_socket.close()
-    with open(os.path.join("tests", agent.project_name, "saved_contexts", "SUCCESS"), "w") as ssf:
+    with open(os.path.join("buildAnaDroid_tests", agent.project_name, "saved_contexts", "SUCCESS"), "w") as ssf:
         ssf.write("SUCCESS")
     return "goals_accomplished: SUCCESS"

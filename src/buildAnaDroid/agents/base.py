@@ -178,7 +178,7 @@ class BaseAgent(metaclass=ABCMeta):
 
         self.project_name = self.metadata["project_name"]
         self.project_url = self.metadata["project_url"]
-        self.workspace_path = self.metadata["project_url"] if self.metadata["local_path"] else "workspace" / self.project_name
+        self.workspace_path = self.metadata["project_url"] if self.metadata["local_path"] else "buildAnaDroid_workspace/" + self.project_name
         self.past_attempt = self.metadata["past_attempt"]
         
         self.tests_executed = False
@@ -243,7 +243,7 @@ class BaseAgent(metaclass=ABCMeta):
             if self.cycle_count == 0:
                 prompt = self.construct_base_prompt()
             else:
-                with open(f"tests/{self.project_name}/logs/prompt_history", "r") as patf:
+                with open(f"buildAnaDroid_tests/{self.project_name}/prompt_history", "r") as patf:
                     prompt = patf.read()
                 if self.cycle_count == 1:
                     prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
@@ -254,7 +254,7 @@ class BaseAgent(metaclass=ABCMeta):
             )
             response = create_chat_completion(client, self.config.llm_model, prompt)
             self.cycle_count += 1
-            with open(f"tests/{self.project_name}/logs/prompt_history", "w") as patf:
+            with open(f"buildAnaDroid_tests/{self.project_name}/prompt_history", "w") as patf:
                 patf.write(prompt)
             return self.on_response(response, thought_process_id, prompt)
         
@@ -271,7 +271,7 @@ class BaseAgent(metaclass=ABCMeta):
         else:
             prompt = self.cycle_instruction + "\n================Previous Command Result================\n" + result
             
-        with open(f"tests/{self.project_name}/logs/prompt_history", "a+") as patf:
+        with open(f"buildAnaDroid_tests/{self.project_name}/prompt_history", "a+") as patf:
             patf.write("================================PROMPT " + str(self.cycle_count) + "================================\n" + prompt + "\n\n\n")
         
         logger.info(

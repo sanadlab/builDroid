@@ -33,14 +33,14 @@ def ask_chatgpt(prompt):
     
         
 def extract_agent_log(project_name):
-    file_path = f"tests/{project_name}/logs/prompt_history"
+    file_path = f"buildAnaDroid_tests/{project_name}/prompt_history"
     with open(file_path, "r", encoding="utf-8") as f:
         extracted_data = f.read()
     return extracted_data
 
 def run_post_process(project_name):
     # Build paths
-    success_file = f"tests/{project_name}/saved_contexts/SUCCESS"
+    success_file = f"buildAnaDroid_tests/{project_name}/saved_contexts/SUCCESS"
 
     # Extract agent log
     try:
@@ -65,7 +65,7 @@ def run_post_process(project_name):
         response = ask_chatgpt(prompt)
 
         # Save the response to problems_memory/{project_name}
-        problems_memory = f"tests/{project_name}/output/FAILURE"
+        problems_memory = f"buildAnaDroid_tests/{project_name}/output/FAILURE"
         with open(problems_memory, 'w') as f:
             f.write(response)
         break

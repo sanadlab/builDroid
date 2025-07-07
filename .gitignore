@@ -61,6 +61,6 @@ Python-*
 # Poetry
 poetry.lock
 
-tests/*
-logs/*
+buildAnaDroid_tests/*
+buildAnaDroid_workspace/*
 .env

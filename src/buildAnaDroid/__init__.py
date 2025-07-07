@@ -13,7 +13,7 @@ from .utils import cleaner
 # Use the same Python interpreter that is running this script for subprocesses.
 PYTHON_EXECUTABLE = sys.executable
 # Default value for the number parameter, as in the original script.
-DEFAULT_NUM = 30
+DEFAULT_NUM = 40
 # Maximum retries for the main execution logic.
 MAX_RETRIES = 2
 DEV_DEBUG = False # Set to True for development debugging
@@ -76,17 +76,16 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         print(f"PROJECT: {project_name}")
         print("=" * 70)
 
-        if os.path.exists(f"tests/{project_name}/output/FAILURE"):
-            with open(f"tests/{project_name}/output/FAILURE", "r") as f:
+        if os.path.exists(f"buildAnaDroid_tests/{project_name}/output/FAILURE"):
+            with open(f"buildAnaDroid_tests/{project_name}/output/FAILURE", "r") as f:
                 metadata["past_attempt"] = f.read()
         
-        # This call now encapsulates the entire logic of `run.sh`
         run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
 
         # Run post-processing and check the result
         if run_post_process(project_name):
             print(f"Post-process succeeded. The extracted .apk file is in the "
-                  f"tests/{project_name}/output folder.")
+                  f"buildAnaDroid_tests/{project_name}/output folder.")
             return # Exit the function on success
 
         print(f"Attempt {attempt} failed. Retrying...")
@@ -103,7 +102,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
                 # Run post-processing and check the result
                 if run_post_process(project_name):
                     print(f"Post-process succeeded. The extracted .apk file is in the "
-                        f"tests/{project_name}/output folder.")
+                        f"buildAnaDroid_tests/{project_name}/output folder.")
                     return # Exit the function on success
             elif user_input.startswith("N") or user_input.startswith("n"):
                 return

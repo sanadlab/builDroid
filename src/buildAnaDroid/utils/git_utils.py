@@ -12,8 +12,8 @@ def clone_and_set_metadata(project_name, repo_source, image, past_attempt, local
             raise FileNotFoundError(f"Local path '{repo_source}' does not exist.")
     else:
         # Clone the repository from GitHub
-        os.makedirs(f"workspace", exist_ok=True)
-        os.chdir(f"workspace")
+        os.makedirs(f"buildAnaDroid_workspace", exist_ok=True)
+        os.chdir(f"buildAnaDroid_workspace")
         try:
             subprocess.run(["git", "clone", "--recursive", repo_source])
         except Exception as e:

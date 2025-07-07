@@ -70,9 +70,7 @@ class Agent(BaseAgent):
         if not llm_response:
             raise SyntaxError("Assistant response has no text content")
         
-        with open("tests/tests_list.txt") as eht:
-            exps = eht.read().splitlines()
-        with open(os.path.join("tests", exps[-1], "responses", "model_responses_{}".format(self.project_name)), "a+") as patf:
+        with open(os.path.join("buildAnaDroid_tests", self.project_name, "model_responses"), "a+") as patf:
             patf.write(llm_response + "\n")
         assistant_reply_dict = extract_dict_from_response(llm_response)
 
