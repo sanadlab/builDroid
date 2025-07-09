@@ -10,7 +10,7 @@ if os.path.isfile(env_path):
     # Directly provide the confirmed path to load_dotenv.
     load_dotenv(dotenv_path=env_path)
 
-source = "diskusage"
+source = "repo_source_example"
 buildAnaDroid.process_repository(repo_source=source, keep_container=True, local_path=True)
 
 if "API_KEY" in os.environ:

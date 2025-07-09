@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import importlib.resources
+import time
 from pathlib import Path
 
 from .utils import api_token_setup, api_token_reset, clone_and_set_metadata, new_experiment, create_results_sheet, run_post_process, check_requirements
@@ -131,9 +132,15 @@ def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: boo
     metadata = clone_and_set_metadata(project_name, repo_source, image, past_attempt, local_path)
 
     debug = False
+    start_time = time.time()
 
     # Run the main task with retries
     run_with_retries(project_name, num, conversation, debug, metadata, keep_container, user_retry)
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    with open(f"buildAnaDroid_tests/{project_name}/output/elapsed_time.txt", "w") as f:
+        f.write(f"{elapsed_time:.2f}")
 
 def main():
     """Initialization function."""
