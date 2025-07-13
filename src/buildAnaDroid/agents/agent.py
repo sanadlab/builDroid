@@ -74,43 +74,6 @@ class Agent(BaseAgent):
             patf.write(llm_response + "\n")
         assistant_reply_dict = extract_dict_from_response(llm_response)
 
-        if "command" not in assistant_reply_dict:
-            assistant_reply_dict["command"] = {"name": "missing_command", "args":{}}
-        command_dict = assistant_reply_dict["command"]
-
-        commands_interface = {
-            "linux_terminal": ["command"],
-            "read_file": ["file_path"],
-            "goals_accomplished": ["reason"],
-            "write_to_file": ["filename", "text"]
-        }
-
-        if command_dict["name"] in list(commands_interface.keys()):
-            ref_args = commands_interface[command_dict["name"]]
-            if isinstance(command_dict["args"], dict):
-                command_args = list(command_dict["args"].keys())
-                new_command_dict = {"name": command_dict["name"], "args":{}}
-                for k in command_args:
-                    if k in ref_args:
-                        new_command_dict["args"][k] = command_dict["args"][k]
-                
-                unmatched_args = [arg for arg in command_args if arg not in ref_args]
-                unmatched_ref = [arg for arg in ref_args if arg not in list(new_command_dict["args"].keys())]
-
-                for uarg in unmatched_args:
-                    for uref in unmatched_ref:
-                        if uarg in uref:
-                            new_command_dict["args"][uref] = command_dict["args"][uarg]
-                            break
-                
-                if "project_name" in new_command_dict["args"]:
-                    if "_" in new_command_dict["args"]["project_name"]:
-                        name_only = new_command_dict["args"]["project_name"].split("_")[0]
-                        new_command_dict["args"]["project_name"] = name_only
-
-                assistant_reply_dict["command"] = new_command_dict
-            else:
-                assistant_reply_dict["command"] = {"name": "unknown_command", "args":{}}
         response = None, None, assistant_reply_dict
 
         # Print Assistant thoughts

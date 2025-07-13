@@ -90,10 +90,15 @@ def create_chat_completion_gpt(
     prompt,
 ) -> str:
     """Create a chat completion with GPT."""
-    response = client.responses.create(
-        model=model, input=prompt
+    response = client.chat.completions.create(
+        model=model, messages=[
+        {
+        "role": "user",
+        "content": prompt
+        },
+        ],
     )
-    return response.output_text
+    return response.choices[0].message.content
     
 @retry()
 def send_message_gemini(
@@ -236,8 +241,13 @@ class BaseAgent(metaclass=ABCMeta):
         """
         if "google" in self.config.openai_api_base:
             client = genai.Client(api_key=self.config.openai_api_key)
-        else:
+        elif "" == self.config.openai_api_base:
             client = OpenAI(api_key=self.config.openai_api_key)
+        else:
+            client = OpenAI(
+                api_key=self.config.openai_api_key,
+                base_url=self.config.openai_api_base,
+            )
 
         if not self.config.conversation:
             if self.cycle_count == 0:

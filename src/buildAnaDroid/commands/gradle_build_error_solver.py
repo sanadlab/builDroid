@@ -142,19 +142,20 @@ def import_gradle_wrapper(version: str, agent: Agent):
     # Ensure the 'gradle' directory exists
     mkdir_cmd = f"mkdir -p gradle/wrapper"
     execute_command_in_container(agent.shell_socket, mkdir_cmd)
+    cwd = execute_command_in_container(agent.shell_socket, "pwd")
     # Copy the wrapper contents from resources
     if "gradle-wrapper.jar" not in execute_command_in_container(agent.shell_socket, f"find . -name \"gradle-wrapper.jar\""):
         with as_file(files("buildAnaDroid.files").joinpath("gradle-wrapper.jar")) as host_path_to_wrapper_jar:
             # Copy the gradle wrapper jar file
             try:
-                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_jar), f'{agent.container.id}:{agent.project_name}/gradle/wrapper/gradle-wrapper.jar'], check=True)
+                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_jar), f'{agent.container.id}:{cwd}/gradle/wrapper/gradle-wrapper.jar'], check=True)
             except subprocess.CalledProcessError as e:
                 return (f"Error copying gradle-wrapper.jar: {e}")
     if "gradle-wrapper.properties" not in execute_command_in_container(agent.shell_socket, f"find . -name \"gradle-wrapper.properties\""):
         with as_file(files("buildAnaDroid.files").joinpath("gradle-wrapper.properties")) as host_path_to_wrapper_properties:
             # Copy the gradle wrapper properties file
             try:
-                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_properties), f'{agent.container.id}:{agent.project_name}/gradle/wrapper/gradle-wrapper.properties'], check=True)
+                subprocess.run(['docker', 'cp', str(host_path_to_wrapper_properties), f'{agent.container.id}:{cwd}/gradle/wrapper/gradle-wrapper.properties'], check=True)
             except subprocess.CalledProcessError as e:
                 return (f"Error copying gradle-wrapper.properties: {e}")
     return "Successfully copied gradle wrapper files to the project root."
@@ -172,9 +173,10 @@ def import_gradle_wrapper(version: str, agent: Agent):
 )
 def import_gradlew_exec(version: str, agent: Agent):
     print("Attempting to fix NO_GRADLEW_EXEC error...")
+    cwd = execute_command_in_container(agent.shell_socket, "pwd")
     with as_file(files("buildAnaDroid.files").joinpath("gradlew")) as gradlew_path:
         try:
-            subprocess.run(['docker', 'cp', str(gradlew_path), f'{agent.container.id}:{agent.project_name}/gradlew'], check=True)
+            subprocess.run(['docker', 'cp', str(gradlew_path), f'{agent.container.id}:{cwd}/gradlew'], check=True)
         except subprocess.CalledProcessError as e:
             return f"Error copying gradlew: {e}"
     chmod_cmd = f"chmod +x gradlew"
@@ -464,42 +466,22 @@ def _get_agp_version_from_project(agent: Agent) -> str | None:
 
 @command(
     "update_gradle_wrapper",
-    "Updates the Gradle Wrapper version based on an explicit recommendation in the error log.\nCall if and only if previous output includes 'Minimum supported Gradle version is (.*?)\. Current version'.",
+    "Updates the Gradle Wrapper to a specific version.\nCall if and only if previous output includes 'Minimum supported Gradle version is (.*?)\. Current version'.",
     {
-        "error_msg": {
+        "version": {
             "type": "string",
-            "description": "The error message snippet from the Gradle build: 'Minimum supported Gradle version is (.*?)\. Current version'",
+            "description": "The version from the Gradle build output: 'Minimum supported Gradle version is (.*?)\. Current version'",
             "required": True,
         }
     },
 )
-def update_gradle_wrapper(error_msg: str, agent: Agent):
+def update_gradle_wrapper(version: str, agent: Agent):
     new_gradle_version = None
 
-    # 1. Primary Method: Try to parse the recommended version from the error message.
-    match = re.search(r"Minimum supported Gradle version is (.*?)\. Current version", error_msg)
-    if match:
-        # The version is group 1. Strip any whitespace. This fixes the "-all" bug.
-        recom_v_str = match.group(1).strip()
-        new_gradle_version = recom_v_str
-        print(f"Found recommended Gradle version in error log: {new_gradle_version}")
-    else:
-        # 2. Fallback Method: Derive from the project's AGP version.
-        print("No direct recommendation found in error log. Attempting to derive from AGP version...")
-        agp_version = _get_agp_version_from_project(agent)
-        
-        if agp_version:
-            new_gradle_version = _get_adequate_gradle_version(agp_version)
-            print(f"Derived required Gradle version ~{new_gradle_version} from AGP version {agp_version}.")
-    
-    # 3. Apply the fix if a version was determined.
-    if not new_gradle_version:
-        return "Error: Could not determine a new Gradle version to use from the error log or project files."
-
-    if _update_gradle_wrapper(agent, new_gradle_version):
+    if _update_gradle_wrapper(agent, version):
         return f"Successfully updated Gradle Wrapper to version {new_gradle_version}."
     else:
-        return f"Error: Determined Gradle version should be {new_gradle_version}, but failed to update the wrapper file."
+        return f"Error: Gradle Wrapper is already up-to-date."
         
 def _get_adequate_gradle_version(plugin_version):
     """
