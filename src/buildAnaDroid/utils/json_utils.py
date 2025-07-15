@@ -24,5 +24,8 @@ def extract_dict_from_response(response_string: str) -> dict[str, Any]:
             json_string = response_string[start_index:end_index + 1]
             return json.loads(json_string)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from response string: {e}")
-            return {"command": {"name": "missing_command", "args": {}}, "thoughts": "Failed to understand the LLM response."}
+            try:
+                return json.loads(response_string+"\n}")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON from response string: {e}")
+                return {"command": {"name": "missing_command", "args": {}}, "thoughts": "Failed to understand the LLM response."}

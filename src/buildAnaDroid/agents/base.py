@@ -225,9 +225,7 @@ class BaseAgent(metaclass=ABCMeta):
 
     def think(
         self,
-        command_name: CommandName | None,
-        command_args: CommandArgs | None,
-        agent_thoughts: AgentThoughts | None,
+        previous_command: str | None,
         result: str | None,
         thought_process_id: ThoughtProcessID = "one-shot",
     ) -> tuple[CommandName | None, CommandArgs | None, AgentThoughts]:
@@ -257,8 +255,8 @@ class BaseAgent(metaclass=ABCMeta):
                     prompt = patf.read()
                 if self.cycle_count == 1:
                     prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
-                prompt += "\n\n==================Command " + str(self.cycle_count) + "==================\nAgent Thoughts: " + str(agent_thoughts.get("thoughts", {})) + "\nCommand name: " + command_name + "\nCommand args: " + str(command_args) + "\n================Command Result================\n" + result
-            
+                prompt += "\n\n==================Command " + str(self.cycle_count) + "==================\n" + previous_command + "\n================Command Result================\n" + result
+
             logger.info(
                 f"{Fore.GREEN}Creating chat completion with model {self.config.llm_model}{Fore.RESET}"
             )

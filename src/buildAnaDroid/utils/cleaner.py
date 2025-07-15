@@ -5,7 +5,7 @@ from pathlib import Path
 # List of directories to be completely removed and recreated by --clean.
 DIRECTORIES_TO_CLEAN = ["buildAnaDroid_tests", "buildAnaDroid_workspace"]
 
-def clean_workspace():
+def clean_workspace(no_docker: bool = False):
     """
     Handles the --clean operation.
     Completely removes and recreates the specified directories.
@@ -20,9 +20,10 @@ def clean_workspace():
         else:
             print(f"Directory '{dir_path}' not found, skipping removal.")
     print("--- Workspace cleaned successfully. ---")
-    add = input("\nADDITIONAL PROMPT: Clean Docker resources? (Yes/No): ").strip()
-    if add.startswith("y") or add.startswith("Y"):
-        clean_docker_resources()
+    if not no_docker:
+        add = input("\nADDITIONAL PROMPT: Clean Docker resources? (Yes/No): ").strip()
+        if add.startswith("y") or add.startswith("Y"):
+            clean_docker_resources()
 
 import subprocess
 import sys

@@ -116,15 +116,15 @@ def run_interaction_loop(
     #########################
 
     image_log = ""
-    if not check_image_exists("build-anadroid:0.5.0"):
+    if not check_image_exists("build-anadroid:0.6.0"):
         dockerfile = files("buildAnaDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
         with open("buildAnaDroid_tests/Dockerfile", "w", encoding="utf-8") as f:
             f.write(dockerfile)
-        image_log = build_image("buildAnaDroid_tests", "build-anadroid:0.5.0")
+        image_log = build_image("buildAnaDroid_tests", "build-anadroid:0.6.0")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
-    agent.container = start_container(f"build-anadroid:0.5.0", f"{agent.project_name[:63]}")
+    agent.container = start_container(f"build-anadroid:0.6.0", f"{agent.project_name[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
@@ -136,6 +136,7 @@ def run_interaction_loop(
     command_args = None
     assistant_reply_dict = None
     result = None
+    response = ""
     while cycles_remaining > 0:
         logger.debug(f"Cycle budget: {cycle_budget}; remaining: {cycles_remaining}")
         ########
@@ -143,7 +144,7 @@ def run_interaction_loop(
         ########
         # Have the agent determine the next action to take.
         with spinner:
-            command_name, command_args, assistant_reply_dict = agent.think(command_name, command_args, assistant_reply_dict, result)
+            command_name, command_args, assistant_reply_dict, response = agent.think(response, result)
 
         ###############
         # Update User #

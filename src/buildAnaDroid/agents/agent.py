@@ -74,14 +74,14 @@ class Agent(BaseAgent):
             patf.write(llm_response + "\n")
         assistant_reply_dict = extract_dict_from_response(llm_response)
 
-        response = None, None, assistant_reply_dict
+        response = None, None, assistant_reply_dict, llm_response
 
         # Print Assistant thoughts
         if assistant_reply_dict != {}:
             # Get command name and arguments
             try:
                 command_name, arguments = extract_command(assistant_reply_dict)
-                response = command_name, arguments, assistant_reply_dict
+                response = command_name, arguments, assistant_reply_dict, llm_response
             except Exception as e:
                 logger.error("Error: \n", str(e))
 
@@ -153,11 +153,11 @@ def execute_command(
         str: The result of the command
     """
     try:
+        if "missing" in command_name:
+            return "Cannot understand the JSON response. Please ensure the response is in the correct format."
         # Execute a command with the same name or alias, if it exists
         if command := agent.command_registry.get_command(command_name):
             return command(**arguments, agent=agent)
-        elif command == "missing_command":
-            return "Cannot understand the JSON response. Please ensure the response is in the correct format."
         return f"Cannot execute '{command_name}': unknown command." + " Do not try to use this command again."
     
     except Exception as e:

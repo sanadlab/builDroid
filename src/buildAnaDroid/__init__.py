@@ -16,7 +16,7 @@ PYTHON_EXECUTABLE = sys.executable
 # Default value for the number parameter, as in the original script.
 DEFAULT_NUM = 40
 # Maximum retries for the main execution logic.
-MAX_RETRIES = 2
+MAX_RETRIES = 1
 DEV_DEBUG = False # Set to True for development debugging
 
 def extract_project_name(github_url: str) -> str:
@@ -126,7 +126,7 @@ def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: boo
 
     setup_docker_config()
 
-    image = "build-anadroid:0.5.0"
+    image = "build-anadroid:0.6.0"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, repo_source, image, past_attempt, local_path)
@@ -223,6 +223,11 @@ Examples for 'clean' command:
     )
     clean_group = clean_parser.add_mutually_exclusive_group()
     clean_group.add_argument(
+        "-n", "--no-docker",
+        action="store_true",
+        help="Skip Docker cleaning. Only cleans test results."
+    )
+    clean_group.add_argument(
         "-d", "--docker",
         action="store_true",
         help="Remove Docker resources (only containers or all resources)"
@@ -236,7 +241,7 @@ Examples for 'clean' command:
     # If command is clean, clean and exit immediately.
     if args.command == "clean":
         if not args.docker:
-            cleaner.clean_workspace()
+            cleaner.clean_workspace(args.no_docker)
         else:
             cleaner.clean_docker_resources()
         print("Exiting after cleaning.")
