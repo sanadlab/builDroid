@@ -40,26 +40,35 @@ def extract_agent_log(project_name):
         extracted_data = f.read()
     return extracted_data
 
+
+
+
 class PatternClassifier:
     def __init__(self):
         # Define rules mapping specific issues to regex patterns
         # The order can matter if logs contain multiple errors.
         self.rules = {
             "Process Issue": {
-                "MISSING_LOCAL_PROPERTIES": re.compile(r"SDK location not found"),
-                "MISSING_KEYSTORE": re.compile(r"Keystore file '.*' not found for signing config"),
-                "MISSING_GRADLE_WRAPPER": re.compile(r"Could not find or load main class org.gradle.wrapper.GradleWrapperMain"),
-                "NON_DEFAULT_BUILD_COMMAND": re.compile(r"Task '.*' not found"),
+                "MISSING_LOCAL_PROPERTIES": [re.compile(r"SDK location not found"), re.compile("assert localPropertiesFile.exists()")],
+                "MISSING_KEYSTORE": [re.compile(r"Keystore file '.*' not found for signing config"), re.compile("keystore.properties (No such file or directory)")],
+                "MISSING_GRADLE_WRAPPER": [re.compile(r"Could not find or load main class org.gradle.wrapper.GradleWrapperMain")],
+                "NON_DEFAULT_BUILD_COMMAND": [re.compile(r"Task '.*' not found")],
             },
             "Environment Issue": {
-                "GRADLE_VERSION": re.compile(r"Failed to notify project evaluation listener"),
-                "JDK_VERSION": re.compile(r"Unsupported class file major version (\d+)"),
-                "ANDROID_SDK_VERSION": re.compile(r"Failed to find Build Tools revision"),
-                "REMOVED_DEPENDENCY": re.compile(r"Could not resolve all files for configuration"),
+                "GRADLE_BUILD_SYSTEM": [re.compile(r"Failed to create Jar file"), ],
+                "GRADLE_VERSION": [re.compile(r"Failed to notify project evaluation listener")],
+                "GRADLE_JDK_MISMATCH": [re.compile(r"Gradle requires JVM (\d+)"), re.compile("compiler does not export"), re.compile("Could not initialize class org.codehaus.groovy")],
+                "JAVA_KOTLIN_MISMATCH": [re.compile("Inconsistent JVM Target Compatibility Between Java and Kotlin Tasks")],
+                "JDK_VERSION": [re.compile("unrecognized JVM option"), re.compile("Cannot find a Java installation on your machine"), re.compile(r"invalid source release: (\d+)"), re.compile(r" Run this build using a Java (\d+) or newer JVM"), re.compile(r"Unsupported class file major version (\d+)"), 
+                    re.compile(r"Android Gradle plugin requires Java (\d+)"), re.compile(r"compiled by a more recent version of the Java Runtime"), re.compile("Could not determine java version from")],
+                "ANDROID_SDK_VERSION": [re.compile(r"Failed to find Build Tools revision")],
+                "MISSING_NDK": [re.compile(r"No version of NDK matched")]
+                "NO_DISK_SPACE": [re.compile(r"No space left on device")],
             },
             "Project Issue": {
-                "CONFIG_VERSION_CONFLICT": re.compile(r"try editing the distributionUrl"),
-                "COMPILATION_ERROR": re.compile(r"Compilation failed; see the compiler error output for details."),
+                "CONFIG_VERSION_CONFLICT": [re.compile(r"try editing the distributionUrl")],
+                "COMPILATION_ERROR": [re.compile(r"Compilation failed; see the compiler error output for details.")],
+                "MISSING_DEPENDENCY": [re.compile(r"Could not resolve all (artifacts|files|task dependencies|dependencies) for configuration")],
             }
         }
 
@@ -71,9 +80,10 @@ class PatternClassifier:
             A tuple (category, specific_issue) if a match is found, otherwise None.
         """
         for category, issues in self.rules.items():
-            for specific_issue, pattern in issues.items():
-                if pattern.search(log_output):
-                    return (category, specific_issue)
+            for specific_issue, patterns in issues.items():
+                for pattern in patterns:
+                    if pattern.search(log_output):
+                        return (category, specific_issue)
         return None
     
 def extract_build_attempts(extracted_content: str) -> list[dict[str, str]]:
@@ -109,29 +119,12 @@ def run_post_process(project_name):
         extracted_content = extract_agent_log(project_name)
     except:
         return False
-    
-    error_summary = {
-            "Process Issue": {
-                "MISSING_LOCAL_PROPERTIES": 0,
-                "MISSING_KEYSTORE": 0,
-                "MISSING_GRADLE_WRAPPER": 0,
-                "NON_DEFAULT_BUILD_COMMAND": 0,
-                "General": 0,  # General issues not classified
-            },
-            "Environment Issue": {
-                "GRADLE_VERSION": 0,
-                "JDK_VERSION": 0,
-                "ANDROID_SDK_VERSION": 0,
-                "REMOVED_DEPENDENCY": 0,
-                "General": 0,  # General issues not classified
-            },
-            "Project Issue": {
-                "CONFIG_VERSION_CONFLICT": 0,
-                "COMPILATION_ERROR": 0,
-                "General": 0,  # General issues not classified
-            },
-            "Unknown": 0
-        }
+    p = PatternClassifier()
+    for k, v in p.rules.items():
+        error_summary[k] = {"General": 0}
+        for kv in v.keys():
+            error_summary[kv] = 0
+
     unique_errors_identified = set()
     classifier = PatternClassifier()
     
@@ -205,6 +198,7 @@ def run_post_process(project_name):
 
     # Print FAILURE
     print("FAILURE")
+    
 
 if __name__ == "__main__":
     for project_name in os.listdir("buildAnaDroid_tests"):
