@@ -12,11 +12,11 @@ args: Record<string, any>;
 Here is an example of command call that you can output:
 
 {
-"thoughts": "I need to check for the available folders and files within the project's root folder.",
+"thoughts": "In previous command './gradlew assembleDebug', I have encountered "Unsupported class file major version 61" issue which caused build failure. I now have to install correct java version according to the guideline. After this command, I will assess the terminal output and if the installation is done successfully I will execute the EXPORT command to set the correct environment variable for my next command.",
 "command": {
 "name": "linux_terminal",
 "args": {
-"command": "ls"
+"command": "apt update && apt install -y openjdk-11-jdk"
 }
 }
 }

@@ -41,34 +41,32 @@ def extract_agent_log(project_name):
     return extracted_data
 
 
-
-
 class PatternClassifier:
     def __init__(self):
         # Define rules mapping specific issues to regex patterns
         # The order can matter if logs contain multiple errors.
         self.rules = {
             "Process Issue": {
-                "MISSING_LOCAL_PROPERTIES": [re.compile(r"SDK location not found"), re.compile("assert localPropertiesFile.exists()")],
-                "MISSING_KEYSTORE": [re.compile(r"Keystore file '.*' not found for signing config"), re.compile("keystore.properties (No such file or directory)")],
+                "MISSING_LOCAL_PROPERTIES": [re.compile(r"SDK location not found"), re.compile(r"assert localPropertiesFile.exists\(\)"), re.compile(r"local.properties file not found")],
+                "MISSING_KEYSTORE": [re.compile(r"Keystore file '.*' not found for signing config"), re.compile(r"(keystore|signing)\.properties \(No such file or directory\)")],
                 "MISSING_GRADLE_WRAPPER": [re.compile(r"Could not find or load main class org.gradle.wrapper.GradleWrapperMain")],
                 "NON_DEFAULT_BUILD_COMMAND": [re.compile(r"Task '.*' not found")],
             },
             "Environment Issue": {
                 "GRADLE_BUILD_SYSTEM": [re.compile(r"Failed to create Jar file"), ],
                 "GRADLE_VERSION": [re.compile(r"Failed to notify project evaluation listener")],
-                "GRADLE_JDK_MISMATCH": [re.compile(r"Gradle requires JVM (\d+)"), re.compile("compiler does not export"), re.compile("Could not initialize class org.codehaus.groovy")],
-                "JAVA_KOTLIN_MISMATCH": [re.compile("Inconsistent JVM Target Compatibility Between Java and Kotlin Tasks")],
-                "JDK_VERSION": [re.compile("unrecognized JVM option"), re.compile("Cannot find a Java installation on your machine"), re.compile(r"invalid source release: (\d+)"), re.compile(r" Run this build using a Java (\d+) or newer JVM"), re.compile(r"Unsupported class file major version (\d+)"), 
-                    re.compile(r"Android Gradle plugin requires Java (\d+)"), re.compile(r"compiled by a more recent version of the Java Runtime"), re.compile("Could not determine java version from")],
+                "GRADLE_JDK_MISMATCH": [re.compile(r"Gradle requires JVM (\d+)"), re.compile(r"compiler does not export"), re.compile(r"Could not initialize class org.codehaus.groovy")],
+                "JAVA_KOTLIN_MISMATCH": [re.compile(r"Inconsistent JVM Target Compatibility Between Java and Kotlin Tasks")],
+                "JDK_VERSION": [re.compile(r"unrecognized JVM option"), re.compile(r"Cannot find a Java installation on your machine"), re.compile(r"invalid source release: (\d+)"), re.compile(r" Run this build using a Java (\d+) or newer JVM"), re.compile(r"Unsupported class file major version (\d+)"),
+                    re.compile(r"Android Gradle plugin requires Java (\d+)"), re.compile(r"compiled by a more recent version of the Java Runtime"), re.compile(r"Could not determine java version from")],
                 "ANDROID_SDK_VERSION": [re.compile(r"Failed to find Build Tools revision")],
-                "MISSING_NDK": [re.compile(r"No version of NDK matched")]
+                "MISSING_NDK": [re.compile(r"No version of NDK matched")],
                 "NO_DISK_SPACE": [re.compile(r"No space left on device")],
             },
             "Project Issue": {
                 "CONFIG_VERSION_CONFLICT": [re.compile(r"try editing the distributionUrl")],
                 "COMPILATION_ERROR": [re.compile(r"Compilation failed; see the compiler error output for details.")],
-                "MISSING_DEPENDENCY": [re.compile(r"Could not resolve all (artifacts|files|task dependencies|dependencies) for configuration")],
+                "MISSING_DEPENDENCY": [re.compile(r"Could not resolve all (?:artifacts|files|task dependencies|dependencies) for configuration")],
             }
         }
 
@@ -120,10 +118,11 @@ def run_post_process(project_name):
     except:
         return False
     p = PatternClassifier()
+    error_summary = {"Unknown": 0}
     for k, v in p.rules.items():
         error_summary[k] = {"General": 0}
         for kv in v.keys():
-            error_summary[kv] = 0
+            error_summary[k][kv] = 0
 
     unique_errors_identified = set()
     classifier = PatternClassifier()

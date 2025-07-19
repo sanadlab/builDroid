@@ -7,7 +7,7 @@ When a build error occurs, follow these steps:
 4. Retry the build and check if the issue is resolved.  
 
 ## 1. Missing Dependency Errors (JitPack-based Libraries)
-Error Message: Could not find net.opacapp:multiline-collapsingtoolbar:27.1.1
+Error Message: "Could not find net.opacapp:multiline-collapsingtoolbar:27.1.1"
 Fix:
 1. Confirm whether the dependency version exists in public Maven repositories:
     ```
@@ -31,7 +31,7 @@ Use `+` as <tag>, which means use the **latest successfully built version** from
     ```
 
 ## 2. Library Method Signature Error  
-Error Message: No signature of method: java.util.ArrayList.call() is applicable for argument types...
+Error Message: "No signature of method: java.util.ArrayList.call() is applicable for argument types"
 Fix: 
 1. In `build.gradle`, ensure that `dependencies` section does not contain outdated or incompatible libraries.  
    - Upgrade the Android Gradle Plugin if necessary:  
@@ -50,7 +50,7 @@ Fix:
      ```
 
 ## 3. Java Version Mismatch
-Error Message: Could not determine java version from '17.0.14'. (OR Unsupported class file major version 61)
+Error Message: "Could not determine java version from '17.0.14'.", "Unsupported class file major version 61"
 Fix:
 1. Get gradle version of the project:
    ```
@@ -74,6 +74,19 @@ Fix:
    export JAVA_HOME=<new_java_path>
    ```
 
+## 4. Missing keystore file
+Error Message: "Keystore file '.*' not found for signing config", "signing.properties (No such file or directory)"
+Fix:
+1. Create a dummy keystore file:
+    ```
+    touch signing.properties
+    ```
+    or
+    ```
+    touch <filename>.keystore
+    ```
+  
+
 ## Final Notes
 - IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
 - If you're not sure which error or the same error persists over several cycles, then check logs using:  
@@ -93,3 +106,4 @@ Fix:
 - Some projects explicitly state required dependencies and environment versions in `README.md`. If build fails, read the `README.md` file to look for the cause of failure.
 - Command `goals_accomplished` is used only for build success. Do not use the command until you have built a working .apk file. DO NOT call this command on build failures. Instead, attempt different kinds of approaches to the problem.
 - Avoid interactive prompts at all costs. Use specific non-interactive flags instead.
+- If you encounter multiple issues, approach them one by one. Attempts to resolve multiple issues in a single command might be not only ineffective but also cause other problems.

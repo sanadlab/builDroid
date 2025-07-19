@@ -374,7 +374,7 @@ class BaseAgent(metaclass=ABCMeta):
             )
         except SyntaxError as e:
             logger.error(f"Response could not be parsed: {e}")
-            return None, None, {}
+            return None, None, {}, llm_response
 
 
     @abstractmethod
