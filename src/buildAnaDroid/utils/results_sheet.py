@@ -6,7 +6,7 @@ def create_results_sheet():
     # --- 1. Define the error structure and create unique internal column names ---
     error_structure = {
         "Process Issue": ["MISSING_LOCAL_PROPERTIES", "MISSING_KEYSTORE", "MISSING_GRADLE_WRAPPER", "NON_DEFAULT_BUILD_COMMAND", "General"],
-        "Environment Issue": ["GRADLE_VERSION", "JDK_VERSION", "ANDROID_SDK_VERSION", "REMOVED_DEPENDENCY", "General"],
+        "Environment Issue": ["GRADLE_BUILD_SYSTEM", "GRADLE_VERSION", "GRADLE_JDK_MISMATCH", "JAVA_KOTLIN_MISMATCH", "JDK_VERSION", "ANDROID_SDK_VERSION", "MISSING_NDK", "NO_DISK_SPACE", "MISSING_DEPENDENCY", "General"],
         "Project Issue": ["CONFIG_VERSION_CONFLICT", "COMPILATION_ERROR", "General"]
     }
 

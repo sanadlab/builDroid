@@ -62,11 +62,11 @@ class PatternClassifier:
                 "ANDROID_SDK_VERSION": [re.compile(r"Failed to find Build Tools revision")],
                 "MISSING_NDK": [re.compile(r"No version of NDK matched")],
                 "NO_DISK_SPACE": [re.compile(r"No space left on device")],
+                "MISSING_DEPENDENCY": [re.compile(r"Could not resolve all (?:artifacts|files|task dependencies|dependencies) for configuration")],
             },
             "Project Issue": {
                 "CONFIG_VERSION_CONFLICT": [re.compile(r"try editing the distributionUrl")],
                 "COMPILATION_ERROR": [re.compile(r"Compilation failed; see the compiler error output for details.")],
-                "MISSING_DEPENDENCY": [re.compile(r"Could not resolve all (?:artifacts|files|task dependencies|dependencies) for configuration")],
             }
         }
 
