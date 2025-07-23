@@ -117,15 +117,15 @@ def run_interaction_loop(
     #########################
 
     image_log = ""
-    if not check_image_exists("buildroid:1.0.0"):
+    if not check_image_exists("buildroid:1.0.1"):
         dockerfile = files("builDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
         with open("builDroid_tests/Dockerfile", "w", encoding="utf-8") as f:
             f.write(dockerfile)
-        image_log = build_image("builDroid_tests", "buildroid:1.0.0")
+        image_log = build_image("builDroid_tests", "buildroid:1.0.1")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
-    agent.container = start_container(f"buildroid:1.0.0", f"{agent.project_name[:63]}")
+    agent.container = start_container(f"buildroid:1.0.1", f"{agent.project_name[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
