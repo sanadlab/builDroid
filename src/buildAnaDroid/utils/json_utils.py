@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 from jsonschema import Draft7Validator
 
-from buildAnaDroid.config import Config
-from buildAnaDroid.logs import logger
+from builDroid.config import Config
+from builDroid.logs import logger
 
 LLM_DEFAULT_RESPONSE_FORMAT = "llm_response_format_1"
 

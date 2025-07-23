@@ -8,12 +8,12 @@ import re
 from importlib.resources import files, as_file
 import subprocess
 
-from buildAnaDroid.commands.docker_helpers_static import execute_command_in_container
-from buildAnaDroid.commands.file_operations import write_to_file
-from buildAnaDroid.agents.agent import Agent
-from buildAnaDroid.models.command_decorator import command
+from builDroid.commands.docker_helpers_static import execute_command_in_container
+from builDroid.commands.file_operations import write_to_file
+from builDroid.agents.agent import Agent
+from builDroid.models.command_decorator import command
 
-RES_DIR = "buildAnaDroid.files"
+RES_DIR = "builDroid.files"
 GRADLE_RES_DIR = os.path.join(RES_DIR, "build", "gradle")
 GRADLE_WRAPPER_DIR = os.path.join(GRADLE_RES_DIR, "wrapper", "gradle")
 
@@ -126,14 +126,14 @@ def import_gradle_wrapper(filename: str, agent: Agent):
     cwd = execute_command_in_container(agent.shell_socket, "pwd")
     # Copy the wrapper contents from resources
     if "gradle-wrapper.jar" not in execute_command_in_container(agent.shell_socket, f"find . -name \"gradle-wrapper.jar\""):
-        with as_file(files("buildAnaDroid.files").joinpath("gradle-wrapper.jar")) as host_path_to_wrapper_jar:
+        with as_file(files("builDroid.files").joinpath("gradle-wrapper.jar")) as host_path_to_wrapper_jar:
             # Copy the gradle wrapper jar file
             try:
                 subprocess.run(['docker', 'cp', str(host_path_to_wrapper_jar), f'{agent.container.id}:{cwd}/gradle/wrapper/gradle-wrapper.jar'], check=True)
             except subprocess.CalledProcessError as e:
                 return (f"Error copying gradle-wrapper.jar: {e}")
     if "gradle-wrapper.properties" not in execute_command_in_container(agent.shell_socket, f"find . -name \"gradle-wrapper.properties\""):
-        with as_file(files("buildAnaDroid.files").joinpath("gradle-wrapper.properties")) as host_path_to_wrapper_properties:
+        with as_file(files("builDroid.files").joinpath("gradle-wrapper.properties")) as host_path_to_wrapper_properties:
             # Copy the gradle wrapper properties file
             try:
                 subprocess.run(['docker', 'cp', str(host_path_to_wrapper_properties), f'{agent.container.id}:{cwd}/gradle/wrapper/gradle-wrapper.properties'], check=True)
@@ -155,7 +155,7 @@ def import_gradle_wrapper(filename: str, agent: Agent):
 def import_gradlew_exec(version: str, agent: Agent):
     print("Importing gradlew executable script...")
     cwd = execute_command_in_container(agent.shell_socket, "pwd")
-    with as_file(files("buildAnaDroid.files").joinpath("gradlew")) as gradlew_path:
+    with as_file(files("builDroid.files").joinpath("gradlew")) as gradlew_path:
         try:
             subprocess.run(['docker', 'cp', str(gradlew_path), f'{agent.container.id}:{cwd}/gradlew'], check=True)
         except subprocess.CalledProcessError as e:

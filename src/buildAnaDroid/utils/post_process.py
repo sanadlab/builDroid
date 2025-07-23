@@ -6,7 +6,8 @@ warnings.filterwarnings("ignore")
 
 from openai import OpenAI
 from google import genai
-from buildAnaDroid.agents.base import create_chat_completion
+from builDroid.agents.base import create_chat_completion
+from builDroid.utils.api_token_env import api_token_setup, api_token_reset
 from importlib.resources import files
 import json
 
@@ -35,7 +36,7 @@ def ask_chatgpt(prompt):
     
         
 def extract_agent_log(project_name):
-    file_path = f"buildAnaDroid_tests/{project_name}/prompt_history"
+    file_path = f"builDroid_tests/{project_name}/prompt_history"
     with open(file_path, "r", encoding="utf-8") as f:
         extracted_data = f.read()
     return extracted_data
@@ -47,15 +48,15 @@ class PatternClassifier:
         # The order can matter if logs contain multiple errors.
         self.rules = {
             "Process Issue": {
-                "MISSING_LOCAL_PROPERTIES": [re.compile(r"SDK location not found"), re.compile(r"assert localPropertiesFile.exists\(\)"), re.compile(r"local.properties file not found")],
+                "MISSING_LOCAL_PROPERTIES": [re.compile(r"SDK location not found"), re.compile(r"assert localPropertiesFile"), re.compile(r"local\.properties file not found")],
                 "MISSING_KEYSTORE": [re.compile(r"Keystore file '.*' not found for signing config"), re.compile(r"(keystore|signing)\.properties \(No such file or directory\)")],
-                "MISSING_GRADLE_WRAPPER": [re.compile(r"Could not find or load main class org.gradle.wrapper.GradleWrapperMain")],
+                "MISSING_GRADLE_WRAPPER": [re.compile(r"Could not find or load main class org\.gradle\.wrapper\.GradleWrapperMain")],
                 "NON_DEFAULT_BUILD_COMMAND": [re.compile(r"Task '.*' not found")],
             },
             "Environment Issue": {
                 "GRADLE_BUILD_SYSTEM": [re.compile(r"Failed to create Jar file"), ],
                 "GRADLE_VERSION": [re.compile(r"Failed to notify project evaluation listener")],
-                "GRADLE_JDK_MISMATCH": [re.compile(r"Gradle requires JVM (\d+)"), re.compile(r"compiler does not export"), re.compile(r"Could not initialize class org.codehaus.groovy")],
+                "GRADLE_JDK_MISMATCH": [re.compile(r"Gradle requires JVM (\d+)"), re.compile(r"compiler does not export"), re.compile(r"Could not initialize class org\.codehaus\.groovy")],
                 "JAVA_KOTLIN_MISMATCH": [re.compile(r"Inconsistent JVM Target Compatibility Between Java and Kotlin Tasks")],
                 "JDK_VERSION": [re.compile(r"unrecognized JVM option"), re.compile(r"Cannot find a Java installation on your machine"), re.compile(r"invalid source release: (\d+)"), re.compile(r" Run this build using a Java (\d+) or newer JVM"), re.compile(r"Unsupported class file major version (\d+)"),
                     re.compile(r"Android Gradle plugin requires Java (\d+)"), re.compile(r"compiled by a more recent version of the Java Runtime"), re.compile(r"Could not determine java version from")],
@@ -66,7 +67,7 @@ class PatternClassifier:
             },
             "Project Issue": {
                 "CONFIG_VERSION_CONFLICT": [re.compile(r"try editing the distributionUrl")],
-                "COMPILATION_ERROR": [re.compile(r"Compilation failed; see the compiler error output for details.")],
+                "COMPILATION_ERROR": [re.compile(r"Compilation failed")],
             }
         }
 
@@ -100,7 +101,10 @@ def extract_build_attempts(extracted_content: str) -> list[dict[str, str]]:
     current_attempt = ""
     log = False
     for line in lines:
-        if "FAILURE: Build" in line:
+        if "Error: Could not find or load main class org.gradle.wrapper.GradleWrapperMain" in line:
+            build_attempts.append(line.strip())
+        if "FAILURE: Build" in line or "Command linux_terminal returned" in line:
+            current_attempt = ""
             log = True
         if log:
             current_attempt += line + "\n"
@@ -112,6 +116,7 @@ def extract_build_attempts(extracted_content: str) -> list[dict[str, str]]:
     return build_attempts
 
 def run_post_process(project_name):
+    print(f"Running post-process for {project_name}...")
     # Extract agent log
     try:
         extracted_content = extract_agent_log(project_name)
@@ -130,28 +135,27 @@ def run_post_process(project_name):
     build_attempts = extract_build_attempts(extracted_content)
     unclassified_logs = []
     for attempt in build_attempts:
-        if "failed" in attempt:
-            classification = classifier.classify(attempt)
-            if classification:
-                category, specific_issue = classification
-                if specific_issue not in unique_errors_identified:
-                    error_summary[category][specific_issue] += 1
-                    unique_errors_identified.add(specific_issue)
-            else:
-                # This log contains a failure but couldn't be classified by rules
-                unclassified_logs.append(attempt)
+        classification = classifier.classify(attempt)
+        if classification:
+            category, specific_issue = classification
+            if specific_issue not in unique_errors_identified:
+                error_summary[category][specific_issue] += 1
+                unique_errors_identified.add(specific_issue)
+        else:
+            # This log contains a failure but couldn't be classified by rules
+            unclassified_logs.append(attempt)
 
     # --- Step 2: LLM Fallback for Unclassified Errors ---
     if unclassified_logs:
         print(f"Found {len(unclassified_logs)} unclassified error(s). Falling back to LLM for summary.")
         # We only call the LLM if there's something it needs to do.
         # We pass only the unclassified logs to save tokens and focus the LLM.
-        files_path = files("buildAnaDroid.prompts.prompt_files").joinpath("post_process_prompt")
+        files_path = files("builDroid.prompts.prompt_files").joinpath("post_process_prompt")
         with files_path.open("r", encoding="utf-8") as prompt_file:
             prompt = prompt_file.read()
         prompt += str(unclassified_logs)
         response = ask_chatgpt(prompt)
-        with open(f"buildAnaDroid_tests/{project_name}/output/unknown_error_llm_summary.txt", "w") as f:
+        with open(f"builDroid_tests/{project_name}/output/unknown_error_llm_summary.txt", "w") as f:
             f.write(response)
         # Parse the LLM response
         try:
@@ -172,10 +176,10 @@ def run_post_process(project_name):
             else:
                 error_summary[entry["taxonomy"]]["General"] += 1
     
-    with open(f"buildAnaDroid_tests/{project_name}/output/error_summary.json", "w") as f:
+    with open(f"builDroid_tests/{project_name}/output/error_summary.json", "w") as f:
         json.dump(error_summary, f, indent=4)
 
-    if os.path.exists(f"buildAnaDroid_tests/{project_name}/saved_contexts/SUCCESS"):
+    if os.path.exists(f"builDroid_tests/{project_name}/saved_contexts/SUCCESS"):
         return True
 
     # Prepare the query for ask_chatgpt
@@ -191,7 +195,7 @@ def run_post_process(project_name):
     response = ask_chatgpt(summarize_failure_prompt)
 
     # Save the response to problems_memory/{project_name}"log"
-    problems_memory = f"buildAnaDroid_tests/{project_name}/output/FAILURE"
+    problems_memory = f"builDroid_tests/{project_name}/output/FAILURE"
     with open(problems_memory, 'w') as f:
         f.write(response)
 
@@ -200,7 +204,9 @@ def run_post_process(project_name):
     
 
 if __name__ == "__main__":
-    for project_name in os.listdir("buildAnaDroid_tests"):
+    api_token_setup()
+    for project_name in os.listdir("builDroid_tests"):
         if project_name == "logs":
             continue
         run_post_process(project_name)
+    api_token_reset()

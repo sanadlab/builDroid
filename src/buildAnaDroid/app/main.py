@@ -16,17 +16,17 @@ from importlib.resources import files
 
 from colorama import Fore, Style
 
-from buildAnaDroid.agents.agent import Agent, AgentThoughts, CommandArgs, CommandName
-from buildAnaDroid.agents.base import DEFAULT_TRIGGERING_PROMPT
-from buildAnaDroid.app.spinner import Spinner
-from buildAnaDroid.commands import COMMAND_CATEGORIES
-from buildAnaDroid.config import AIConfig, Config
-from buildAnaDroid.config.config import set_api_token
-from buildAnaDroid.logs import logger
-from buildAnaDroid.models.command_registry import CommandRegistry
-from buildAnaDroid.commands.docker_helpers_static import build_image, start_container, check_image_exists, create_persistent_shell, locate_or_import_gradlew
+from builDroid.agents.agent import Agent, AgentThoughts, CommandArgs, CommandName
+from builDroid.agents.base import DEFAULT_TRIGGERING_PROMPT
+from builDroid.app.spinner import Spinner
+from builDroid.commands import COMMAND_CATEGORIES
+from builDroid.config import AIConfig, Config
+from builDroid.config.config import set_api_token
+from builDroid.logs import logger
+from builDroid.models.command_registry import CommandRegistry
+from builDroid.commands.docker_helpers_static import build_image, start_container, check_image_exists, create_persistent_shell, locate_or_import_gradlew
 
-def run_buildAnaDroid(
+def run_builDroid(
     cycle_limit: int,
     ai_settings: str,
     debug: bool,
@@ -46,7 +46,7 @@ def run_buildAnaDroid(
     logger.config = config
 
     config.cycle_limit = cycle_limit
-    config.workspace_path = working_directory / "buildAnaDroid_workspace" / metadata["project_name"]
+    config.workspace_path = working_directory / "builDroid_workspace" / metadata["project_name"]
     config.conversation = conversation
     set_api_token(config)
     ai_config = AIConfig.load(working_directory / "ai_settings.yaml")
@@ -86,6 +86,7 @@ def run_interaction_loop(
 
     spinner = Spinner("Thinking...", plain_output=config.plain_output)
 
+    """
     def graceful_agent_interrupt(signum: int, frame: Optional[FrameType]) -> None:
         nonlocal cycle_budget, cycles_remaining, spinner
         if cycles_remaining in [0, 1, math.inf]:
@@ -107,31 +108,32 @@ def run_interaction_loop(
             cycles_remaining -= 1
             if restart_spinner:
                 spinner.start()
-
     # Set up an interrupt signal for the agent.
     signal.signal(signal.SIGINT, graceful_agent_interrupt)
+    """
 
     #########################
     # Application Main Loop #
     #########################
 
     image_log = ""
-    if not check_image_exists("build-anadroid:0.6.0"):
-        dockerfile = files("buildAnaDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
-        with open("buildAnaDroid_tests/Dockerfile", "w", encoding="utf-8") as f:
+    if not check_image_exists("buildroid:1.0.0"):
+        dockerfile = files("builDroid.files").joinpath("Template.dockerfile").read_text(encoding="utf-8")
+        with open("builDroid_tests/Dockerfile", "w", encoding="utf-8") as f:
             f.write(dockerfile)
-        image_log = build_image("buildAnaDroid_tests", "build-anadroid:0.6.0")
+        image_log = build_image("builDroid_tests", "buildroid:1.0.0")
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
-    agent.container = start_container(f"build-anadroid:0.6.0", f"{agent.project_name[:63]}")
+    agent.container = start_container(f"buildroid:1.0.0", f"{agent.project_name[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
+    print(image_log + "Container launched successfully. Now copying project files to the container...")
     subprocess.run(['docker', 'cp', agent.workspace_path, f'{agent.container.id}:/{agent.project_name}'])
-    print(image_log + "Container launched successfully")
     locate_or_import_gradlew(agent)
-        
+    print("Now starting the build process...")
+
     command_name = None
     command_args = None
     assistant_reply_dict = None
@@ -170,8 +172,8 @@ def run_interaction_loop(
         else:
             logger.info(title="SYSTEM: ", title_color=Fore.YELLOW, message="Unable to execute command")
 
-        os.makedirs("buildAnaDroid_tests/{}/saved_contexts".format(agent.project_name), exist_ok=True)
-        agent.save_to_file("buildAnaDroid_tests/{}/saved_contexts/cycle_{}".format(agent.project_name, cycle_budget - cycles_remaining))
+        os.makedirs("builDroid_tests/{}/saved_contexts".format(agent.project_name), exist_ok=True)
+        agent.save_to_file("builDroid_tests/{}/saved_contexts/cycle_{}".format(agent.project_name, cycle_budget - cycles_remaining))
     
     logger.info("Last cycle. Shutting down...")
     agent.shell_socket.close()

@@ -1,5 +1,5 @@
 """
-This module contains the configuration classes for buildAnaDroid.
+This module contains the configuration classes for builDroid.
 """
 from .ai_config import AIConfig
 from .config import Config

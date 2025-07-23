@@ -28,11 +28,11 @@ def create_results_sheet():
     data = []
 
     # --- 2. Loop through each project folder ---
-    for project_name in os.listdir("buildAnaDroid_tests"):
-        if project_name == "logs" or not os.path.isdir(os.path.join("buildAnaDroid_tests", project_name)):
+    for project_name in os.listdir("builDroid_tests"):
+        if project_name == "logs" or not os.path.isdir(os.path.join("builDroid_tests", project_name)):
             continue
 
-        project_folder = os.path.join("buildAnaDroid_tests", project_name)
+        project_folder = os.path.join("builDroid_tests", project_name)
 
         # Basic project info
         cmd_count = sum(1 for file in os.listdir(os.path.join(project_folder, "saved_contexts")) if file.startswith("cycle_"))

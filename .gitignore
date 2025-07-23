@@ -61,6 +61,6 @@ Python-*
 # Poetry
 poetry.lock
 
-buildAnaDroid_tests/*
-buildAnaDroid_workspace/*
+builDroid_tests/*
+builDroid_workspace/*
 .env

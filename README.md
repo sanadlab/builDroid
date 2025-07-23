@@ -1,8 +1,8 @@
-# buildAnaDroid
+# builDroid
 
 > ⚡ Clone, build, and generate debugging APKs for Android projects using LLM-powered automation.
 
-**buildAnaDroid** is a Python package that leverages Large Language Models (LLMs) to automatically clone any Android project hosted on GitHub, configure it, and **build the debugging `.apk`** file. This enables faster evaluation, performance testing, reverse engineering, or security analysis of Android applications. The building process happens in an isolated Docker container.
+**builDroid** is a Python package that leverages Large Language Models (LLMs) to automatically clone any Android project hosted on GitHub, configure it, and **build the debugging `.apk`** file. This enables faster evaluation, performance testing, reverse engineering, or security analysis of Android applications. The building process happens in an isolated Docker container.
 
 ## 🚀 Features
 
@@ -15,7 +15,7 @@
 ## 📦 Installation
 
 ```bash
-pip install build-anadroid
+pip install buildroid
 ```
 
 ## 📦 Dev Container Setup  
@@ -33,7 +33,7 @@ To setup in a VSCode Dev Container:
 
 ## ⚙️ LLM Configuration
 
-`buildAnaDroid` uses an LLM backend for build assistance. To use it:
+`builDroid` uses an LLM backend for build assistance. To use it:
 
 1. Obtain your API key from OpenAI or compatible provider.
 2. Set your API key as a .env file:
@@ -44,8 +44,8 @@ BASE_URL=<your-base-url-here>
 LLM_MODEL=<your-llm-model-here>
 ```
 
-`BASE_URL` and `LLM_MODEL` are optional. If not provided, `buildAnaDroid` will use OpenAI's `gpt-4.1-mini-2025-04-14`.
-For example, if you put 'https://generativelanguage.googleapis.com/v1beta/' as your base url, `buildAnaDroid` will access Google AI's `gemini-2.0-flash-lite`.
+`BASE_URL` and `LLM_MODEL` are optional. If not provided, `builDroid` will use OpenAI's `gpt-4.1-mini-2025-04-14`.
+For example, if you put 'https://generativelanguage.googleapis.com/v1beta/' as your base url, `builDroid` will access Google AI's `gemini-2.0-flash-lite`.
 If you want to use other providers, you have to provide the base url and the LLM model in `.env`.
 
 ## 🖥️ Usage
@@ -53,37 +53,37 @@ If you want to use other providers, you have to provide the base url and the LLM
 ### CLI Usage
 
 ```bash
-build-anadroid build https://github.com/user/project # Run on a single repository
-build-anadroid build repos.txt # Run on a list of repositories from a file
-build-anadroid build local_path --local # Run with a local repository
+buildroid build https://github.com/user/project # Run on a single repository
+buildroid build repos.txt # Run on a list of repositories from a file
+buildroid build local_path --local # Run with a local repository
 ```
 ```bash
-build-anadroid clean # Clean test results
+buildroid clean # Clean test results
 ```
 
 ### Advanced Options for Builds
 
 * `-n`, `--num`: Specify cycle limit (max. number of commands to execute)
 * `-c`, `--conv`: Enable conversation mode (API works with conversation models)
-* `-k`, `--keep-container`: Keep container after build (buildAnaDroid removes container by default)
+* `-k`, `--keep-container`: Keep container after build (builDroid removes container by default)
 * `-l`, `--local`: Build from a local repository (Provide local path instead of Github link)
 
 ### Python Usage
 
 ```python
-import buildAnaDroid
+import builDroid
 
 # You must load environment variables separately for Python usage
 
 source = "https://github.com/user/project"
-buildAnaDroid.process_repository(repo_source=source)
+builDroid.process_repository(repo_source=source)
 # args: 
 # repo_source: str, num: int=40, conversation: bool=False, keep_container:bool=False, user_retry:bool=False, local_path:bool=False
 ```
 
 ## 🛠️ Troubleshooting
 
-If the build fails, `buildAnaDroid` will attempt to:
+If the build fails, `builDroid` will attempt to:
 
 1. Analyze the error output.
 2. Query the LLM for common solutions.

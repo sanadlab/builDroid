@@ -5,7 +5,7 @@ from dotenv import load_dotenv, find_dotenv
 
 def api_token_setup():
     """
-    Sets up API key, base URL, and LLM model as environment variables for buildAnaDroid
+    Sets up API key, base URL, and LLM model as environment variables for builDroid
     by loading from a .env file.
     """
     cwd = os.getcwd()

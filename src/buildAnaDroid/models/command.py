@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 if TYPE_CHECKING:
-    from buildAnaDroid.config import Config
+    from builDroid.config import Config
 
 from .command_parameter import CommandParameter
 

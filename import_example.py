@@ -1,4 +1,4 @@
-import buildAnaDroid
+import builDroid
 import os
 from dotenv import load_dotenv
 
@@ -11,7 +11,7 @@ if os.path.isfile(env_path):
     load_dotenv(dotenv_path=env_path)
 
 source = "repo_source_example"
-buildAnaDroid.process_repository(repo_source=source, keep_container=True, local_path=True)
+builDroid.process_repository(repo_source=source, keep_container=True, local_path=True)
 
 if "API_KEY" in os.environ:
     del os.environ["API_KEY"]

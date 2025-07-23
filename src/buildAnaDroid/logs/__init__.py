@@ -1,4 +1,4 @@
-from .formatters import buildAnaDroidFormatter, JsonFormatter, remove_color_codes
+from .formatters import builDroidFormatter, JsonFormatter, remove_color_codes
 from .handlers import ConsoleHandler, JsonFileHandler, TypingConsoleHandler
 from .log_cycle import (
     CURRENT_CONTEXT_FILE_NAME,

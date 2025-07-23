@@ -3,9 +3,9 @@
 COMMAND_CATEGORY = "execute_code"
 COMMAND_CATEGORY_TITLE = "Execute Code"
 
-from buildAnaDroid.commands.docker_helpers_static import execute_command_in_container
-from buildAnaDroid.agents.agent import Agent
-from buildAnaDroid.models.command_decorator import command
+from builDroid.commands.docker_helpers_static import execute_command_in_container
+from builDroid.agents.agent import Agent
+from builDroid.models.command_decorator import command
 
 @command(
     "linux_terminal",

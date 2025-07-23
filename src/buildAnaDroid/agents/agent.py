@@ -5,11 +5,11 @@ import os
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from buildAnaDroid.config import AIConfig, Config
-    from buildAnaDroid.models.command_registry import CommandRegistry
+    from builDroid.config import AIConfig, Config
+    from builDroid.models.command_registry import CommandRegistry
 
-from buildAnaDroid.utils.json_utils import extract_dict_from_response
-from buildAnaDroid.logs import logger
+from builDroid.utils.json_utils import extract_dict_from_response
+from builDroid.logs import logger
 
 from .base import AgentThoughts, BaseAgent, CommandArgs, CommandName
 from google import genai
@@ -17,7 +17,7 @@ from google.genai.chats import Chat
 from openai import OpenAI, Stream
 
 class Agent(BaseAgent):
-    """Agent class for interacting with buildAnaDroid."""
+    """Agent class for interacting with builDroid."""
 
     def __init__(
         self,
@@ -70,7 +70,7 @@ class Agent(BaseAgent):
         if not llm_response:
             raise SyntaxError("Assistant response has no text content")
         
-        with open(os.path.join("buildAnaDroid_tests", self.project_name, "model_responses"), "a+") as patf:
+        with open(os.path.join("builDroid_tests", self.project_name, "model_responses"), "a+") as patf:
             patf.write(llm_response + "\n")
         assistant_reply_dict = extract_dict_from_response(llm_response)
 

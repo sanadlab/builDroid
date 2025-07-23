@@ -7,8 +7,8 @@ import importlib.resources
 import yaml
 
 if TYPE_CHECKING:
-    from buildAnaDroid.models.command_registry import CommandRegistry
-    from buildAnaDroid.prompts.generator import PromptGenerator
+    from builDroid.models.command_registry import CommandRegistry
+    from builDroid.prompts.generator import PromptGenerator
 
     from .config import Config
 
@@ -62,7 +62,7 @@ class AIConfig:
             cls (object): An instance of given cls object
         """
 
-        resource_path: Path = importlib.resources.files('buildAnaDroid').joinpath('files', 'ai_settings.yaml')
+        resource_path: Path = importlib.resources.files('builDroid').joinpath('files', 'ai_settings.yaml')
         try:
             with resource_path.open("r", encoding="utf-8") as file:
                 config_params = yaml.load(file, Loader=yaml.FullLoader) or {}

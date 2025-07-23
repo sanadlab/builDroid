@@ -3,9 +3,9 @@ from docker.errors import ImageNotFound
 import os
 import subprocess
 import time
-from buildAnaDroid.logs import logger
+from builDroid.logs import logger
 import socket
-from importlib.resources import files
+from importlib.resources import files, as_file
 import re
 
 PROMPT_MARKER = "\r\n__AGENT_SHELL_END_MARKER__$"
@@ -105,31 +105,34 @@ def start_container(image_tag, name):
         print(f"An error occurred while running the container: {e}")
         return None
 
-
 def locate_or_import_gradlew(agent):
+    """
+    Finds the Gradle project root and imports the gradlew script if it doesn't exist.
+    """
     execute_command_in_container(agent.shell_socket, f"cd {agent.project_name}")
+
     find_cmd = "find . -name gradlew"
-    gradlew_path_str = execute_command_in_container(agent.shell_socket, find_cmd)
-    if "gradlew" in gradlew_path_str:
-        directory, _, _ = gradlew_path_str.partition("/gradlew")
-        execute_command_in_container(agent.shell_socket, f"cd {directory}")
-        execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
-        print(f"Found gradlew and cd'd to its directory relative to project root: {directory}")
-        return 0
-    print(f"gradlew not found in '{agent.project_name}'. Importing...")
-    find_cmd_new = "find . -name build.gradle"
-    build_gradle_path_str = execute_command_in_container(agent.shell_socket, find_cmd_new)
-    if "build.gradle" in build_gradle_path_str:
-        directory, _, _ = build_gradle_path_str.partition("/build.gradle")
-        execute_command_in_container(agent.shell_socket, f"cd {directory}")
-        delimiter = "---END_OF_FILE_CONTENT---"
-        gradlew_text = files("buildAnaDroid.files").joinpath("gradlew").read_text(encoding="utf-8")
-        command = f"cat <<'{delimiter}' > gradlew\n{gradlew_text}\n{delimiter}"
-        execute_command_in_container(agent.shell_socket, command)
-        execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
-        return 0.
-    print(f"build.gradle file not found. {agent.project_name} is not an Android project.")
-    return 1
+    gradlew_paths_str = execute_command_in_container(agent.shell_socket, find_cmd)
+    
+    if not gradlew_paths_str.strip():
+        print(f"gradlew not found in '{agent.project_name}'. Importing...")
+        cwd = execute_command_in_container(agent.shell_socket, "pwd")
+        with as_file(files("builDroid.files").joinpath("gradlew")) as gradlew_path:
+            try:
+                subprocess.run(['docker', 'cp', str(gradlew_path), f'{agent.container.id}:{cwd}/gradlew'], check=True)
+            except subprocess.CalledProcessError as e:
+                return f"Error copying gradlew: {e}"
+        chmod_cmd = f"chmod +x gradlew"
+        execute_command_in_container(agent.shell_socket, chmod_cmd)
+        return
+    
+    gradlew_paths = gradlew_paths_str.strip().split('\r\n')
+    root_gradlew_path = os.path.dirname(sorted(gradlew_paths, key=lambda p: p.count(os.path.sep))[0])
+
+    execute_command_in_container(agent.shell_socket, f"cd {root_gradlew_path}")
+    execute_command_in_container(agent.shell_socket, "chmod +x gradlew")
+    return
+    
 
 
 def execute_command_in_container(sock: socket.socket, command: str):    

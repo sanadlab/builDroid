@@ -7,11 +7,11 @@ from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from buildAnaDroid.config import Config
+    from builDroid.config import Config
 
-from buildAnaDroid.models.command_decorator import COMMAND_IDENTIFIER
-from buildAnaDroid.logs import logger
-from buildAnaDroid.models.command import Command
+from builDroid.models.command_decorator import COMMAND_IDENTIFIER
+from builDroid.logs import logger
+from builDroid.models.command import Command
 
 
 class CommandRegistry:

@@ -7,7 +7,7 @@ import importlib.resources
 import time
 from pathlib import Path
 
-from .utils import api_token_setup, api_token_reset, clone_and_set_metadata, new_experiment, create_results_sheet, run_post_process, check_requirements
+from .utils import api_token_setup, api_token_reset, clone_and_set_metadata, new_experiment, create_results_sheet, run_post_process
 from .utils import cleaner
 
 # --- Constants and Configuration ---
@@ -30,25 +30,19 @@ def setup_docker_config():
     docker_config_path.write_text("{}")
 
 
-def run_buildAnaDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, metadata: dict, keep_container: bool):
+def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, metadata: dict, keep_container: bool):
     """
     This function replaces the logic of `run.sh`.
-    It checks/installs requirements and then executes the buildAnaDroid module.
+    It executes the builDroid module and handles the setup and cleanup of Docker containers.
     """
-    # 1. Check requirements (replaces `scripts/check_requirements.py`)
-    if check_requirements():
-        print("Installing missing packages from requirements.txt...")
-        subprocess.run([PYTHON_EXECUTABLE, "-m", "pip", "install", "-r", "requirements.txt"])
-    print("All requirements are met.")
+    
+    from builDroid.app.main import run_builDroid
 
-    # 2. Run the run_buildAnaDroid function
-    from buildAnaDroid.app.main import run_buildAnaDroid
-
-    resource_path: Path = importlib.resources.files('buildAnaDroid').joinpath('files', 'ai_settings.yaml')
+    resource_path: Path = importlib.resources.files('builDroid').joinpath('files', 'ai_settings.yaml')
     ai_settings = resource_path.read_text(encoding='utf-8')
 
     try:
-        run_buildAnaDroid(
+        run_builDroid(
             cycle_limit=cycle_limit,
             ai_settings=ai_settings,
             debug=debug,
@@ -77,19 +71,19 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         print(f"PROJECT: {project_name}")
         print("=" * 70)
 
-        if os.path.exists(f"buildAnaDroid_tests/{project_name}/output/FAILURE"):
-            with open(f"buildAnaDroid_tests/{project_name}/output/FAILURE", "r") as f:
+        if os.path.exists(f"builDroid_tests/{project_name}/output/FAILURE"):
+            with open(f"builDroid_tests/{project_name}/output/FAILURE", "r") as f:
                 metadata["past_attempt"] = f.read()
         
-        run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
+        run_builDroid_with_checks(num, conversation, debug, metadata, keep_container)
 
         # Run post-processing and check the result
         if run_post_process(project_name):
             print(f"Post-process succeeded. The extracted .apk file is in the "
-                  f"buildAnaDroid_tests/{project_name}/output folder.")
+                  f"builDroid_tests/{project_name}/output folder.")
             return # Exit the function on success
 
-        print(f"Attempt {attempt} failed. Retrying...")
+        print(f"Attempt {attempt} failed.")
 
     while user_retry:
         print("=" * 70)
@@ -99,11 +93,11 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
         while True:
             if user_input.startswith("Y") or user_input.startswith("Y"):
-                run_buildAnaDroid_with_checks(num, conversation, debug, metadata, keep_container)
+                run_builDroid_with_checks(num, conversation, debug, metadata, keep_container)
                 # Run post-processing and check the result
                 if run_post_process(project_name):
                     print(f"Post-process succeeded. The extracted .apk file is in the "
-                        f"buildAnaDroid_tests/{project_name}/output folder.")
+                        f"builDroid_tests/{project_name}/output folder.")
                     return # Exit the function on success
             elif user_input.startswith("N") or user_input.startswith("n"):
                 return
@@ -126,7 +120,7 @@ def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: boo
 
     setup_docker_config()
 
-    image = "build-anadroid:0.6.0"
+    image = "buildroid:1.0.0"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, repo_source, image, past_attempt, local_path)
@@ -139,31 +133,31 @@ def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: boo
 
     end_time = time.time()
     elapsed_time = end_time - start_time
-    with open(f"buildAnaDroid_tests/{project_name}/output/elapsed_time.txt", "w") as f:
+    with open(f"builDroid_tests/{project_name}/output/elapsed_time.txt", "w") as f:
         f.write(f"{elapsed_time:.2f}")
 
 def main():
     """Initialization function."""
     parser = argparse.ArgumentParser(
-        description="buildAnaDroid agent that experiments on GitHub repositories.",
+        description="builDroid agent that experiments on GitHub repositories.",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
 Examples:
   # Run on a single repository
-  build-anadroid build https://github.com/user/project
+  buildroid build https://github.com/user/project
 
   # Run on a list of repositories from a file
-  build-anadroid build repos.txt
+  buildroid build repos.txt
 
   # Run with conversation mode and 50 iterations, keeping containers
-  build-anadroid build https://github.com/user/project -n 50 -c -k
+  buildroid build https://github.com/user/project -n 50 -c -k
 
   # Clean test results
-  build-anadroid clean
+  buildroid clean
 
 For more information on a specific command, use:
-  build-anadroid <command> --help
-  e.g., build-anadroid build --help
+  buildroid <command> --help
+  e.g., buildroid build --help
 
 """
     )
@@ -173,8 +167,8 @@ For more information on a specific command, use:
     )
     build_parser = subparsers.add_parser(
         "build",
-        help="Runs buildAnaDroid agent to build project.",
-        description="Run the buildAnaDroid agent on GitHub repositories.",
+        help="Runs builDroid agent to build project.",
+        description="Run the builDroid agent on GitHub repositories.",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""
 Examples for 'build' command:

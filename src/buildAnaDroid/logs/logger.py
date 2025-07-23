@@ -1,4 +1,4 @@
-"""Logging module for buildAnaDroid."""
+"""Logging module for builDroid."""
 from __future__ import annotations
 import os
 import logging
@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any, Optional
 from colorama import Fore
 
 if TYPE_CHECKING:
-    from buildAnaDroid.config import Config
+    from builDroid.config import Config
 
-from .formatters import buildAnaDroidFormatter, JsonFormatter
+from .formatters import builDroidFormatter, JsonFormatter
 from .handlers import ConsoleHandler, JsonFileHandler, TypingConsoleHandler
 
 
@@ -23,7 +23,7 @@ class Logger():
 
     def __init__(self):
         # create log directory if it doesn't exist
-        self.log_dir = os.getcwd() + "/buildAnaDroid_tests/logs"
+        self.log_dir = os.getcwd() + "/builDroid_tests/logs"
         os.makedirs(self.log_dir, exist_ok=True)
 
         log_file = "activity.log"
@@ -31,7 +31,7 @@ class Logger():
         error_file = "error.log"
         open(os.path.join(self.log_dir, error_file), "w")
 
-        console_formatter = buildAnaDroidFormatter("%(title_color)s %(message)s")
+        console_formatter = builDroidFormatter("%(title_color)s %(message)s")
 
         # Create a handler for console which simulate typing
         self.typing_console_handler = TypingConsoleHandler()
@@ -46,7 +46,7 @@ class Logger():
         # Info handler in activity.log
         self.file_handler = logging.FileHandler(os.path.join(self.log_dir, log_file), "a", "utf-8")
         self.file_handler.setLevel(logging.DEBUG)
-        info_formatter = buildAnaDroidFormatter(
+        info_formatter = builDroidFormatter(
             "%(asctime)s %(levelname)s %(title)s %(message_no_color)s"
         )
         self.file_handler.setFormatter(info_formatter)
@@ -54,7 +54,7 @@ class Logger():
         # Error handler error.log
         error_handler = logging.FileHandler(os.path.join(self.log_dir, error_file), "a", "utf-8")
         error_handler.setLevel(logging.ERROR)
-        error_formatter = buildAnaDroidFormatter(
+        error_formatter = builDroidFormatter(
             "%(asctime)s %(levelname)s %(module)s:%(funcName)s:%(lineno)d %(title)s"
             " %(message_no_color)s"
         )
@@ -162,7 +162,7 @@ class Logger():
         if not additionalText:
             additionalText = (
                 "Please ensure you've setup and configured everything"
-                " correctly. Read https://github.com/Torantulino/buildAnaDroid#readme to "
+                " correctly. Read https://github.com/Torantulino/builDroid#readme to "
                 "double check. You can also create a github issue or join the discord"
                 " and ask there!"
             )

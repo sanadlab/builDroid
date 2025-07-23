@@ -4,7 +4,7 @@ import re
 from colorama import Style
 
 
-class buildAnaDroidFormatter(logging.Formatter):
+class builDroidFormatter(logging.Formatter):
     """
     Allows to handle custom placeholders 'title_color' and 'message_no_color'.
     To use this formatter, make sure to pass 'color', 'title' as log extras.

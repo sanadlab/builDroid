@@ -12,14 +12,14 @@ import os
 from importlib.resources import files
 import functools
 
-from buildAnaDroid.config import AIConfig, Config
-from buildAnaDroid.models.command_registry import CommandRegistry
+from builDroid.config import AIConfig, Config
+from builDroid.models.command_registry import CommandRegistry
 from google import genai
 from google.genai.chats import Chat
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from openai import OpenAI, Stream
 
-from buildAnaDroid.logs import logger
+from builDroid.logs import logger
 DEFAULT_TRIGGERING_PROMPT = (
     "Determine exactly one command to use based on the given goals "
     "and the progress you have made so far, "
@@ -124,7 +124,7 @@ def send_message_gpt(
     return chat.output_text
 
 class BaseAgent(metaclass=ABCMeta):
-    """Base class for all buildAnaDroid agents."""
+    """Base class for all builDroid agents."""
 
     ThoughtProcessID = Literal["one-shot"]
 
@@ -177,13 +177,13 @@ class BaseAgent(metaclass=ABCMeta):
         self.prompt_dictionary = ai_config.construct_full_prompt(config)
         
         ### Read static prompt files
-        prompt_files = files("buildAnaDroid.prompts.prompt_files").joinpath("cycle_instruction")
+        prompt_files = files("builDroid.prompts.prompt_files").joinpath("cycle_instruction")
         with prompt_files.open("r", encoding="utf-8") as cit:
             self.cycle_instruction = cit.read()
 
         self.project_name = self.metadata["project_name"]
         self.project_url = self.metadata["project_url"]
-        self.workspace_path = self.metadata["project_url"] if self.metadata["local_path"] else "buildAnaDroid_workspace/" + self.project_name
+        self.workspace_path = self.metadata["project_url"] if self.metadata["local_path"] else "builDroid_workspace/" + self.project_name
         self.past_attempt = self.metadata["past_attempt"]
         
         self.tests_executed = False
@@ -251,7 +251,7 @@ class BaseAgent(metaclass=ABCMeta):
             if self.cycle_count == 0:
                 prompt = self.construct_base_prompt()
             else:
-                with open(f"buildAnaDroid_tests/{self.project_name}/prompt_history", "r") as patf:
+                with open(f"builDroid_tests/{self.project_name}/prompt_history", "r") as patf:
                     prompt = patf.read()
                 if self.cycle_count == 1:
                     prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
@@ -262,7 +262,7 @@ class BaseAgent(metaclass=ABCMeta):
             )
             response = create_chat_completion(client, self.config.llm_model, prompt)
             self.cycle_count += 1
-            with open(f"buildAnaDroid_tests/{self.project_name}/prompt_history", "w") as patf:
+            with open(f"builDroid_tests/{self.project_name}/prompt_history", "w") as patf:
                 patf.write(prompt)
             return self.on_response(response, thought_process_id, prompt)
         
@@ -279,7 +279,7 @@ class BaseAgent(metaclass=ABCMeta):
         else:
             prompt = self.cycle_instruction + "\n================Previous Command Result================\n" + result
             
-        with open(f"buildAnaDroid_tests/{self.project_name}/prompt_history", "a+") as patf:
+        with open(f"builDroid_tests/{self.project_name}/prompt_history", "a+") as patf:
             patf.write("================================PROMPT " + str(self.cycle_count) + "================================\n" + prompt + "\n\n\n")
         
         logger.info(
@@ -342,7 +342,7 @@ class BaseAgent(metaclass=ABCMeta):
             definitions_prompt += "\n{}\n".format(self.past_attempt)
 
         ### Read static prompt files
-        gradle_guidelines = files("buildAnaDroid.prompts.prompt_files").joinpath("gradle_guidelines").read_text(encoding="utf-8")
+        gradle_guidelines = files("builDroid.prompts.prompt_files").joinpath("gradle_guidelines").read_text(encoding="utf-8")
 
         prompt += definitions_prompt + "\n\n" + gradle_guidelines + "\n\n" + self.cycle_instruction
         return prompt

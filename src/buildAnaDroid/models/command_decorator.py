@@ -4,11 +4,11 @@ import functools
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypedDict
 
 if TYPE_CHECKING:
-    from buildAnaDroid.config import Config
+    from builDroid.config import Config
 
-from buildAnaDroid.models.command import Command, CommandParameter
+from builDroid.models.command import Command, CommandParameter
 
-# Unique identifier for buildAnaDroid commands
+# Unique identifier for builDroid commands
 COMMAND_IDENTIFIER = "command_identifier"
 
 class CommandParameterSpec(TypedDict):

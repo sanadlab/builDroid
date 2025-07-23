@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Optional
 
 if TYPE_CHECKING:
-    from buildAnaDroid.models.command_registry import CommandRegistry
+    from builDroid.models.command_registry import CommandRegistry
 
 
 class PromptGenerator:

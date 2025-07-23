@@ -26,7 +26,7 @@ class LogCycleHandler:
 
     def create_outer_directory(self, ai_name: str, created_at: str) -> Path:
         if os.getenv("OVERWRITE_DEBUG") == "1":
-            outer_folder_name = "buildAnaDroid"
+            outer_folder_name = "builDroid"
         else:
             ai_name_short = self.get_agent_short_name(ai_name)
             outer_folder_name = f"{created_at}_{ai_name_short}"
