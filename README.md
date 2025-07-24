@@ -1,8 +1,12 @@
-# builDroid
+# BuilDroid
 
-> ⚡ Clone, build, and generate debugging APKs for Android projects using LLM-powered automation.
+[![PyPI version](https://badge.fury.io/py/buildroid.svg)](https://badge.fury.io/py/buildroid)
+[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/buildroid)
+[![PyPI status](https://img.shields.io/pypi/status/ansicolortags.svg)](https://pypi.python.org/pypi/buildroid)
 
-**builDroid** is a Python package that leverages Large Language Models (LLMs) to automatically clone any Android project hosted on GitHub, configure it, and **build the debugging `.apk`** file. This enables faster evaluation, performance testing, reverse engineering, or security analysis of Android applications. The building process happens in an isolated Docker container.
+⚡ Clone, build, and generate debugging APKs for Android projects using LLM-powered automation.
+
+**BuilDroid** is a Python package that leverages Large Language Models (LLMs) to automatically clone any Android project hosted on GitHub, configure it, and **build the debugging `.apk`** file. This enables faster evaluation, performance testing, reverse engineering, or security analysis of Android applications. The building process happens in an isolated Docker container.
 
 ## 🚀 Features
 
