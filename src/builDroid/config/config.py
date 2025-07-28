@@ -27,6 +27,7 @@ class Config():
     openai_functions: bool = False
     cycle_limit: int = 0
     conversation: bool = False
+    extract_project: bool = True
 
     ###############
     # Credentials #

@@ -30,7 +30,7 @@ def setup_docker_config():
     docker_config_path.write_text("{}")
 
 
-def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, metadata: dict, keep_container: bool):
+def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, extract_project:bool, metadata: dict, keep_container: bool):
     """
     This function replaces the logic of `run.sh`.
     It executes the builDroid module and handles the setup and cleanup of Docker containers.
@@ -47,6 +47,7 @@ def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool,
             ai_settings=ai_settings,
             debug=debug,
             conversation=conversation,
+            extract_project=extract_project,
             working_directory=Path(
                 __file__
             ).parent.parent.parent,
@@ -60,7 +61,7 @@ def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool,
             subprocess.run(["docker", "system", "prune", "--volumes", "-f"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool, metadata: dict, keep_container:bool, user_retry:bool):
+def run_with_retries(project_name: str, num: int, conversation: bool, debug: bool, extract_project: bool, metadata: dict, keep_container: bool, user_retry: bool):
     """
     Runs the main logic, handles retries, and performs post-processing.
     This replaces the `run_with_retries` function from the shell script.
@@ -74,8 +75,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         if os.path.exists(f"builDroid_tests/{project_name}/output/FAILURE"):
             with open(f"builDroid_tests/{project_name}/output/FAILURE", "r") as f:
                 metadata["past_attempt"] = f.read()
-        
-        run_builDroid_with_checks(num, conversation, debug, metadata, keep_container)
+        run_builDroid_with_checks(num, conversation, debug, extract_project, metadata, keep_container)
 
         # Run post-processing and check the result
         if run_post_process(project_name):
@@ -92,21 +92,22 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug:bool
         print("=" * 70)
         user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
         while True:
-            if user_input.startswith("Y") or user_input.startswith("Y"):
-                run_builDroid_with_checks(num, conversation, debug, metadata, keep_container)
+            if user_input.startswith("Y") or user_input.startswith("y"):
+                run_builDroid_with_checks(num, conversation, debug, extract_project, metadata, keep_container)
                 # Run post-processing and check the result
                 if run_post_process(project_name):
                     print(f"Post-process succeeded. The extracted .apk file is in the "
                         f"builDroid_tests/{project_name}/output folder.")
                     return # Exit the function on success
+                print(f"User prompted retry failed. Exiting program.")
+                return 
             elif user_input.startswith("N") or user_input.startswith("n"):
                 return
             else:
                 user_input = input(f"Invalid input. Please answer with yes/no. \nBuild failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
 
-        print(f"User prompted retry failed. Exiting program.")
 
-def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: bool=False, keep_container:bool=False, user_retry:bool=False, local_path:bool=False):
+def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: bool=False, extract_project: bool=True, keep_container:bool=False, user_retry:bool=False, local_path:bool=False):
     """Processes a single repository."""
     project_name = extract_project_name(repo_source)
     print("\n" + "-" * 70)
@@ -129,7 +130,7 @@ def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: boo
     start_time = time.time()
 
     # Run the main task with retries
-    run_with_retries(project_name, num, conversation, debug, metadata, keep_container, user_retry)
+    run_with_retries(project_name, num, conversation, debug, extract_project, metadata, keep_container, user_retry)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -258,10 +259,10 @@ Examples for 'clean' command:
             # Handle the case where input is a single URL string
             print("Processing a single repository URL.")
             project_name = extract_project_name(repo_source)
-            process_repository(repo_source, args.num, args.conv, args.keep_container, user_retry=True)
+            process_repository(repo_source=repo_source, num=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=True)
         elif args.local:
             print("Processing a local repository.")
-            process_repository(repo_source, args.num, args.conv, args.keep_container, user_retry=True, local_path=True)
+            process_repository(repo_source=repo_source, num=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=True, local_path=True)
         else:
             # Handle the case where the input is a file
             print(f"Processing repositories from file: {repo_source}")

@@ -79,7 +79,7 @@ def _update_agp_version_in_file(agent: Agent, file_path: str, target_version: st
 
 @command(
     "fix_wrapper_mismatch",
-    "Updates the Gradle Wrapper to match the project's AGP version.\nCall if and only if previous output includes 'Failed to notify project evaluation listener'.",
+    "Updates the Gradle Wrapper to match the project's AGP version",
     {
         "agp_version": {
             "type": "string",
@@ -109,7 +109,7 @@ def fix_wrapper_mismatch(agp_version: str, agent: Agent):
 
 @command(
     "import_gradle_wrapper",
-    "Copies the entire gradle wrapper template directory into the project.\nCall if and only if previous output includes 'Could not find or load main class org.gradle.wrapper.GradleWrapperMain'.",
+    "Copies the entire gradle wrapper template directory into the project",
     {
         "filename": {
             "type": "string",
@@ -143,7 +143,7 @@ def import_gradle_wrapper(filename: str, agent: Agent):
 
 @command(
     "import_gradlew_exec",
-    "Copies the `gradlew` executable script to the project root and makes it executable.\nCall if and only if previous output includes 'gradlew: No such file or directory'.",
+    "Copies the `gradlew` executable script to the project root and makes it executable",
     {
         "version": {
             "type": "string",
@@ -168,7 +168,7 @@ def import_gradlew_exec(version: str, agent: Agent):
 
 @command(
     "download_sdk_platform",
-    "Downloads the missing Android SDK platform.\nCall if and only if previous output includes 'failed to find target with hash string android-<version>'.",
+    "Downloads the missing Android SDK platform",
     {
         "version": {
             "type": "string",
@@ -184,7 +184,7 @@ def download_sdk_platform(version: str, agent: Agent):
 
 @command(
     "download_sdk_build_tools",
-    "Downloads the missing Android Build Tools.\nCall if and only if previous output includes 'failed to find Build Tools revision <version>'.",
+    "Downloads the missing Android Build Tools",
     {
         "version": {
             "type": "string",
@@ -200,7 +200,7 @@ def download_sdk_build_tools(version: str, agent: Agent):
 
 @command(
     "upgrade_agp_version",
-    "Upgrades AGP to a version that supports the `google()` repository shortcut.\nCall if and only if previous output includes 'method google() for arguments'.",
+    "Upgrades AGP to a version that supports the `google()` repository shortcut",
     {
         "command": {
             "type": "string",
@@ -292,7 +292,7 @@ def _add_google_repo_to_file(agent: Agent, file_path: str) -> bool:
 
 @command(
     "add_google_repo",
-    "Adds the Google maven repository to the project.\nCall if and only if previous output includes 'Could not resolve all dependencies for configuration'.",
+    "Adds the Google maven repository to the project",
     {
         "filename": {
             "type": "string",
@@ -325,7 +325,7 @@ def add_google_repo(filename: str, agent: Agent):
 
 @command(
     "generate_local_properties",
-    "Generates a local.properties file with correct SDK and NDK paths from within the container.\nCall if and only if previous output includes 'did not contain a valid NDK and couldn't be used'.",
+    "Generates a local.properties file with correct SDK and NDK paths from within the container",
     {
         "filename": {
             "type": "string",
@@ -382,7 +382,7 @@ def generate_local_properties(filename: str, agent: Agent):
 
 @command(
     "fix_build_tools_cpu_error",
-    "Upgrades the project's Build Tools to a newer version to resolve CPU architecture issues.\nCall if and only if previous output includes 'Bad CPU type in executable'.",
+    "Upgrades the project's Build Tools to a newer version to resolve CPU architecture issues",
     {
         "version": {
             "type": "string",
@@ -414,7 +414,7 @@ def fix_build_tools_cpu_error(version: str, agent: Agent):
 
 @command(
     "update_gradle_wrapper",
-    "Updates the Gradle Wrapper to a specific version.\nCall if and only if previous output includes 'Minimum supported Gradle version is (.*?)\. Current version'.",
+    "Updates the Gradle Wrapper to a specific version",
     {
         "version": {
             "type": "string",

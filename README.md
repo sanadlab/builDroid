@@ -48,6 +48,8 @@ LLM_MODEL=<your-llm-model-here>
 For example, if you put 'https://generativelanguage.googleapis.com/v1beta/' as your base url, `builDroid` will access Google AI's `gemini-2.0-flash-lite`.
 If you want to use other providers, you have to provide the base url and the LLM model in `.env`.
 
+3. (Optional) builDroid's primary goal is to successfully execute `./gradlew assembleDebug`. To change its goals, create a `ai_settings.yaml` file in the working directory. The example file is in the source code.
+
 ## 🖥️ Usage
 
 ### CLI Usage
@@ -78,7 +80,7 @@ import builDroid
 source = "https://github.com/user/project"
 builDroid.process_repository(repo_source=source)
 # args: 
-# repo_source: str, num: int=40, conversation: bool=False, keep_container:bool=False, user_retry:bool=False, local_path:bool=False
+# repo_source: str, num: int=40, conversation: bool=False, extract_project: bool=True, keep_container:bool=False, user_retry:bool=False, local_path:bool=False
 ```
 
 ## 🛠️ Troubleshooting

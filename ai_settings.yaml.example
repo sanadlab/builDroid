@@ -1,3 +1,5 @@
+# This file is the default configuration for the builDroid AI agent.
+# Modify it and save it as `ai_settings.yaml` to customize the agent's behavior.
 ai_goals:
 - Build the Android Project: You should run './gradlew assembleDebug' to build the project.
 - Resolve Issues: If build fails, determine the cause of failure(ex. missing dependencies, version mismatch) and attempt to resolve it. The general guideline provides common gradle build errors and their solutions.

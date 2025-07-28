@@ -1,5 +1,6 @@
 """A module that contains the AIConfig class object that contains the configuration"""
 from __future__ import annotations
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 import importlib.resources
@@ -62,12 +63,16 @@ class AIConfig:
             cls (object): An instance of given cls object
         """
 
-        resource_path: Path = importlib.resources.files('builDroid').joinpath('files', 'ai_settings.yaml')
-        try:
+        # Check if the file exists in working directory, if not, use the default resource path
+        if os.path.exists(ai_settings_file):
+            print("Using ai_settings.yaml from working directory.")
+            with open(ai_settings_file, "r", encoding="utf-8") as file:
+                config_params = yaml.load(file, Loader=yaml.FullLoader) or {}
+        else:
+            print("Warning: ai_settings.yaml not found in working directory, using default settings.")
+            resource_path: Path = importlib.resources.files('builDroid').joinpath('files', 'ai_settings.yaml')
             with resource_path.open("r", encoding="utf-8") as file:
                 config_params = yaml.load(file, Loader=yaml.FullLoader) or {}
-        except FileNotFoundError:
-            config_params = {}
 
         ai_name = config_params.get("ai_name", "")
         ai_role = config_params.get("ai_role", "")
@@ -100,7 +105,7 @@ class AIConfig:
             "role": f"You are {self.ai_name}, {self.ai_role.rstrip('.')}" +\
             "Your decisions must always be made independently without seeking " +\
             "user assistance. Play to your strengths as an LLM and pursue " +\
-            "simple strategies with no legal complications."
+            "simple strategies with no legal complications.\n"
         }
 
         if self.ai_goals:
@@ -130,9 +135,7 @@ class AIConfig:
 
         full_prompt_parts["commands"]=[
                 "\n## Commands",
-                "You have access to the following commands (EXCLUSIVELY):",
-                f"{_generate_commands()}",
-                "Some commands have error strings in the description; call the function with the error string that appeared in the previous build error. DO NOT call the function of which it's error string is not present in the previous build error.",
-            ]
+                "You have access to the following commands (EXCLUSIVELY):\n",
+                f"{_generate_commands()}",]
 
         return full_prompt_parts

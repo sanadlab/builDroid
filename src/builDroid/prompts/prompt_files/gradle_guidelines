@@ -89,10 +89,7 @@ Fix:
 
 ## Final Notes
 - IMPORTANT: If `gradlew not found` or unknown error happens when executing Gradle commands, use `find . -name gradlew` command to locate gradlew. Make sure that your working directory is the folder with the gradlew file every command.
-- If you're not sure which error or the same error persists over several cycles, then check logs using:  
-  ```
-  ./gradlew assembleDebug --stacktrace -q
-  ```
+- If you're not sure which error or the same error persists over several cycles, then check logs using stacktrace option.
 - Use `--refresh-dependencies` if dependencies are outdated:  
   ```
   ./gradlew --refresh-dependencies

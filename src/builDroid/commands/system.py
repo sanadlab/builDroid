@@ -53,6 +53,8 @@ def goals_accomplished(reason: str, agent: Agent) -> NoReturn:
         except Exception as e:
             print(f"<ERROR> Failed to extract {apk_path}: {e}")
             
+    if agent.config.extract_project:
+        subprocess.run(['docker', 'cp', f'{agent.container.id}:/{agent.project_name}', f"builDroid_tests/{agent.project_name}/output"], check=True)
     logger.info(title=f"Shutting down... \n", message=reason)
     with open(os.path.join("builDroid_tests", agent.project_name, "saved_contexts", "SUCCESS"), "w") as ssf:
         ssf.write("SUCCESS")

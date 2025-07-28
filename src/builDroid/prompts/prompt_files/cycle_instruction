@@ -9,6 +9,7 @@ args: Record<string, any>;
 };
 }
 ```
+In your 'thoughts', first analyze the error, then form a hypothesis about the root cause, and finally decide on the best tool to use for the fix.
 Here is an example of command call that you can output:
 
 {

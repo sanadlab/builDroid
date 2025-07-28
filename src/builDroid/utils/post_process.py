@@ -201,6 +201,7 @@ def run_post_process(project_name):
 
     # Print FAILURE
     print("FAILURE")
+    return False
     
 
 if __name__ == "__main__":

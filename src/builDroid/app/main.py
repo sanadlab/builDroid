@@ -31,6 +31,7 @@ def run_builDroid(
     ai_settings: str,
     debug: bool,
     conversation: bool,
+    extract_project: bool,
     working_directory: Path,
     metadata: dict
 ):
@@ -48,6 +49,7 @@ def run_builDroid(
     config.cycle_limit = cycle_limit
     config.workspace_path = working_directory / "builDroid_workspace" / metadata["project_name"]
     config.conversation = conversation
+    config.extract_project = extract_project
     set_api_token(config)
     ai_config = AIConfig.load(working_directory / "ai_settings.yaml")
 
