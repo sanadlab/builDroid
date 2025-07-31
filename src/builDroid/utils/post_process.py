@@ -4,6 +4,7 @@ import re
 import warnings
 warnings.filterwarnings("ignore")
 
+import glob
 from openai import OpenAI
 from google import genai
 from builDroid.agents.base import create_chat_completion
@@ -179,7 +180,17 @@ def run_post_process(project_name):
     with open(f"builDroid_tests/{project_name}/output/error_summary.json", "w") as f:
         json.dump(error_summary, f, indent=4)
 
-    if os.path.exists(f"builDroid_tests/{project_name}/saved_contexts/SUCCESS"):
+    if glob.glob(f"builDroid_tests/{project_name}/output/*.apk"):   
+        summarize_attempt_prompt = (
+            f"You are an expert software engineering assistant. The following log details the successful, automated build process for the '{project_name}' project. "
+            "Your task is to create a concise, human-readable summary that explains the sequence of errors encountered and the specific actions the agent took to successfully resolve each one.\n"
+            f"\n\n==================Prompt History Start==================\n{extracted_content}\n==================Prompt History End=================="
+            f"\n\n**IMPORTANT:** Ignore the JSON response format provided in Prompt History, which were used in other LLM requests.\nYour response should be in plain text and have one header: # Summary of the installation attempt"
+        )
+        response = ask_chatgpt(summarize_attempt_prompt)
+        attempt_summary = f"builDroid_tests/{project_name}/output/SUCCESS"
+        with open(attempt_summary, 'w') as f:
+            f.write(response)
         return True
 
     # Prepare the query for ask_chatgpt
@@ -187,7 +198,7 @@ def run_post_process(project_name):
         f"You are a helpful software engineering assistant with capabilities of installing, building, configuring, and testing software projects. The following would represent the sequence of commands and reasoning made by an LLM trying to install \"{project_name}\" project from source code and execute test cases. "
         "I want you to summarize the encountered problems and give advice for next attempt. Be precise and concise. Address the most important and critical issues (ignore non critical warnings and so).\n"
         f"\n\n==================Prompt History Start==================\n{extracted_content}\n==================Prompt History End=================="
-        f"\n\n**IMPORTANT:** Ignore the JSON response format provided in Prompt History, which were used in other LLM requests.\nYour response should be in plain text and have one header: ### Feedback from previous installation attempts"
+        f"\n\n**IMPORTANT:** Ignore the JSON response format provided in Prompt History, which were used in other LLM requests.\nYour response should be in plain text and have one header: ### Feedback from the previous installation attempt"
     )
 
     # Call ask_chatgpt
@@ -199,8 +210,7 @@ def run_post_process(project_name):
     with open(problems_memory, 'w') as f:
         f.write(response)
 
-    # Print FAILURE
-    print("FAILURE")
+    print(f"Post-process for {project_name} completed. Summary saved to {problems_memory}.")
     return False
     
 

@@ -79,12 +79,23 @@ buildroid clean # Clean test results
 ```python
 import builDroid
 
-# You must load environment variables separately for Python usage
-
 source = "https://github.com/user/project"
+
+builDroid.utils.api_token_setup() # This function will setup the environment variables from .env file
+
 builDroid.process_repository(repo_source=source)
 # args: 
-# repo_source: str, num: int=40, conversation: bool=False, extract_project: bool=True, keep_container:bool=False, user_retry:bool=False, local_path:bool=False
+# repo_source: str,
+# cycle_limit: int = 40,
+# conversation: bool = False,
+# extract_project: bool = True,
+# override_project: bool = False,
+# keep_container: bool = False,
+# user_retry: bool = False,
+# local_path: bool = False,
+# project_name: str = None
+
+builDroid.utils.api_token_reset() # This function will reset the environment variables
 ```
 
 ## 🛠️ Troubleshooting

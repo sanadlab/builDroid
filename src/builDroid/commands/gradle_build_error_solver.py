@@ -102,7 +102,7 @@ def fix_wrapper_mismatch(agp_version: str, agent: Agent):
     print(f"Project's AGP version {new_agp_version} requires Gradle ~{required_gradle_version}.")
 
     # 3. Update the wrapper.
-    if "Successfully" in update_gradle_wrapper(agent, required_gradle_version):
+    if "Successfully" in update_gradle_wrapper(required_gradle_version, agent):
         return f"Successfully updated Gradle Wrapper to {required_gradle_version}."
     else:
         return f"Error: Failed to update Gradle Wrapper to version {required_gradle_version}."
@@ -276,7 +276,7 @@ def _add_google_repo_to_file(agent: Agent, file_path: str) -> bool:
             
             # For Kotlin DSL (.kts), a newline is often preferred. For Groovy, it's flexible.
             # Adding it at the top of the block is a common and safe convention.
-            return f"{opening}\n{indentation}    google()\n{content}{closing}"
+            return f"{opening}\n{indentation}    google()\n{content.lstrip()}{closing}"
 
     # The regex finds `repositories { ... }` blocks.
     # It's non-greedy `([\s\S]*?)` to handle multiple repository blocks in one file correctly.

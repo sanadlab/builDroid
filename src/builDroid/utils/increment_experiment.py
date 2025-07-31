@@ -11,6 +11,5 @@ def new_experiment(project_name):
                 failure_text = f.read()
         shutil.rmtree(f"builDroid_tests/{project_name}")
     os.makedirs(f"builDroid_tests/{project_name}", exist_ok=True)
-    os.makedirs(f"builDroid_tests/{project_name}/saved_contexts", exist_ok=True)
     os.makedirs(f"builDroid_tests/{project_name}/output", exist_ok=True)
     return failure_text

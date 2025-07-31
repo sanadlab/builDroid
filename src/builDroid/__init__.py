@@ -5,6 +5,8 @@ import subprocess
 import sys
 import importlib.resources
 import time
+import hashlib
+import json
 from pathlib import Path
 
 from .utils import api_token_setup, api_token_reset, clone_and_set_metadata, new_experiment, create_results_sheet, run_post_process
@@ -29,11 +31,96 @@ def setup_docker_config():
     docker_config_path.parent.mkdir(parents=True, exist_ok=True)
     docker_config_path.write_text("{}")
 
-
-def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool, extract_project:bool, metadata: dict, keep_container: bool):
+def generate_project_hash(repo_source, local_path):
     """
-    This function replaces the logic of `run.sh`.
-    It executes the builDroid module and handles the setup and cleanup of Docker containers.
+    Generates a SHA-256 hash representing the state of the project's source files.
+    """
+    if local_path:
+        project_path = repo_source
+    else:
+        project_path = f"builDroid_workspace/{extract_project_name(repo_source)}"
+    # Define which file extensions and specific files to include in the hash
+    extensions_to_hash = {'.java', '.kt', '.xml', '.gradle', '.kts', '.pro'}
+    specific_files_to_hash = {'gradle.properties', 'gradlew', 'gradlew.bat'}
+
+    hasher = hashlib.sha256()
+    
+    # Walk through the directory tree in a sorted order to ensure consistency
+    for root, dirs, files in sorted(os.walk(project_path)):
+        # Exclude common non-source directories
+        if 'build' in dirs:
+            dirs.remove('build')
+        if '.idea' in dirs:
+            dirs.remove('.idea')
+            
+        for filename in sorted(files):
+            # Check if the file is one we care about
+            is_relevant_ext = any(filename.endswith(ext) for ext in extensions_to_hash)
+            is_specific_file = filename in specific_files_to_hash
+            
+            if is_relevant_ext or is_specific_file:
+                file_path = os.path.join(root, filename)
+                
+                # Add the relative file path to the hash
+                # This ensures that file renames/moves are detected
+                relative_path = os.path.relpath(file_path, project_path)
+                hasher.update(relative_path.encode('utf-8'))
+                
+                # Add the file content to the hash
+                try:
+                    with open(file_path, 'rb') as f:
+                        while chunk := f.read(8192):
+                            hasher.update(chunk)
+                except IOError:
+                    # Handle cases where a file might be unreadable
+                    continue
+
+    return hasher.hexdigest()
+
+def load_cache_from_file(project_name):
+    """
+    Loads the cache from a file in the project's output directory.
+    """
+    cache_file = f"builDroid_tests/{project_name}/cache.json"
+
+    if not os.path.exists(cache_file):
+        return {}
+    
+    with open(cache_file, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def save_cache_to_file(project_name, cache):
+    """
+    Saves the cache to a file in the project's output directory.
+    """
+    cache_file = f"builDroid_tests/{project_name}/cache.json"
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    with open(cache_file, 'w', encoding='utf-8') as f:
+        json.dump(cache, f, indent=4)
+
+def update_cache(cache: dict, project_name:str, **kwargs) -> dict:
+    """
+    Updates the cache with the project key and build result.
+    """
+    project_folder = os.path.join("builDroid_tests", project_name)
+    with open(os.path.join(project_folder, "model_responses"), "r") as f:
+        cmd_count = int(f.read().split("Response ")[-1].split("==")[0])
+    status = "Succeeded" if os.path.exists(os.path.join(project_folder, "output", "SUCCESS")) else "Failed"
+    cache.update(kwargs, cmd_count=cmd_count, status=status)
+    return cache
+
+def run_builDroid_with_checks(
+    cycle_limit: int,
+    conversation: bool,
+    debug: bool,
+    extract_project: bool,
+    override_project: bool,
+    metadata: dict,
+    keep_container: bool,
+    local_path: bool
+    ):
+    """
+    Executes the builDroid module and handles the setup and cleanup of Docker containers.
     """
     
     from builDroid.app.main import run_builDroid
@@ -47,24 +134,55 @@ def run_builDroid_with_checks(cycle_limit: int, conversation: bool, debug: bool,
             ai_settings=ai_settings,
             debug=debug,
             conversation=conversation,
-            extract_project=extract_project,
             working_directory=Path(
                 __file__
             ).parent.parent.parent,
             metadata=metadata
         )
     finally:
+        project_name = metadata["project_name"]
+        project_path = metadata["project_url"]
+        # Extract the project if specified
+        if extract_project:
+            if local_path:
+                if override_project:
+                    print(f"Overriding existing project at: {project_path}")
+                    subprocess.run(['rm', '-rf', project_path], check=True)
+                    subprocess.run(['docker', 'cp', f'{project_name}:/{project_name}', project_path], check=True)
+                else:
+                    print(f"Copying project to local path: {project_path}_builDroid")
+                    subprocess.run(['rm', '-rf', f"{project_path}_builDroid"], check=True)
+                    subprocess.run(['docker', 'cp', f'{project_name}:/{project_name}', f"{project_path}_builDroid"], check=True)
+            else:
+                if override_project:
+                    print(f"Overriding existing project at: builDroid_workspace/{project_name}")
+                    subprocess.run(['rm', '-rf', f"builDroid_workspace/{project_name}"], check=True)
+                    subprocess.run(['docker', 'cp', f'{project_name}:/{project_name}', f"builDroid_workspace/{project_name}"], check=True)
+                else:
+                    print(f"Copying project to: builDroid_workspace/{project_name}_builDroid")
+                    subprocess.run(['rm', '-rf', f"builDroid_workspace/{project_name}_builDroid"], check=True)
+                    subprocess.run(['docker', 'cp', f'{project_name}:/{project_name}', f"builDroid_workspace/{project_name}_builDroid"], check=True)
         if keep_container:
-            subprocess.run(["docker", "stop", metadata["project_name"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            subprocess.run(["docker", "rm", "-vf", metadata["project_name"]], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["docker", "rm", "-vf", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["docker", "system", "prune", "--volumes", "-f"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def run_with_retries(project_name: str, num: int, conversation: bool, debug: bool, extract_project: bool, metadata: dict, keep_container: bool, user_retry: bool):
+def run_with_retries(
+    project_name: str,
+    cycle_limit: int,
+    conversation: bool,
+    debug: bool,
+    extract_project: bool,
+    override_project: bool,
+    metadata: dict,
+    keep_container: bool,
+    user_retry: bool,
+    local_path: bool
+    ):
     """
     Runs the main logic, handles retries, and performs post-processing.
-    This replaces the `run_with_retries` function from the shell script.
     """
     for attempt in range(1, MAX_RETRIES + 1):
         print("=" * 70)
@@ -75,7 +193,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug: boo
         if os.path.exists(f"builDroid_tests/{project_name}/output/FAILURE"):
             with open(f"builDroid_tests/{project_name}/output/FAILURE", "r") as f:
                 metadata["past_attempt"] = f.read()
-        run_builDroid_with_checks(num, conversation, debug, extract_project, metadata, keep_container)
+        run_builDroid_with_checks(cycle_limit=cycle_limit, conversation=conversation, debug=debug, extract_project=extract_project, override_project=override_project, metadata=metadata, keep_container=keep_container, local_path=local_path)
 
         # Run post-processing and check the result
         if run_post_process(project_name):
@@ -93,7 +211,7 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug: boo
         user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
         while True:
             if user_input.startswith("Y") or user_input.startswith("y"):
-                run_builDroid_with_checks(num, conversation, debug, extract_project, metadata, keep_container)
+                run_builDroid_with_checks(cycle_limit=cycle_limit, conversation=conversation, debug=debug, extract_project=extract_project, override_project=override_project, metadata=metadata, keep_container=keep_container, local_path=local_path)
                 # Run post-processing and check the result
                 if run_post_process(project_name):
                     print(f"Post-process succeeded. The extracted .apk file is in the "
@@ -107,9 +225,24 @@ def run_with_retries(project_name: str, num: int, conversation: bool, debug: boo
                 user_input = input(f"Invalid input. Please answer with yes/no. \nBuild failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
 
 
-def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: bool=False, extract_project: bool=True, keep_container:bool=False, user_retry:bool=False, local_path:bool=False):
+def process_repository(
+    repo_source: str,
+    cycle_limit: int = DEFAULT_NUM,
+    conversation: bool = False,
+    extract_project: bool = True,
+    override_project: bool = False,
+    keep_container: bool = False,
+    user_retry: bool = False,
+    local_path: bool = False,
+    project_name: str = None
+    ):
     """Processes a single repository."""
-    project_name = extract_project_name(repo_source)
+    
+    if project_name is None:
+        if local_path:
+            project_name = repo_source
+        else:
+            project_name = extract_project_name(repo_source)
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
     if local_path:
@@ -117,25 +250,63 @@ def process_repository(repo_source: str, num: int=DEFAULT_NUM, conversation: boo
     else:
         print(f"From GitHub URL: {repo_source}")
     print("-" * 70)
-    past_attempt = new_experiment(project_name)
-
     setup_docker_config()
 
     image = "buildroid:1.0.1"
 
     # Clone the Github repository and set metadata
-    metadata = clone_and_set_metadata(project_name, repo_source, image, past_attempt, local_path)
+    metadata = clone_and_set_metadata(project_name, repo_source, image, local_path)
 
+    project_key = generate_project_hash(repo_source, local_path)
+    print(f"Project hash generated: {project_key}")
+    cache = load_cache_from_file(project_name)
+
+    if project_key == cache.get('project_key'):
+        # Handle cache hit
+        print(f"Cache hit for project {project_name}.")
+        print("Build result:", cache.get('status'))
+        return
+    
     debug = False
     start_time = time.time()
 
+    metadata.update({"past_attempt": new_experiment(project_name)})
+
     # Run the main task with retries
-    run_with_retries(project_name, num, conversation, debug, extract_project, metadata, keep_container, user_retry)
+    run_with_retries(project_name=project_name, 
+                     cycle_limit=cycle_limit, 
+                     conversation=conversation, 
+                     debug=debug, 
+                     extract_project=extract_project, 
+                     override_project=override_project, 
+                     keep_container=keep_container, 
+                     user_retry=user_retry, 
+                     metadata=metadata,
+                     local_path=local_path)
 
     end_time = time.time()
     elapsed_time = end_time - start_time
-    with open(f"builDroid_tests/{project_name}/output/elapsed_time.txt", "w") as f:
-        f.write(f"{elapsed_time:.2f}")
+    # Format start_time and end_time as 'YYYY-MM-DD HH:mm:ss'
+    start_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
+    end_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))
+    update_cache(
+        cache,
+        project_name=project_name,
+        project_key=project_key,
+        cycle_limit=cycle_limit,
+        conversation=conversation,
+        debug=debug,
+        extract_project=extract_project,
+        override_project=override_project,
+        keep_container=keep_container,
+        user_retry=user_retry,
+        metadata=metadata,
+        local_path=local_path,
+        start_time=start_time_str,
+        end_time=end_time_str,
+        elapsed_time=float(f"{elapsed_time:.2f}")
+    )
+    save_cache_to_file(project_name, cache)
 
 def main():
     """Initialization function."""
@@ -258,11 +429,10 @@ Examples for 'clean' command:
         if "github.com" in repo_source:
             # Handle the case where input is a single URL string
             print("Processing a single repository URL.")
-            project_name = extract_project_name(repo_source)
-            process_repository(repo_source=repo_source, num=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=True)
+            process_repository(repo_source=repo_source, cycle_limit=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=True)
         elif args.local:
             print("Processing a local repository.")
-            process_repository(repo_source=repo_source, num=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=True, local_path=True)
+            process_repository(repo_source=repo_source, cycle_limit=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=True, local_path=True)
         else:
             # Handle the case where the input is a file
             print(f"Processing repositories from file: {repo_source}")
@@ -270,8 +440,7 @@ Examples for 'clean' command:
                 repo_urls = [line.strip() for line in f if line.strip()]
             
             for url in repo_urls:
-                project_name = extract_project_name(url)
-                process_repository(url, args.num, args.conv, args.keep_container, user_retry=False)
+                process_repository(repo_source=url, cycle_limit=args.num, conversation=args.conv, keep_container=args.keep_container, user_retry=False)
             # Generate the final results sheet after all repos are processed
             create_results_sheet()
         api_token_reset()

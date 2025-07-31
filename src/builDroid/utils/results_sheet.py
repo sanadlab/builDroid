@@ -34,11 +34,13 @@ def create_results_sheet():
 
         project_folder = os.path.join("builDroid_tests", project_name)
 
-        # Basic project info
-        cmd_count = sum(1 for file in os.listdir(os.path.join(project_folder, "saved_contexts")) if file.startswith("cycle_"))
-        status = "Succeeded" if os.path.exists(os.path.join(project_folder, "saved_contexts", "SUCCESS")) else "Failed"
-        with open(os.path.join(project_folder, "output", "elapsed_time.txt"), "r") as f:
-            elapsed_time = float(f.read().strip())
+        # Read basic project info from cache
+        cache_file = os.path.join(project_folder, "cache.json")
+        with open(cache_file, "r") as f:
+            cache = json.load(f)
+        cmd_count = cache.get("cmd_count", 0)
+        status = cache.get("status", "Unknown")
+        elapsed_time = cache.get("elapsed_time", "N/A")
         
         project_data_row = {
             "Project Name": project_name,

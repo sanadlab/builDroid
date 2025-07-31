@@ -31,7 +31,6 @@ def run_builDroid(
     ai_settings: str,
     debug: bool,
     conversation: bool,
-    extract_project: bool,
     working_directory: Path,
     metadata: dict
 ):
@@ -49,7 +48,6 @@ def run_builDroid(
     config.cycle_limit = cycle_limit
     config.workspace_path = working_directory / "builDroid_workspace" / metadata["project_name"]
     config.conversation = conversation
-    config.extract_project = extract_project
     set_api_token(config)
     ai_config = AIConfig.load(working_directory / "ai_settings.yaml")
 
@@ -173,9 +171,6 @@ def run_interaction_loop(
             logger.info(title="SYSTEM: ", title_color=Fore.YELLOW, message=result)
         else:
             logger.info(title="SYSTEM: ", title_color=Fore.YELLOW, message="Unable to execute command")
-
-        os.makedirs("builDroid_tests/{}/saved_contexts".format(agent.project_name), exist_ok=True)
-        agent.save_to_file("builDroid_tests/{}/saved_contexts/cycle_{}".format(agent.project_name, cycle_budget - cycles_remaining))
     
     logger.info("Last cycle. Shutting down...")
     agent.shell_socket.close()

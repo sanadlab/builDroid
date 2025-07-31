@@ -71,7 +71,7 @@ class Agent(BaseAgent):
             raise SyntaxError("Assistant response has no text content")
         
         with open(os.path.join("builDroid_tests", self.project_name, "model_responses"), "a+") as patf:
-            patf.write(llm_response + "\n")
+            patf.write(f"==================Response {self.cycle_count}==================\n" + llm_response + "\n")
         assistant_reply_dict = extract_dict_from_response(llm_response)
 
         response = None, None, assistant_reply_dict, llm_response

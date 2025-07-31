@@ -255,7 +255,7 @@ class BaseAgent(metaclass=ABCMeta):
                     prompt = patf.read()
                 if self.cycle_count == 1:
                     prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
-                prompt += "\n\n==================Command " + str(self.cycle_count) + "==================\n" + previous_command + "\n================Command Result================\n" + result
+                prompt += "\n\n==================Command " + str(self.cycle_count) + "==================\n" + previous_command + "\n==================Command Result==================\n" + result
 
             logger.info(
                 f"{Fore.GREEN}Creating chat completion with model {self.config.llm_model}{Fore.RESET}"
@@ -277,10 +277,10 @@ class BaseAgent(metaclass=ABCMeta):
                 self.chat = client.responses.create(model=self.config.llm_model, input=prompt)
                 response = self.chat.output_text
         else:
-            prompt = self.cycle_instruction + "\n================Previous Command Result================\n" + result
-            
+            prompt = self.cycle_instruction + "\n==================Previous Command Result==================\n" + result
+
         with open(f"builDroid_tests/{self.project_name}/prompt_history", "a+") as patf:
-            patf.write("================================PROMPT " + str(self.cycle_count) + "================================\n" + prompt + "\n\n\n")
+            patf.write("==================PROMPT " + str(self.cycle_count) + "==================\n" + prompt + "\n\n\n")
         
         logger.info(
             f"{Fore.GREEN}Sending request to model {self.config.llm_model}{Fore.RESET}"
