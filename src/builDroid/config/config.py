@@ -5,6 +5,7 @@ import os
 
 from pathlib import Path
 from typing import Optional
+import dotenv
 
 class Config():
     name: str = "Config"
@@ -37,6 +38,7 @@ class Config():
     
 def set_api_token(config: Config) -> None:
     """Setup api tokens for agent."""
+    dotenv.load_dotenv()
     config.openai_api_key = os.getenv("API_KEY", default="")
     config.openai_api_base = os.getenv("BASE_URL", default="")
     config.llm_model = os.getenv("LLM_MODEL", default="")
