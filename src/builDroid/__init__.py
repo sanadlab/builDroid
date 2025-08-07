@@ -237,12 +237,16 @@ def process_repository(
     project_name: str = None
     ):
     """Processes a single repository."""
-    
+
+    # Set up API token and increment experiment
+    api_token_setup()
+
     if project_name is None:
         if local_path:
             project_name = repo_source
         else:
             project_name = extract_project_name(repo_source)
+            
     print("\n" + "-" * 70)
     print(f"Processing Project: {project_name}")
     if local_path:
@@ -424,8 +428,6 @@ Examples for 'clean' command:
             print("Debugger attached!")
         repo_source = str(args.repo_source)
 
-        # Set up API token and increment experiment
-        api_token_setup()
         if "github.com" in repo_source:
             # Handle the case where input is a single URL string
             print("Processing a single repository URL.")

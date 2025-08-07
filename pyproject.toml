@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "buildroid"
-version = "1.2.0"
+version = "1.2.1"
 authors = [
   { name="Jaehyeon Kim", email="jk7404@nyu.edu" },
 ]

@@ -81,8 +81,6 @@ import builDroid
 
 source = "https://github.com/user/project"
 
-builDroid.utils.api_token_setup() # This function will setup the environment variables from .env file
-
 builDroid.process_repository(repo_source=source)
 # args: 
 # repo_source: str,
