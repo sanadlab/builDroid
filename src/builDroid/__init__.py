@@ -74,7 +74,17 @@ def generate_project_hash(repo_source, local_path):
                 except IOError:
                     # Handle cases where a file might be unreadable
                     continue
-
+    # get commit hash if github repo
+    git_dir = os.path.join(project_path, ".git")
+    if os.path.isdir(git_dir):
+        try:
+            commit_id = subprocess.check_output(
+                ["git", "-C", project_path, "rev-parse", "HEAD"],
+                stderr=subprocess.DEVNULL
+            ).decode("utf-8").strip()
+            hasher.update(commit_id.encode("utf-8"))
+        except Exception:
+            pass
     return hasher.hexdigest()
 
 def load_cache_from_file(project_name):
