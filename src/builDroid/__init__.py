@@ -143,6 +143,7 @@ def run_builDroid_with_checks(
     finally:
         project_name = metadata["project_name"]
         project_path = metadata["project_url"]
+        project_name = os.path.basename(project_path) if local_path else project_name
         # Extract the project if specified
         if extract_project:
             if local_path:

@@ -39,7 +39,7 @@ def goals_accomplished(reason: str, agent: Agent) -> NoReturn:
     client = docker.from_env()
     container = client.containers.get(agent.container.id)
     
-    exit_code, output = container.exec_run(f"/bin/sh -c \"find {agent.project_name} -type f -name '*.apk'\"")
+    exit_code, output = container.exec_run(f"/bin/sh -c \"find {os.path.basename(agent.project_name)} -type f -name '*.apk'\"")
     apk_paths = output.decode().strip().split("\n")
     apk_paths = [path for path in apk_paths if path] 
     

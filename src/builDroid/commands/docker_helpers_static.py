@@ -97,8 +97,10 @@ def start_container(image_tag, name):
     client = docker.from_env()
     subprocess.run(['docker', 'rm', '-vf', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
-        print(f"Running new container from image {image_tag}...")
-        container = client.containers.run(image_tag, detach=True, tty=True, stdin_open=True, name=name)
+        ct_name = os.path.basename(name) if os.path.exists(name) else name
+        print(f"Running new container from image {image_tag}...", ct_name)
+        
+        container = client.containers.run(image_tag, detach=True, tty=True, stdin_open=True, name=ct_name)
         print(f"Container {container.short_id} is running.")
         return container
     except Exception as e:

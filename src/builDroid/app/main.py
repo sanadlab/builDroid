@@ -125,12 +125,14 @@ def run_interaction_loop(
         if image_log.startswith("An error occurred while building the Docker image"):
             print(image_log)
             sys.exit(1)
+    
     agent.container = start_container(f"buildroid:1.0.1", f"{agent.project_name[:63]}")
     agent.shell_socket = create_persistent_shell(agent.container)
     if agent.container is None:
         sys.exit(1)
     print(image_log + "Container launched successfully. Now copying project files to the container...")
-    subprocess.run(['docker', 'cp', agent.workspace_path, f'{agent.container.id}:/{agent.project_name}'])
+    print( agent.workspace_path)
+    subprocess.run(['docker', 'cp', agent.workspace_path, f'{agent.container.id}:/{os.path.basename(agent.project_name)}'])
     locate_or_import_gradlew(agent)
     print("Now starting the build process...")
 
