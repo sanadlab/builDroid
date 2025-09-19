@@ -1,12 +1,15 @@
 import builDroid
 import os
 
-cwd = os.getcwd()
-env_path = os.path.join(cwd, '.env')
+import debugpy
+debugpy.listen(("0.0.0.0", 5678))
 
-builDroid.utils.api_token_setup()
+print("Waiting for debugger to attach...")
+debugpy.wait_for_client()
+print("Debugger attached!")
 
-source = "diskusage"
-builDroid.process_repository(repo_source=source, override_project=True, local_path=True, project_name="jk7404_diskusage")
-
-builDroid.utils.api_token_reset()
+source = "weather-overview"
+project_name = "jk7404_weather-overview"
+apk_name = builDroid.process_repository(repo_source=source, override_project=True, local_path=True, project_name=project_name)
+print("apk_name: " + apk_name)
+print("apk_path: " + f"builDroid_tests/{project_name}/output/{apk_name}")

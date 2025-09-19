@@ -235,7 +235,7 @@ def process_repository(
     user_retry: bool = False,
     local_path: bool = False,
     project_name: str = None
-    ):
+    ) -> str:
     """Processes a single repository."""
 
     # Set up API token and increment experiment
@@ -293,6 +293,11 @@ def process_repository(
     # Format start_time and end_time as 'YYYY-MM-DD HH:mm:ss'
     start_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(start_time))
     end_time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time))
+    apk_name = None
+    for root, dirs, files in os.walk(f"builDroid_tests/{project_name}/output"):
+        for name in files:
+            if name.endswith(".apk"):
+                apk_name = name
     update_cache(
         cache,
         project_name=project_name,
@@ -308,9 +313,11 @@ def process_repository(
         local_path=local_path,
         start_time=start_time_str,
         end_time=end_time_str,
-        elapsed_time=float(f"{elapsed_time:.2f}")
+        elapsed_time=float(f"{elapsed_time:.2f}"),
+        apk_name=apk_name
     )
     save_cache_to_file(project_name, cache)
+    return apk_name if apk_name else "BUILD_FAILED"
 
 def main():
     """Initialization function."""
