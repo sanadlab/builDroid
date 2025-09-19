@@ -272,7 +272,7 @@ def process_repository(
     print("-" * 70)
     setup_docker_config()
 
-    image = "buildroid:1.0.1"
+    image = "buildroid:1.3.2"
 
     # Clone the Github repository and set metadata
     metadata = clone_and_set_metadata(project_name, repo_source, image, local_path)
