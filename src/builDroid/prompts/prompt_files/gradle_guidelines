@@ -50,7 +50,7 @@ Fix:
      ```
 
 ## 3. Java Version Mismatch
-Error Message: "Could not determine java version from '17.0.14'.", "Unsupported class file major version 61"
+Error Message: "Could not determine java version from 'xxx'.", "Unsupported class file major version"
 Fix:
 1. Get gradle version of the project:
    ```
@@ -63,16 +63,12 @@ Fix:
    || 5.5~ || 11 ||
    || 7.3~ || 17 ||
    || 8.5~ || 21 ||
-   For example, if Gradle version is 7.0.2, you should install Java 11.
-3. Install Java:
+   For example, if Gradle version is 7.0.2, you should use Java 11.
+3. Update the current Java version:
    ```
-   apt update && apt install -y openjdk-<version>-jdk
+     sudo update-alternatives --set java $(sudo update-alternatives --list java | grep 'java-<version>' | head -n 1)
    ```
-   Try older Java versions upon install failure. If already installed, proceed to next step.
-4. **IMPORTANT** Execute this line:
-   ```
-   export JAVA_HOME=<new_java_path>
-   ```
+    Replace `<version>` with the required Java version (e.g., `11`).
 
 ## 4. Missing keystore file
 Error Message: "Keystore file '.*' not found for signing config", "signing.properties (No such file or directory)"

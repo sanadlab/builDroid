@@ -117,7 +117,8 @@ def run_builDroid_with_checks(
     override_project: bool,
     metadata: dict,
     keep_container: bool,
-    local_path: bool
+    local_path: bool,
+    stop_container: bool = True
     ):
     """
     Executes the builDroid module and handles the setup and cleanup of Docker containers.
@@ -142,6 +143,7 @@ def run_builDroid_with_checks(
     finally:
         project_name = metadata["project_name"]
         project_path = metadata["project_url"]
+        project_name = os.path.basename(project_path) if local_path else project_name
         # Extract the project if specified
         if extract_project:
             if local_path:
@@ -163,7 +165,12 @@ def run_builDroid_with_checks(
                     subprocess.run(['rm', '-rf', f"builDroid_workspace/{project_name}_builDroid"], check=True)
                     subprocess.run(['docker', 'cp', f'{project_name}:/{project_name}', f"builDroid_workspace/{project_name}_builDroid"], check=True)
         if keep_container:
-            subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if stop_container:
+                print(f"Stopping container {project_name} but keeping it for further analysis.")
+                # Stop the container without removing it
+                subprocess.run(["docker", "stop", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            else:
+                print(f"Keeping container {project_name} running for further analysis.")
         else:
             subprocess.run(["docker", "rm", "-vf", project_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["docker", "system", "prune", "--volumes", "-f"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -179,7 +186,8 @@ def run_with_retries(
     metadata: dict,
     keep_container: bool,
     user_retry: bool,
-    local_path: bool
+    local_path: bool,
+    stop_container: bool = True
     ):
     """
     Runs the main logic, handles retries, and performs post-processing.
@@ -193,7 +201,10 @@ def run_with_retries(
         if os.path.exists(f"builDroid_tests/{project_name}/output/FAILURE"):
             with open(f"builDroid_tests/{project_name}/output/FAILURE", "r") as f:
                 metadata["past_attempt"] = f.read()
-        run_builDroid_with_checks(cycle_limit=cycle_limit, conversation=conversation, debug=debug, extract_project=extract_project, override_project=override_project, metadata=metadata, keep_container=keep_container, local_path=local_path)
+        run_builDroid_with_checks(cycle_limit=cycle_limit, conversation=conversation, debug=debug,
+                                  extract_project=extract_project, override_project=override_project,
+                                  metadata=metadata, keep_container=keep_container, local_path=local_path,
+                                  stop_container=stop_container)
 
         # Run post-processing and check the result
         if run_post_process(project_name):
@@ -211,7 +222,11 @@ def run_with_retries(
         user_input = input(f"Build failed after {MAX_RETRIES} attempts. Retry? (yes/no): ")
         while True:
             if user_input.startswith("Y") or user_input.startswith("y"):
-                run_builDroid_with_checks(cycle_limit=cycle_limit, conversation=conversation, debug=debug, extract_project=extract_project, override_project=override_project, metadata=metadata, keep_container=keep_container, local_path=local_path)
+                run_builDroid_with_checks(cycle_limit=cycle_limit, conversation=conversation,
+                                          debug=debug, extract_project=extract_project,
+                                          override_project=override_project, metadata=metadata,
+                                          keep_container=keep_container, local_path=local_path,
+                                          stop_container=stop_container)
                 # Run post-processing and check the result
                 if run_post_process(project_name):
                     print(f"Post-process succeeded. The extracted .apk file is in the "
@@ -234,7 +249,8 @@ def process_repository(
     keep_container: bool = False,
     user_retry: bool = False,
     local_path: bool = False,
-    project_name: str = None
+    project_name: str = None,
+    stop_container: bool = True
     ) -> str:
     """Processes a single repository."""
 
@@ -286,7 +302,9 @@ def process_repository(
                      keep_container=keep_container, 
                      user_retry=user_retry, 
                      metadata=metadata,
-                     local_path=local_path)
+                     local_path=local_path,
+                     stop_container=stop_container
+                     )
 
     end_time = time.time()
     elapsed_time = end_time - start_time
