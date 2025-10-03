@@ -45,7 +45,9 @@ class Agent(BaseAgent):
         command_args: dict[str, str] | None,
     ) -> str:
         # Execute command
-        if command_name is not None and command_name.lower().startswith("error"):
+        if command_name is None:
+            result = f"Error: command is 'None'. Your previous response was incorrectly formatted."
+        elif command_name is not None and command_name.lower().startswith("error"):
             result = f"Could not execute command: {command_name}{command_args}"
         else:
             command_result = execute_command(

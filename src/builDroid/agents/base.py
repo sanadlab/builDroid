@@ -255,6 +255,10 @@ class BaseAgent(metaclass=ABCMeta):
                     prompt = patf.read()
                 if self.cycle_count == 1:
                     prompt += "\n\n## Previous Commands\nBelow are commands that you have executed by far, in sequential order."
+                if previous_command is None:
+                    previous_command = "NO COMMAND"
+                if result is None:
+                    result = "NO RESULT"
                 prompt += "\n\n==================Command " + str(self.cycle_count) + "==================\n" + previous_command + "\n==================Command Result==================\n" + result
 
             logger.info(

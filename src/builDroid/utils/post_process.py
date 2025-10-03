@@ -146,7 +146,7 @@ def run_post_process(project_name):
             # This log contains a failure but couldn't be classified by rules
             unclassified_logs.append(attempt)
 
-    # --- Step 2: LLM Fallback for Unclassified Errors ---
+    # LLM Fallback for Unclassified Errors 
     if unclassified_logs:
         print(f"Found {len(unclassified_logs)} unclassified error(s). Falling back to LLM for summary.")
         # We only call the LLM if there's something it needs to do.
